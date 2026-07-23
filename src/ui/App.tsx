@@ -43,12 +43,14 @@ export function App() {
   const [paymentsPerYear, setPaymentsPerYear] = useState(
     saved?.paymentsPerYear ?? 12,
   );
-  const [hoursPerWeek, setHoursPerWeek] = useState(saved?.hoursPerWeek ?? 40);
+  const [hoursPerWeek, setHoursPerWeek] = useState(
+    String(saved?.hoursPerWeek ?? 40),
+  );
   const [currency, setCurrency] = useState<Settings["currency"]>(
     saved?.currency ?? "EUR",
   );
   const [thresholdPercent, setThresholdPercent] = useState(
-    saved?.thresholdPercent ?? 10,
+    String(saved?.thresholdPercent ?? 10),
   );
   const [thresholdBasis, setThresholdBasis] = useState<ThresholdBasis>(
     saved?.thresholdBasis ?? "monthly",
@@ -63,9 +65,11 @@ export function App() {
       monthlyExpenses: expenses,
       expenseRows,
       paymentsPerYear,
-      hoursPerWeek,
+      hoursPerWeek: hoursValid ? hoursPerWeekNum : 40,
       currency,
-      thresholdPercent,
+      thresholdPercent: Number.isFinite(thresholdPercentNum)
+        ? thresholdPercentNum
+        : 10,
       thresholdBasis,
     });
   }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency, thresholdPercent, thresholdBasis]);
@@ -81,8 +85,14 @@ export function App() {
     ? clamp(contributionCents)
     : undefined;
   const incomeValid = Number.isFinite(incomeCents) && incomeCents > 0;
-  const hoursValid = Number.isFinite(hoursPerWeek) && hoursPerWeek > 0;
+  // Number("") is 0, so a cleared field reads as invalid (no wage) rather than NaN.
+  const hoursPerWeekNum = Number(hoursPerWeek);
+  const hoursValid = Number.isFinite(hoursPerWeekNum) && hoursPerWeekNum > 0;
   const canEvaluate = incomeValid && hoursValid;
+  // A cleared threshold falls back to the 10% default; a deliberate "0" is kept
+  // (0% means "never challenge", so we must not collapse it into the default).
+  const thresholdPercentNum =
+    thresholdPercent.trim() === "" ? 10 : Number(thresholdPercent);
   const priceEntered =
     price.trim() !== "" && Number.isFinite(priceCents) && priceCents > 0;
 
@@ -104,7 +114,11 @@ export function App() {
   const evaluation = canEvaluate
     ? evaluate(
         {
-          income: { monthlyNet: incomeCents, hoursPerWeek, paymentsPerYear },
+          income: {
+            monthlyNet: incomeCents,
+            hoursPerWeek: hoursPerWeekNum,
+            paymentsPerYear,
+          },
           hoursPerDay: 8,
           savings: clamp(savingsCents) + clamp(windfallCents),
           monthlyExpenses,
@@ -114,7 +128,9 @@ export function App() {
         {
           currency,
           significanceThreshold: {
-            percent: Number.isFinite(thresholdPercent) ? thresholdPercent : 10,
+            percent: Number.isFinite(thresholdPercentNum)
+              ? thresholdPercentNum
+              : 10,
             basis: thresholdBasis,
           },
         },
@@ -153,7 +169,7 @@ export function App() {
         id="hours"
         type="number"
         value={hoursPerWeek}
-        onChange={(e) => setHoursPerWeek(Number(e.target.value))}
+        onChange={(e) => setHoursPerWeek(e.target.value)}
       />
 
       <label htmlFor="payments">Payments per year</label>
@@ -174,7 +190,7 @@ export function App() {
         id="threshold-percent"
         type="number"
         value={thresholdPercent}
-        onChange={(e) => setThresholdPercent(Number(e.target.value))}
+        onChange={(e) => setThresholdPercent(e.target.value)}
       />
 
       <label htmlFor="threshold-basis">Reference period</label>

@@ -174,6 +174,42 @@ describe("App — stage 1 Time Cost", () => {
     );
   });
 
+  it("leaves Hours per week empty, not zero, when cleared", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.clear(screen.getByLabelText(/hours per week/i));
+
+    expect(screen.getByLabelText(/hours per week/i)).toHaveValue(null);
+  });
+
+  it("clears the Significance threshold to empty and falls back to the default 10%", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.clear(screen.getByLabelText(/significance threshold/i));
+    expect(screen.getByLabelText(/significance threshold/i)).toHaveValue(null);
+
+    // With the threshold cleared, evaluation falls back to 10% of monthly net:
+    // €130 for €1300/mo, so a €240 purchase is still challenged.
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.getByTestId("challenge")).toBeInTheDocument();
+  });
+
+  it("keeps a deliberate 0% threshold, which never challenges", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+
+    // A deliberate 0% must not collapse into the 10% default: 0% never challenges.
+    await user.clear(screen.getByLabelText(/significance threshold/i));
+    await user.type(screen.getByLabelText(/significance threshold/i), "0");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+
+    expect(screen.queryByTestId("challenge")).toBeNull();
+  });
+
   it("challenges a purchase above the Significance Threshold and stays quiet below it", async () => {
     const user = userEvent.setup();
     render(<App />);

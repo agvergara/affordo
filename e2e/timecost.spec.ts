@@ -75,6 +75,13 @@ test("challenges a significant purchase but stays quiet below the threshold", as
   await expect(page.getByTestId("challenge")).toHaveCount(0);
 });
 
+test("clearing Hours per week leaves it empty, not zero", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Hours per week").fill("");
+
+  await expect(page.getByLabel("Hours per week")).toHaveValue("");
+});
+
 test("itemizes expenses into a monthly total", async ({ page }) => {
   await page.goto("/");
 
