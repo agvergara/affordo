@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { evaluate, parseAmount } from "../engine";
+import { evaluate, formatAmount, parseAmount } from "../engine";
 import type { Settings, ThresholdBasis } from "../engine";
 import {
   formatChallenge,
@@ -14,6 +14,7 @@ import {
   type Frequency,
 } from "./expenses";
 import { loadProfile, saveProfile } from "./storage";
+import { loadGoals, saveGoals, type Goal } from "./goals";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
 const PAYMENT_PERIODS = [12, 14];
@@ -55,6 +56,10 @@ export function App() {
   const [thresholdBasis, setThresholdBasis] = useState<ThresholdBasis>(
     saved?.thresholdBasis ?? "monthly",
   );
+  const [goals, setGoals] = useState<Goal[]>(() => loadGoals());
+  const [goalName, setGoalName] = useState("");
+
+  useEffect(() => saveGoals(goals), [goals]);
 
   useEffect(() => {
     saveProfile({
@@ -111,6 +116,9 @@ export function App() {
   const removeRow = (index: number) =>
     setExpenseRows((rows) => rows.filter((_, i) => i !== index));
 
+  const removeGoal = (id: string) =>
+    setGoals((gs) => gs.filter((g) => g.id !== id));
+
   const evaluation = canEvaluate
     ? evaluate(
         {
@@ -136,6 +144,22 @@ export function App() {
         },
       )
     : null;
+
+  const canSaveGoal =
+    evaluation != null && priceEntered && goalName.trim() !== "";
+  const saveGoal = () => {
+    if (!evaluation || !priceEntered) return;
+    setGoals((gs) => [
+      ...gs,
+      {
+        id: crypto.randomUUID(),
+        name: goalName.trim(),
+        price: priceCents,
+        verdict: evaluation.verdict,
+      },
+    ]);
+    setGoalName("");
+  };
 
   return (
     <main>
@@ -313,6 +337,40 @@ export function App() {
         <p data-testid="verdict">
           {formatVerdict(evaluation.verdict, currency)}
         </p>
+      )}
+
+      {evaluation && priceEntered && (
+        <div>
+          <label htmlFor="goal-name">Goal name</label>
+          <input
+            id="goal-name"
+            value={goalName}
+            onChange={(e) => setGoalName(e.target.value)}
+          />
+          <button type="button" onClick={saveGoal} disabled={!canSaveGoal}>
+            Save as goal
+          </button>
+        </div>
+      )}
+
+      {goals.length > 0 && (
+        <section data-testid="goals">
+          <h2>Saved goals</h2>
+          <ul>
+            {goals.map((goal) => (
+              <li key={goal.id}>
+                {goal.name} — {formatMoney(goal.price, currency)} —{" "}
+                {formatVerdict(goal.verdict, currency)}
+                <button type="button" onClick={() => setPrice(formatAmount(goal.price))}>
+                  Reopen
+                </button>
+                <button type="button" onClick={() => removeGoal(goal.id)}>
+                  Remove goal
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </main>
   );

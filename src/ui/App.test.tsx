@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App";
 
@@ -268,5 +268,99 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByLabelText(/currency/i)).toHaveValue("GBP");
     expect(screen.getByLabelText(/payments per year/i)).toHaveValue("14");
     expect(screen.getAllByLabelText(/expense amount/i)[0]!).toHaveValue("100,00");
+  });
+});
+
+describe("App — Saved Goals", () => {
+  /** Enter income + price so a result exists, then save it under a name. */
+  async function saveGoal(
+    user: ReturnType<typeof userEvent.setup>,
+    name: string,
+    price: string,
+  ) {
+    await user.type(screen.getByLabelText(/price/i), price);
+    await user.type(screen.getByLabelText(/goal name/i), name);
+    await user.click(screen.getByRole("button", { name: /save as goal/i }));
+  }
+
+  it("saves a result as a named Goal listed with its price and verdict", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // €1300/mo, no savings, €240 → save-up about 1 month.
+    await saveGoal(user, "MacBook", "240,00");
+
+    const goals = screen.getByTestId("goals");
+    expect(goals).toHaveTextContent("MacBook");
+    expect(goals).toHaveTextContent("€240,00");
+    expect(goals).toHaveTextContent(/about 1 month/i);
+  });
+
+  it("lists multiple Goals and removes one without touching the others", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+
+    await saveGoal(user, "MacBook", "240,00");
+    await user.clear(screen.getByLabelText(/price/i));
+    await saveGoal(user, "Bike", "500,00");
+
+    let items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+
+    // Remove the MacBook goal; the Bike goal survives.
+    const macbook = items.find((li) => li.textContent?.includes("MacBook"))!;
+    await user.click(
+      within(macbook).getByRole("button", { name: /remove goal/i }),
+    );
+
+    items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(screen.getByTestId("goals")).toHaveTextContent("Bike");
+    expect(screen.getByTestId("goals")).not.toHaveTextContent("MacBook");
+  });
+
+  it("keeps a Goal's snapshotted verdict when the profile later changes", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/current savings/i), "500,00");
+    // €500 savings covers €240 → Affordable Now at save time.
+    await saveGoal(user, "MacBook", "240,00");
+    expect(screen.getByTestId("goals")).toHaveTextContent(
+      /afford this right now/i,
+    );
+
+    // Drain savings after saving; the snapshot must not recompute.
+    await user.clear(screen.getByLabelText(/current savings/i));
+    expect(screen.getByTestId("goals")).toHaveTextContent(
+      /afford this right now/i,
+    );
+  });
+
+  it("reopens a Goal by repopulating the Price field so it can be revisited", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await saveGoal(user, "MacBook", "240,00");
+
+    // Clear the price, then reopen the saved goal to bring it back.
+    await user.clear(screen.getByLabelText(/price/i));
+    expect(screen.getByLabelText(/price/i)).toHaveValue("");
+
+    await user.click(screen.getByRole("button", { name: /reopen/i }));
+    expect(screen.getByLabelText(/price/i)).toHaveValue("240,00");
+  });
+
+  it("keeps saved Goals across a reload", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await saveGoal(user, "MacBook", "240,00");
+    first.unmount();
+
+    render(<App />);
+    expect(screen.getByTestId("goals")).toHaveTextContent("MacBook");
+    expect(screen.getByTestId("goals")).toHaveTextContent("€240,00");
   });
 });
