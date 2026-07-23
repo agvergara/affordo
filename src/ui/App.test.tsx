@@ -101,6 +101,31 @@ describe("App — stage 1 Time Cost", () => {
     expect(verdict).toHaveTextContent("€200,00");
   });
 
+  it("itemizes expenses into a monthly total that replaces the estimate", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /add expense/i }));
+    await user.type(screen.getAllByLabelText(/expense amount/i)[0]!, "100,00");
+    await user.selectOptions(
+      screen.getAllByLabelText(/expense frequency/i)[0]!,
+      "weekly",
+    );
+    // €100/week → €433,33/mo
+    expect(screen.getByTestId("monthly-expenses-total")).toHaveTextContent(
+      "€433,33",
+    );
+  });
+
+  it("raises income when more pay periods per year are selected", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    expect(screen.getByTestId("hourly-wage")).toHaveTextContent("€7,50");
+
+    await user.selectOptions(screen.getByLabelText(/payments per year/i), "14");
+    expect(screen.getByTestId("hourly-wage")).toHaveTextContent("€8,75");
+  });
+
   it("restores the saved profile after the app is reopened", async () => {
     const user = userEvent.setup();
     const first = render(<App />);
@@ -108,6 +133,9 @@ describe("App — stage 1 Time Cost", () => {
     await user.type(screen.getByLabelText(/current savings/i), "500,00");
     await user.type(screen.getByLabelText(/monthly expenses/i), "800,00");
     await user.selectOptions(screen.getByLabelText(/currency/i), "GBP");
+    await user.selectOptions(screen.getByLabelText(/payments per year/i), "14");
+    await user.click(screen.getByRole("button", { name: /add expense/i }));
+    await user.type(screen.getAllByLabelText(/expense amount/i)[0]!, "100,00");
     first.unmount();
 
     render(<App />);
@@ -115,5 +143,7 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByLabelText(/current savings/i)).toHaveValue("500,00");
     expect(screen.getByLabelText(/monthly expenses/i)).toHaveValue("800,00");
     expect(screen.getByLabelText(/currency/i)).toHaveValue("GBP");
+    expect(screen.getByLabelText(/payments per year/i)).toHaveValue("14");
+    expect(screen.getAllByLabelText(/expense amount/i)[0]!).toHaveValue("100,00");
   });
 });

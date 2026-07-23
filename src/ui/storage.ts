@@ -1,10 +1,13 @@
 import type { Settings } from "../engine";
+import type { ExpenseRow } from "./expenses";
 
 /** The persisted financial profile (ADR 0011 — plain, versioned localStorage). */
 export interface PersistedProfile {
   income: string;
   savings: string;
   monthlyExpenses: string;
+  expenseRows: ExpenseRow[];
+  paymentsPerYear: number;
   hoursPerWeek: number;
   currency: Settings["currency"];
 }

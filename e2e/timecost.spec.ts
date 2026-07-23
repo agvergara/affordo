@@ -40,3 +40,16 @@ test("shows Not Reachable when expenses exceed income", async ({ page }) => {
 
   await expect(page.getByTestId("verdict")).toContainText("Not reachable");
 });
+
+test("itemizes expenses into a monthly total", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Add expense item" }).click();
+  await page.getByLabel("Expense amount").fill("100,00");
+  await page.getByLabel("Expense frequency").selectOption("weekly");
+
+  // €100/week → €433,33/mo
+  await expect(page.getByTestId("monthly-expenses-total")).toContainText(
+    "€433,33",
+  );
+});
