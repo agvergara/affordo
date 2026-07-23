@@ -95,6 +95,21 @@ describe("App — stage 1 Time Cost", () => {
     expect(document.body).not.toHaveTextContent("NaN");
   });
 
+  it("flags an unparseable optional field instead of silently dropping it to zero", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+
+    // A typo'd savings must not silently become €0 with no signal.
+    await user.type(screen.getByLabelText(/current savings/i), "5o0");
+    expect(screen.getByTestId("savings-error")).toBeInTheDocument();
+
+    // Empty stays silent — a blank optional field is not an error.
+    await user.clear(screen.getByLabelText(/current savings/i));
+    expect(screen.queryByTestId("savings-error")).toBeNull();
+  });
+
   it("shows no Time Cost for a non-positive price", async () => {
     const user = userEvent.setup();
     render(<App />);

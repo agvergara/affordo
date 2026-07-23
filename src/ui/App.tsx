@@ -31,6 +31,16 @@ function isUnparseable(parsed: ParsedAmount): boolean {
   return !parsed.ok && parsed.reason === "invalid";
 }
 
+/** An inline hint for a money field whose input can't be parsed; else nothing. */
+function moneyHint(parsed: ParsedAmount, testid: string) {
+  if (!isUnparseable(parsed)) return null;
+  return (
+    <p data-testid={testid} role="alert">
+      Enter an amount like 1.234,56.
+    </p>
+  );
+}
+
 function rowToItem(row: ExpenseRow): ExpenseItem {
   return {
     label: row.label,
@@ -90,13 +100,15 @@ export function App() {
 
   const parsedIncome = parseAmount(income);
   const parsedPrice = parseAmount(price);
+  const parsedSavings = parseAmount(savings);
+  const parsedWindfall = parseAmount(windfall);
   const parsedContribution = parseAmount(contribution);
+  const parsedExpenses = parseAmount(expenses);
   const customContribution =
     parsedContribution.ok && parsedContribution.cents > 0
       ? parsedContribution.cents
       : undefined;
   const incomeValid = parsedIncome.ok && parsedIncome.cents > 0;
-  const incomeError = isUnparseable(parsedIncome);
   // Number("") is 0, so a cleared field reads as invalid (no wage) rather than NaN.
   const hoursPerWeekNum = Number(hoursPerWeek);
   const hoursValid = Number.isFinite(hoursPerWeekNum) && hoursPerWeekNum > 0;
@@ -106,7 +118,6 @@ export function App() {
   const thresholdPercentNum =
     thresholdPercent.trim() === "" ? 10 : Number(thresholdPercent);
   const priceEntered = parsedPrice.ok && parsedPrice.cents > 0;
-  const priceError = isUnparseable(parsedPrice);
 
   // Itemized expenses replace the single estimate only once a real amount is
   // entered — an empty, mid-edit row must not zero out the estimate.
@@ -114,7 +125,7 @@ export function App() {
   const itemized = items.length > 0;
   const monthlyExpenses = itemized
     ? monthlyExpensesTotal(items)
-    : optionalCents(parseAmount(expenses));
+    : optionalCents(parsedExpenses);
 
   const updateRow = (index: number, patch: Partial<ExpenseRow>) =>
     setExpenseRows((rows) =>
@@ -135,9 +146,7 @@ export function App() {
             paymentsPerYear,
           },
           hoursPerDay: 8,
-          savings:
-            optionalCents(parseAmount(savings)) +
-            optionalCents(parseAmount(windfall)),
+          savings: optionalCents(parsedSavings) + optionalCents(parsedWindfall),
           monthlyExpenses,
           monthlyContribution: customContribution,
         },
@@ -196,11 +205,7 @@ export function App() {
         value={income}
         onChange={(e) => setIncome(e.target.value)}
       />
-      {incomeError && (
-        <p data-testid="income-error" role="alert">
-          Enter an amount like 1.234,56.
-        </p>
-      )}
+      {moneyHint(parsedIncome, "income-error")}
 
       <label htmlFor="hours">Hours per week</label>
       <input
@@ -246,11 +251,7 @@ export function App() {
 
       <label htmlFor="price">Price</label>
       <input id="price" value={price} onChange={(e) => setPrice(e.target.value)} />
-      {priceError && (
-        <p data-testid="price-error" role="alert">
-          Enter an amount like 1.234,56.
-        </p>
-      )}
+      {moneyHint(parsedPrice, "price-error")}
 
       <label htmlFor="savings">Current savings</label>
       <input
@@ -258,6 +259,7 @@ export function App() {
         value={savings}
         onChange={(e) => setSavings(e.target.value)}
       />
+      {moneyHint(parsedSavings, "savings-error")}
 
       <label htmlFor="windfall">Windfall (one-off, optional)</label>
       <input
@@ -265,6 +267,7 @@ export function App() {
         value={windfall}
         onChange={(e) => setWindfall(e.target.value)}
       />
+      {moneyHint(parsedWindfall, "windfall-error")}
 
       <label htmlFor="contribution">Monthly contribution (optional)</label>
       <input
@@ -272,6 +275,7 @@ export function App() {
         value={contribution}
         onChange={(e) => setContribution(e.target.value)}
       />
+      {moneyHint(parsedContribution, "contribution-error")}
 
       <label htmlFor="expenses">Monthly expenses</label>
       <input
@@ -279,6 +283,7 @@ export function App() {
         value={expenses}
         onChange={(e) => setExpenses(e.target.value)}
       />
+      {moneyHint(parsedExpenses, "expenses-error")}
 
       <fieldset>
         <legend>Break down expenses (optional)</legend>
