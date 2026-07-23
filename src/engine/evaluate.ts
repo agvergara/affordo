@@ -56,7 +56,8 @@ function affordabilityVerdict(
   if (surplus <= 0) {
     return {
       kind: "not-reachable",
-      monthlyShortfall: profile.monthlyExpenses - monthlyNet,
+      // Round to whole cents: monthlyNet is fractional when paymentsPerYear != 12.
+      monthlyShortfall: Math.round(profile.monthlyExpenses - monthlyNet),
     };
   }
 

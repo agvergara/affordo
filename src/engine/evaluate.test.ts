@@ -140,6 +140,22 @@ describe("evaluate — Affordability Verdict", () => {
     });
   });
 
+  it("keeps monthlyShortfall a whole number of cents when pay periods make net fractional", () => {
+    // paymentsPerYear 14 → normalized net €1516.6667; expenses €1520 → shortfall €3.33
+    const profile: Profile = {
+      income: { monthlyNet: 130_000, hoursPerWeek: 30, paymentsPerYear: 14 },
+      hoursPerDay: 8,
+      savings: 0,
+      monthlyExpenses: 152_000,
+    };
+    const result = evaluate(profile, { price: 40_000 }, settings);
+    expect(result.verdict.kind).toBe("not-reachable");
+    if (result.verdict.kind === "not-reachable") {
+      expect(Number.isInteger(result.verdict.monthlyShortfall)).toBe(true);
+      expect(result.verdict.monthlyShortfall).toBe(333);
+    }
+  });
+
   it("is Not Reachable when Surplus is exactly zero (no divide-by-zero)", () => {
     // net €1300, expenses €1300 → surplus 0.
     const result = evaluate(
