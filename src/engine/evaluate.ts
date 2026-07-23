@@ -1,15 +1,20 @@
 import type {
+  Challenge,
   Evaluation,
   Income,
   Profile,
   Purchase,
   Settings,
+  SignificanceThreshold,
   TimeCost,
   WorkTimeUnit,
 } from "./types";
 
 const MONTHS_PER_YEAR = 12;
 const WEEKS_PER_YEAR = 52;
+
+/** Default Significance Threshold: 10% of monthly net income (see CONTEXT.md, ADR 0010). */
+const DEFAULT_THRESHOLD: SignificanceThreshold = { percent: 10, basis: "monthly" };
 
 /** Contracted hours in an average month, from the user's weekly hours. */
 function hoursPerMonth(hoursPerWeek: number): number {
@@ -69,10 +74,25 @@ function affordabilityVerdict(
   return { kind: "save-up", months: Math.ceil(remaining / contribution) };
 }
 
+/**
+ * The Significance-Threshold Challenge (ADR 0010): challenge a purchase whose
+ * price strictly exceeds the threshold share of the user's income.
+ */
+function significanceChallenge(
+  purchase: Purchase,
+  monthlyNet: number,
+  threshold: SignificanceThreshold,
+): Challenge {
+  const referenceIncome =
+    threshold.basis === "annual" ? monthlyNet * MONTHS_PER_YEAR : monthlyNet;
+  const amount = Math.round((referenceIncome * threshold.percent) / 100);
+  return { triggered: purchase.price > amount, threshold: amount };
+}
+
 export function evaluate(
   profile: Profile,
   purchase: Purchase,
-  _settings: Settings,
+  settings: Settings,
 ): Evaluation {
   const monthlyNet = normalizedMonthlyNet(profile.income);
   const monthlyHours = hoursPerMonth(profile.income.hoursPerWeek);
@@ -81,10 +101,16 @@ export function evaluate(
   const netHourlyWage = Math.round(monthlyNet / monthlyHours);
 
   const verdict = affordabilityVerdict(profile, purchase, monthlyNet);
+  const challenge = significanceChallenge(
+    purchase,
+    monthlyNet,
+    settings.significanceThreshold ?? DEFAULT_THRESHOLD,
+  );
 
   return {
     netHourlyWage,
     timeCost: { hours, display: toDisplay(hours, profile) },
     verdict,
+    challenge,
   };
 }
