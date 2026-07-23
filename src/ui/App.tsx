@@ -63,16 +63,20 @@ export function App() {
   const priceEntered =
     price.trim() !== "" && Number.isFinite(priceCents) && priceCents > 0;
 
-  // Itemized expenses replace the single estimate when any rows exist.
-  const itemized = expenseRows.length > 0;
+  // Itemized expenses replace the single estimate only once a real amount is
+  // entered — an empty, mid-edit row must not zero out the estimate.
+  const items = expenseRows.map(rowToItem).filter((item) => item.amount > 0);
+  const itemized = items.length > 0;
   const monthlyExpenses = itemized
-    ? monthlyExpensesTotal(expenseRows.map(rowToItem))
+    ? monthlyExpensesTotal(items)
     : clamp(expensesCents);
 
   const updateRow = (index: number, patch: Partial<ExpenseRow>) =>
     setExpenseRows((rows) =>
       rows.map((row, i) => (i === index ? { ...row, ...patch } : row)),
     );
+  const removeRow = (index: number) =>
+    setExpenseRows((rows) => rows.filter((_, i) => i !== index));
 
   const evaluation = canEvaluate
     ? evaluate(
@@ -174,6 +178,9 @@ export function App() {
                 </option>
               ))}
             </select>
+            <button type="button" onClick={() => removeRow(i)}>
+              Remove
+            </button>
           </div>
         ))}
         <button

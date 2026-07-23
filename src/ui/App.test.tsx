@@ -116,6 +116,26 @@ describe("App — stage 1 Time Cost", () => {
     );
   });
 
+  it("keeps the single estimate until an itemized amount is actually entered", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly expenses/i), "800,00");
+    await user.click(screen.getByRole("button", { name: /add expense/i }));
+    // An empty row must not replace the €800 estimate with €0.
+    expect(screen.queryByTestId("monthly-expenses-total")).toBeNull();
+  });
+
+  it("removes an itemized expense row", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /add expense/i }));
+    await user.type(screen.getAllByLabelText(/expense amount/i)[0]!, "100,00");
+    expect(screen.getByTestId("monthly-expenses-total")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /remove/i }));
+    expect(screen.queryByTestId("monthly-expenses-total")).toBeNull();
+  });
+
   it("raises income when more pay periods per year are selected", async () => {
     const user = userEvent.setup();
     render(<App />);
