@@ -85,8 +85,14 @@ function significanceChallenge(
 ): Challenge {
   const referenceIncome =
     threshold.basis === "annual" ? monthlyNet * MONTHS_PER_YEAR : monthlyNet;
-  const amount = Math.round((referenceIncome * threshold.percent) / 100);
-  return { triggered: purchase.price > amount, threshold: amount };
+  const amount = Math.max(
+    0,
+    Math.round((referenceIncome * threshold.percent) / 100),
+  );
+  // A non-positive percentage has no meaningful "significant" line — never
+  // challenge (challenging a trivial purchase would over-nag, against ADR 0010).
+  const triggered = threshold.percent > 0 && purchase.price > amount;
+  return { triggered, threshold: amount };
 }
 
 export function evaluate(

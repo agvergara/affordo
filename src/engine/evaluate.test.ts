@@ -273,4 +273,16 @@ describe("evaluate — Significance-Threshold Challenge", () => {
     const result = evaluate(profileAt10PerHour(), { price: 0 }, settings);
     expect(result.challenge.triggered).toBe(false);
   });
+
+  it("never challenges when the threshold percentage is zero or negative", () => {
+    // A non-positive percentage has no meaningful "significant" line, so a €5
+    // coffee must not be challenged (over-nagging would break ADR 0010).
+    for (const percent of [0, -10]) {
+      const result = evaluate(profileAt10PerHour(), { price: 500 }, {
+        ...settings,
+        significanceThreshold: { percent, basis: "monthly" },
+      });
+      expect(result.challenge.triggered).toBe(false);
+    }
+  });
 });
