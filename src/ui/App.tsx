@@ -118,10 +118,13 @@ export function App() {
   const hoursValid = Number.isFinite(hoursPerWeekNum) && hoursPerWeekNum > 0;
   const canEvaluate = incomeValid && hoursValid;
   // Hours per day only shapes the Work-Time Unit ladder, so a cleared/invalid
-  // value falls back to 8 rather than blocking evaluation.
+  // value falls back to 8 rather than blocking evaluation; a day can't exceed
+  // 24 real hours, so bound it there.
   const hoursPerDayNum = Number(hoursPerDay);
   const hoursPerDayForCalc =
-    Number.isFinite(hoursPerDayNum) && hoursPerDayNum > 0 ? hoursPerDayNum : 8;
+    Number.isFinite(hoursPerDayNum) && hoursPerDayNum > 0
+      ? Math.min(24, hoursPerDayNum)
+      : 8;
   // A cleared threshold falls back to the 10% default; a deliberate "0" is kept
   // (0% means "never challenge", so we must not collapse it into the default).
   const thresholdPercentNum =
@@ -228,6 +231,8 @@ export function App() {
       <input
         id="hours-per-day"
         type="number"
+        min="1"
+        max="24"
         value={hoursPerDay}
         onChange={(e) => setHoursPerDay(e.target.value)}
       />

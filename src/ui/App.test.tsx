@@ -76,6 +76,19 @@ describe("App — stage 1 Time Cost", () => {
     expect(document.body).not.toHaveTextContent("NaN");
   });
 
+  it("bounds hours per day to a physical 24-hour maximum", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00"); // 32 work-hours
+
+    // 200h/day is impossible; clamped to 24h → 32h is work days, not raw hours.
+    await user.clear(screen.getByLabelText(/hours per day/i));
+    await user.type(screen.getByLabelText(/hours per day/i), "200");
+    expect(screen.getByTestId("time-cost")).toHaveTextContent(/work day/i);
+    expect(screen.getByTestId("time-cost")).not.toHaveTextContent(/32 hours/i);
+  });
+
   it("shows no wage when hours per week is cleared to zero", async () => {
     const user = userEvent.setup();
     render(<App />);
