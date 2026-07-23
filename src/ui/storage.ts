@@ -5,6 +5,8 @@ import type { ExpenseRow } from "./expenses";
 export interface PersistedProfile {
   income: string;
   savings: string;
+  windfall: string;
+  contribution: string;
   monthlyExpenses: string;
   expenseRows: ExpenseRow[];
   paymentsPerYear: number;
@@ -30,6 +32,8 @@ export function loadProfile(): PersistedProfile | null {
     const profile = parsed.profile;
     return {
       ...profile,
+      windfall: profile.windfall ?? "",
+      contribution: profile.contribution ?? "",
       expenseRows: profile.expenseRows ?? [],
       paymentsPerYear: profile.paymentsPerYear ?? 12,
     };
