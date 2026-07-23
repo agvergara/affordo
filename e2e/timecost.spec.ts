@@ -57,6 +57,24 @@ test("a windfall flips a goal to Affordable Now", async ({ page }) => {
   );
 });
 
+test("challenges a significant purchase but stays quiet below the threshold", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+
+  // €1300/mo net → default threshold 10% = €130. €240 exceeds it.
+  await page.getByLabel("Price").fill("240,00");
+  await expect(page.getByTestId("challenge")).toContainText(
+    "significant purchase",
+  );
+
+  // €50 is below the threshold → no challenge.
+  await page.getByLabel("Price").fill("50,00");
+  await expect(page.getByTestId("challenge")).toHaveCount(0);
+});
+
 test("itemizes expenses into a monthly total", async ({ page }) => {
   await page.goto("/");
 

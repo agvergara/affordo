@@ -202,3 +202,87 @@ describe("evaluate — Affordability Verdict", () => {
     }
   });
 });
+
+describe("evaluate — Significance-Threshold Challenge", () => {
+  // net €1300/mo → default threshold is 10% = €130.00 = 13_000 cents.
+  it("challenges a purchase above the default Significance Threshold", () => {
+    const result = evaluate(profileAt10PerHour(), { price: 20_000 }, settings);
+    expect(result.challenge.triggered).toBe(true);
+  });
+
+  it("does not challenge a purchase below the threshold", () => {
+    const result = evaluate(profileAt10PerHour(), { price: 5_000 }, settings);
+    expect(result.challenge.triggered).toBe(false);
+  });
+
+  it("does not challenge a purchase priced exactly at the threshold (exceeds is strict)", () => {
+    const result = evaluate(profileAt10PerHour(), { price: 13_000 }, settings);
+    expect(result.challenge.triggered).toBe(false);
+  });
+
+  it("moves the boundary with a custom percentage", () => {
+    // €200 challenges at 10% (threshold €130) but not at 25% (threshold €325).
+    const price = { price: 20_000 };
+    const strict = evaluate(profileAt10PerHour(), price, {
+      ...settings,
+      significanceThreshold: { percent: 10, basis: "monthly" },
+    });
+    const relaxed = evaluate(profileAt10PerHour(), price, {
+      ...settings,
+      significanceThreshold: { percent: 25, basis: "monthly" },
+    });
+    expect(strict.challenge.triggered).toBe(true);
+    expect(relaxed.challenge.triggered).toBe(false);
+  });
+
+  it("raises the threshold on an annual basis (10% of annual ≈ 12× monthly)", () => {
+    // €200 challenges on the monthly basis (threshold €130) but not annual (€1560).
+    const price = { price: 20_000 };
+    const monthly = evaluate(profileAt10PerHour(), price, {
+      ...settings,
+      significanceThreshold: { percent: 10, basis: "monthly" },
+    });
+    const annual = evaluate(profileAt10PerHour(), price, {
+      ...settings,
+      significanceThreshold: { percent: 10, basis: "annual" },
+    });
+    expect(monthly.challenge.triggered).toBe(true);
+    expect(annual.challenge.triggered).toBe(false);
+  });
+
+  it("reports the threshold amount as percent × reference income, for both bases", () => {
+    const monthly = evaluate(profileAt10PerHour(), { price: 0 }, {
+      ...settings,
+      significanceThreshold: { percent: 10, basis: "monthly" },
+    });
+    const annual = evaluate(profileAt10PerHour(), { price: 0 }, {
+      ...settings,
+      significanceThreshold: { percent: 10, basis: "annual" },
+    });
+    expect(monthly.challenge.threshold).toBe(13_000); // 10% of €1300
+    expect(annual.challenge.threshold).toBe(156_000); // 10% of €15,600
+  });
+
+  it("defaults to 10% of monthly net income when no threshold is configured", () => {
+    // settings omits significanceThreshold entirely.
+    const result = evaluate(profileAt10PerHour(), { price: 0 }, settings);
+    expect(result.challenge.threshold).toBe(13_000);
+  });
+
+  it("does not challenge when there is no price yet", () => {
+    const result = evaluate(profileAt10PerHour(), { price: 0 }, settings);
+    expect(result.challenge.triggered).toBe(false);
+  });
+
+  it("never challenges when the threshold percentage is zero or negative", () => {
+    // A non-positive percentage has no meaningful "significant" line, so a €5
+    // coffee must not be challenged (over-nagging would break ADR 0010).
+    for (const percent of [0, -10]) {
+      const result = evaluate(profileAt10PerHour(), { price: 500 }, {
+        ...settings,
+        significanceThreshold: { percent, basis: "monthly" },
+      });
+      expect(result.challenge.triggered).toBe(false);
+    }
+  });
+});

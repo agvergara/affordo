@@ -1,4 +1,4 @@
-import type { Settings } from "../engine";
+import type { Settings, ThresholdBasis } from "../engine";
 import type { ExpenseRow } from "./expenses";
 
 /** The persisted financial profile (ADR 0011 — plain, versioned localStorage). */
@@ -12,6 +12,10 @@ export interface PersistedProfile {
   paymentsPerYear: number;
   hoursPerWeek: number;
   currency: Settings["currency"];
+  /** Significance Threshold percentage (default 10). */
+  thresholdPercent: number;
+  /** Significance Threshold reference period (default "monthly"). */
+  thresholdBasis: ThresholdBasis;
 }
 
 const KEY = "affordo.profile";
@@ -36,6 +40,8 @@ export function loadProfile(): PersistedProfile | null {
       contribution: profile.contribution ?? "",
       expenseRows: profile.expenseRows ?? [],
       paymentsPerYear: profile.paymentsPerYear ?? 12,
+      thresholdPercent: profile.thresholdPercent ?? 10,
+      thresholdBasis: profile.thresholdBasis ?? "monthly",
     };
   } catch {
     return null;

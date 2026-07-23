@@ -34,8 +34,24 @@ export interface Purchase {
   price: Cents;
 }
 
+export type ThresholdBasis = "monthly" | "annual";
+
+/**
+ * The Significance Threshold: the share of income above which a purchase is
+ * challenged (see CONTEXT.md, ADR 0010). Both the percentage and its reference
+ * period are user-customizable.
+ */
+export interface SignificanceThreshold {
+  /** Percentage of the reference income (UI default 10). */
+  percent: number;
+  /** Whether the percentage applies to monthly or annual net income (UI default monthly). */
+  basis: ThresholdBasis;
+}
+
 export interface Settings {
   currency: "EUR" | "GBP" | "USD";
+  /** Significance Threshold config; defaults to 10% of monthly net income when omitted. */
+  significanceThreshold?: SignificanceThreshold;
 }
 
 export interface TimeCost {
@@ -56,9 +72,21 @@ export type Verdict =
   | { kind: "save-up"; months: number }
   | { kind: "not-reachable"; monthlyShortfall: Cents };
 
+/**
+ * The Significance-Threshold Challenge (see CONTEXT.md, ADR 0010):
+ * whether this purchase warrants a "think twice" prompt.
+ */
+export interface Challenge {
+  /** True when the price exceeds the Significance Threshold (strictly greater). */
+  triggered: boolean;
+  /** The threshold amount in cents for the chosen percentage and basis. */
+  threshold: Cents;
+}
+
 export interface Evaluation {
   /** Per-hour value of the user's time, rounded to whole cents for display. */
   netHourlyWage: Cents;
   timeCost: TimeCost;
   verdict: Verdict;
+  challenge: Challenge;
 }

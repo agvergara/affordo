@@ -174,6 +174,41 @@ describe("App — stage 1 Time Cost", () => {
     );
   });
 
+  it("challenges a purchase above the Significance Threshold and stays quiet below it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    // €1300/mo net → default threshold 10% = €130.
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+
+    // €240 exceeds €130 → challenge appears.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.getByTestId("challenge")).toHaveTextContent(/significant/i);
+
+    // €50 is below the threshold → no challenge.
+    await user.clear(screen.getByLabelText(/price/i));
+    await user.type(screen.getByLabelText(/price/i), "50,00");
+    expect(screen.queryByTestId("challenge")).toBeNull();
+  });
+
+  it("persists a customized Significance Threshold across reopen and re-evaluates against it", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // Raise the threshold to 25% (€325) so a €240 price no longer challenges.
+    await user.clear(screen.getByLabelText(/threshold/i));
+    await user.type(screen.getByLabelText(/threshold/i), "25");
+    await user.selectOptions(screen.getByLabelText(/reference period/i), "annual");
+    first.unmount();
+
+    render(<App />);
+    expect(screen.getByLabelText(/threshold/i)).toHaveValue(25);
+    expect(screen.getByLabelText(/reference period/i)).toHaveValue("annual");
+
+    // 25% of annual income is far above €240 → no challenge.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.queryByTestId("challenge")).toBeNull();
+  });
+
   it("restores the saved profile after the app is reopened", async () => {
     const user = userEvent.setup();
     const first = render(<App />);

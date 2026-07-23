@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTimeCost } from "./format";
+import { formatChallenge, formatTimeCost } from "./format";
 
 describe("formatTimeCost", () => {
   it("pluralizes multi-unit values", () => {
@@ -15,5 +15,32 @@ describe("formatTimeCost", () => {
 
   it("keeps a decimal hours figure", () => {
     expect(formatTimeCost(2.3, "hours")).toBe("2.3 hours");
+  });
+});
+
+describe("formatChallenge", () => {
+  it("references the Time Cost so the challenge is concrete", () => {
+    expect(formatChallenge(12, "work-days")).toContain("12 work days");
+  });
+
+  it("invites a pause without demeaning the person or nudging toward buying (ADR 0010)", () => {
+    const copy = formatChallenge(12, "work-days").toLowerCase();
+    // Challenges the decision, points toward reflection.
+    expect(copy).toMatch(/pause|worth|reconsider|think|sit with/);
+    // No shame aimed at the person, no dark pattern toward spending.
+    for (const banned of [
+      "irresponsible",
+      "stupid",
+      "beyond your means",
+      "can't afford",
+      "cannot afford",
+      "waste",
+      "treat yourself",
+      "you deserve",
+      "go ahead",
+      "buy it",
+    ]) {
+      expect(copy).not.toContain(banned);
+    }
   });
 });
