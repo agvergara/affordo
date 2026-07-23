@@ -82,6 +82,28 @@ test("clearing Hours per week leaves it empty, not zero", async ({ page }) => {
   await expect(page.getByLabel("Hours per week")).toHaveValue("");
 });
 
+test("saves a Goal, survives reload, and reopens it", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+  await page.getByLabel("Price").fill("240,00");
+  await page.getByLabel("Goal name").fill("MacBook");
+  await page.getByRole("button", { name: "Save as goal" }).click();
+
+  const goals = page.getByTestId("goals");
+  await expect(goals).toContainText("MacBook");
+  await expect(goals).toContainText("€240,00");
+
+  // The Goal survives a full reload (persisted under the versioned schema).
+  await page.reload();
+  await expect(page.getByTestId("goals")).toContainText("MacBook");
+
+  // Reopening it repopulates the Price field.
+  await page.getByLabel("Price").fill("");
+  await page.getByRole("button", { name: "Reopen" }).click();
+  await expect(page.getByLabel("Price")).toHaveValue("240,00");
+});
+
 test("itemizes expenses into a monthly total", async ({ page }) => {
   await page.goto("/");
 
