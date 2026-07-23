@@ -70,13 +70,35 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByTestId("verdict")).toHaveTextContent(/afford this right now/i);
   });
 
-  it("says not yet when savings fall short of the price", async () => {
+  it("shows a Save-Up horizon when savings fall short but income covers expenses", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
     await user.type(screen.getByLabelText(/price/i), "240,00");
     await user.type(screen.getByLabelText(/current savings/i), "100,00");
-    expect(screen.getByTestId("verdict")).toHaveTextContent(/not yet/i);
+    // no expenses → full surplus; €140 remaining → about 1 month
+    expect(screen.getByTestId("verdict")).toHaveTextContent(/about 1 month/i);
+  });
+
+  it("shows a Save-Up horizon in months when savings fall short but Surplus is positive", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "300,00");
+    await user.type(screen.getByLabelText(/price/i), "3.000,00");
+    // surplus €1000/mo, need €3000 → 3 months
+    expect(screen.getByTestId("verdict")).toHaveTextContent(/about 3 months/i);
+  });
+
+  it("shows Not Reachable with the monthly shortfall when expenses exceed income", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "1.500,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    const verdict = screen.getByTestId("verdict");
+    expect(verdict).toHaveTextContent(/not reachable/i);
+    expect(verdict).toHaveTextContent("€200,00");
   });
 
   it("restores the saved profile after the app is reopened", async () => {
@@ -84,12 +106,14 @@ describe("App — stage 1 Time Cost", () => {
     const first = render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
     await user.type(screen.getByLabelText(/current savings/i), "500,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "800,00");
     await user.selectOptions(screen.getByLabelText(/currency/i), "GBP");
     first.unmount();
 
     render(<App />);
     expect(screen.getByLabelText(/monthly net income/i)).toHaveValue("1.300,00");
     expect(screen.getByLabelText(/current savings/i)).toHaveValue("500,00");
+    expect(screen.getByLabelText(/monthly expenses/i)).toHaveValue("800,00");
     expect(screen.getByLabelText(/currency/i)).toHaveValue("GBP");
   });
 });

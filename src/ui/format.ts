@@ -1,5 +1,5 @@
 import { formatAmount } from "../engine";
-import type { Settings, WorkTimeUnit } from "../engine";
+import type { Settings, Verdict, WorkTimeUnit } from "../engine";
 
 const CURRENCY_SYMBOL: Record<Settings["currency"], string> = {
   EUR: "€",
@@ -23,4 +23,24 @@ const UNIT_NOUN: Record<WorkTimeUnit, string> = {
 export function formatTimeCost(value: number, unit: WorkTimeUnit): string {
   const noun = UNIT_NOUN[unit];
   return `${value} ${noun}${value === 1 ? "" : "s"}`;
+}
+
+/** Human-readable Affordability Verdict. */
+export function formatVerdict(
+  verdict: Verdict,
+  currency: Settings["currency"],
+): string {
+  switch (verdict.kind) {
+    case "affordable-now":
+      return "You can afford this right now.";
+    case "save-up": {
+      const m = verdict.months;
+      return `You can afford this in about ${m} month${m === 1 ? "" : "s"} if you save your surplus.`;
+    }
+    case "not-reachable":
+      return `Not reachable at your current rate — you're ${formatMoney(
+        verdict.monthlyShortfall,
+        currency,
+      )} short each month. Trimming expenses would put this within reach.`;
+  }
 }

@@ -24,6 +24,8 @@ export interface Profile {
   hoursPerDay: number;
   /** Current money available toward purchases (ADR: Savings). */
   savings: Cents;
+  /** Estimated recurring monthly expenses. Income − this is the Surplus. */
+  monthlyExpenses: Cents;
 }
 
 export interface Purchase {
@@ -42,11 +44,15 @@ export interface TimeCost {
 }
 
 /**
- * The Affordability Verdict. In this slice only "affordable-now" and the
- * "not-yet" placeholder exist; a later slice refines "not-yet" into a Save-Up
- * Date or Not Reachable.
+ * The Affordability Verdict (three outcomes; see CONTEXT.md):
+ * - affordable-now: current Savings already cover the price.
+ * - save-up: reachable by saving Surplus; `months` is whole periods, rounded up.
+ * - not-reachable: Surplus ≤ 0, no save-up path; `monthlyShortfall` is the gap.
  */
-export type Verdict = { kind: "affordable-now" } | { kind: "not-yet" };
+export type Verdict =
+  | { kind: "affordable-now" }
+  | { kind: "save-up"; months: number }
+  | { kind: "not-reachable"; monthlyShortfall: Cents };
 
 export interface Evaluation {
   /** Per-hour value of the user's time, rounded to whole cents for display. */
