@@ -25,6 +25,18 @@ export function formatTimeCost(value: number, unit: WorkTimeUnit): string {
   return `${value} ${noun}${value === 1 ? "" : "s"}`;
 }
 
+/**
+ * The Significance-Threshold Challenge copy (ADR 0010): provocative but never
+ * shaming — it challenges the decision by making the Time Cost tangible and
+ * invites a pause, and never nudges toward spending.
+ */
+export function formatChallenge(value: number, unit: WorkTimeUnit): string {
+  return `This is a significant purchase — ${formatTimeCost(
+    value,
+    unit,
+  )} of your working life. Worth pausing on before you decide?`;
+}
+
 /** Human-readable Affordability Verdict. */
 export function formatVerdict(
   verdict: Verdict,
