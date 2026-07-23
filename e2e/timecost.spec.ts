@@ -119,6 +119,19 @@ test("flags an unparseable price, then recovers when corrected", async ({
   await expect(page.getByTestId("verdict")).toBeVisible();
 });
 
+test("recomputes the Time Cost from a personal hours-per-day", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+  await page.getByLabel("Price").fill("240,00");
+
+  // €240 = 32 work-hours: 4 work days at 8h/day, 8 work days at 4h/day.
+  await expect(page.getByTestId("time-cost")).toContainText("4 work days");
+  await page.getByLabel("Hours per day").fill("4");
+  await expect(page.getByTestId("time-cost")).toContainText("8 work days");
+});
+
 test("itemizes expenses into a monthly total", async ({ page }) => {
   await page.goto("/");
 
