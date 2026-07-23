@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { evaluate, parseAmount } from "../engine";
-import type { Settings } from "../engine";
-import { formatMoney, formatTimeCost, formatVerdict } from "./format";
+import type { Settings, ThresholdBasis } from "../engine";
+import {
+  formatChallenge,
+  formatMoney,
+  formatTimeCost,
+  formatVerdict,
+} from "./format";
 import {
   monthlyExpensesTotal,
   type ExpenseItem,
@@ -13,6 +18,7 @@ import { loadProfile, saveProfile } from "./storage";
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
 const PAYMENT_PERIODS = [12, 14];
 const FREQUENCIES: Frequency[] = ["weekly", "monthly", "quarterly", "annual"];
+const THRESHOLD_BASES: ThresholdBasis[] = ["monthly", "annual"];
 
 function rowToItem(row: ExpenseRow): ExpenseItem {
   const amount = parseAmount(row.amount);
@@ -41,6 +47,12 @@ export function App() {
   const [currency, setCurrency] = useState<Settings["currency"]>(
     saved?.currency ?? "EUR",
   );
+  const [thresholdPercent, setThresholdPercent] = useState(
+    saved?.thresholdPercent ?? 10,
+  );
+  const [thresholdBasis, setThresholdBasis] = useState<ThresholdBasis>(
+    saved?.thresholdBasis ?? "monthly",
+  );
 
   useEffect(() => {
     saveProfile({
@@ -53,8 +65,10 @@ export function App() {
       paymentsPerYear,
       hoursPerWeek,
       currency,
+      thresholdPercent,
+      thresholdBasis,
     });
-  }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency]);
+  }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency, thresholdPercent, thresholdBasis]);
 
   const incomeCents = parseAmount(income);
   const priceCents = parseAmount(price);
@@ -97,7 +111,13 @@ export function App() {
           monthlyContribution: customContribution,
         },
         { price: priceEntered ? priceCents : 0 },
-        { currency },
+        {
+          currency,
+          significanceThreshold: {
+            percent: Number.isFinite(thresholdPercent) ? thresholdPercent : 10,
+            basis: thresholdBasis,
+          },
+        },
       )
     : null;
 
@@ -145,6 +165,27 @@ export function App() {
         {PAYMENT_PERIODS.map((p) => (
           <option key={p} value={p}>
             {p}
+          </option>
+        ))}
+      </select>
+
+      <label htmlFor="threshold-percent">Significance threshold (%)</label>
+      <input
+        id="threshold-percent"
+        type="number"
+        value={thresholdPercent}
+        onChange={(e) => setThresholdPercent(Number(e.target.value))}
+      />
+
+      <label htmlFor="threshold-basis">Reference period</label>
+      <select
+        id="threshold-basis"
+        value={thresholdBasis}
+        onChange={(e) => setThresholdBasis(e.target.value as ThresholdBasis)}
+      >
+        {THRESHOLD_BASES.map((b) => (
+          <option key={b} value={b}>
+            {b}
           </option>
         ))}
       </select>
@@ -240,6 +281,15 @@ export function App() {
             evaluation.timeCost.display.unit,
           )}{" "}
           of your working life.
+        </p>
+      )}
+
+      {evaluation && priceEntered && evaluation.challenge.triggered && (
+        <p data-testid="challenge">
+          {formatChallenge(
+            evaluation.timeCost.display.value,
+            evaluation.timeCost.display.unit,
+          )}
         </p>
       )}
 

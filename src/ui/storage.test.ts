@@ -27,4 +27,24 @@ describe("loadProfile", () => {
     expect(loaded!.paymentsPerYear).toBe(12);
     expect(loaded!.income).toBe("1.300,00");
   });
+
+  it("backfills the Significance Threshold to 10% monthly for profiles saved before it existed", () => {
+    window.localStorage.setItem(
+      "affordo.profile",
+      JSON.stringify({
+        schemaVersion: 1,
+        profile: {
+          income: "1.300,00",
+          savings: "",
+          monthlyExpenses: "",
+          hoursPerWeek: 40,
+          currency: "EUR",
+        },
+      }),
+    );
+
+    const loaded = loadProfile();
+    expect(loaded!.thresholdPercent).toBe(10);
+    expect(loaded!.thresholdBasis).toBe("monthly");
+  });
 });
