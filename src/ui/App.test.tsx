@@ -210,6 +210,19 @@ describe("App — stage 1 Time Cost", () => {
     errorSpy.mockRestore();
   });
 
+  it("keeps a deliberate 0% threshold, which never challenges", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+
+    // A deliberate 0% must not collapse into the 10% default: 0% never challenges.
+    await user.clear(screen.getByLabelText(/significance threshold/i));
+    await user.type(screen.getByLabelText(/significance threshold/i), "0");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+
+    expect(screen.queryByTestId("challenge")).toBeNull();
+  });
+
   it("challenges a purchase above the Significance Threshold and stays quiet below it", async () => {
     const user = userEvent.setup();
     render(<App />);
