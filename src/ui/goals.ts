@@ -1,5 +1,21 @@
 import type { Cents, Verdict } from "../engine";
 
+/** A stored Verdict is usable only if its kind-specific payload is intact. */
+function isVerdict(value: unknown): value is Verdict {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  switch (v.kind) {
+    case "affordable-now":
+      return true;
+    case "save-up":
+      return typeof v.months === "number";
+    case "not-reachable":
+      return typeof v.monthlyShortfall === "number";
+    default:
+      return false;
+  }
+}
+
 /**
  * A Saved Goal (see CONTEXT.md): a named purchase the user has snapshotted with
  * its price and Affordability Verdict so it can be revisited. v1 Goals are
@@ -14,24 +30,21 @@ export interface Goal {
 
 const KEY = "affordo.goals";
 const SCHEMA_VERSION = 1;
-const VERDICT_KINDS = ["affordable-now", "save-up", "not-reachable"];
 
 /**
  * A stored Goal is only usable if its whole shape survived — a partial record
- * (e.g. a missing Verdict) would crash rendering, so we drop it rather than
- * trust the schema version alone (mirrors storage.ts's defensive load, ADR 0011).
+ * (e.g. a missing or incomplete Verdict) would render NaN/undefined copy, so we
+ * drop it rather than trust the schema version alone (mirrors storage.ts's
+ * defensive load, ADR 0011).
  */
 function isGoal(value: unknown): value is Goal {
   if (typeof value !== "object" || value === null) return false;
   const g = value as Record<string, unknown>;
-  const verdict = g.verdict as { kind?: unknown } | undefined;
   return (
     typeof g.id === "string" &&
     typeof g.name === "string" &&
     typeof g.price === "number" &&
-    typeof verdict === "object" &&
-    verdict !== null &&
-    VERDICT_KINDS.includes(verdict.kind as string)
+    isVerdict(g.verdict)
   );
 }
 

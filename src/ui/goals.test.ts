@@ -40,4 +40,25 @@ describe("goals storage", () => {
     );
     expect(loadGoals()).toEqual([macbook]);
   });
+
+  it("drops Goals whose verdict is missing its kind-specific payload", () => {
+    // save-up without months, not-reachable without monthlyShortfall → NaN copy.
+    window.localStorage.setItem(
+      "affordo.goals",
+      JSON.stringify({
+        schemaVersion: 1,
+        goals: [
+          macbook,
+          { id: "a", name: "No months", price: 100, verdict: { kind: "save-up" } },
+          {
+            id: "b",
+            name: "No shortfall",
+            price: 100,
+            verdict: { kind: "not-reachable" },
+          },
+        ],
+      }),
+    );
+    expect(loadGoals()).toEqual([macbook]);
+  });
 });
