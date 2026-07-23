@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { evaluate, formatAmount, parseAmount } from "../engine";
-import type { Settings, ThresholdBasis } from "../engine";
+import type { ParsedAmount, Settings, ThresholdBasis } from "../engine";
 import {
   formatChallenge,
   formatMoney,
@@ -21,11 +21,20 @@ const PAYMENT_PERIODS = [12, 14];
 const FREQUENCIES: Frequency[] = ["weekly", "monthly", "quarterly", "annual"];
 const THRESHOLD_BASES: ThresholdBasis[] = ["monthly", "annual"];
 
+/** Cents from a parsed field, blank-as-zero: empty/unparseable/negative → 0. */
+function optionalCents(parsed: ParsedAmount): number {
+  return parsed.ok ? Math.max(0, parsed.cents) : 0;
+}
+
+/** True only when a field holds non-empty input that could not be parsed. */
+function isUnparseable(parsed: ParsedAmount): boolean {
+  return !parsed.ok && parsed.reason === "invalid";
+}
+
 function rowToItem(row: ExpenseRow): ExpenseItem {
-  const amount = parseAmount(row.amount);
   return {
     label: row.label,
-    amount: Number.isFinite(amount) ? Math.max(0, amount) : 0,
+    amount: optionalCents(parseAmount(row.amount)),
     frequency: row.frequency,
   };
 }
@@ -79,17 +88,15 @@ export function App() {
     });
   }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency, thresholdPercent, thresholdBasis]);
 
-  const incomeCents = parseAmount(income);
-  const priceCents = parseAmount(price);
-  const savingsCents = parseAmount(savings);
-  const windfallCents = parseAmount(windfall);
-  const contributionCents = parseAmount(contribution);
-  const expensesCents = parseAmount(expenses);
-  const clamp = (n: number) => (Number.isFinite(n) ? Math.max(0, n) : 0);
-  const customContribution = contribution.trim() !== "" && clamp(contributionCents) > 0
-    ? clamp(contributionCents)
-    : undefined;
-  const incomeValid = Number.isFinite(incomeCents) && incomeCents > 0;
+  const parsedIncome = parseAmount(income);
+  const parsedPrice = parseAmount(price);
+  const parsedContribution = parseAmount(contribution);
+  const customContribution =
+    parsedContribution.ok && parsedContribution.cents > 0
+      ? parsedContribution.cents
+      : undefined;
+  const incomeValid = parsedIncome.ok && parsedIncome.cents > 0;
+  const incomeError = isUnparseable(parsedIncome);
   // Number("") is 0, so a cleared field reads as invalid (no wage) rather than NaN.
   const hoursPerWeekNum = Number(hoursPerWeek);
   const hoursValid = Number.isFinite(hoursPerWeekNum) && hoursPerWeekNum > 0;
@@ -98,8 +105,8 @@ export function App() {
   // (0% means "never challenge", so we must not collapse it into the default).
   const thresholdPercentNum =
     thresholdPercent.trim() === "" ? 10 : Number(thresholdPercent);
-  const priceEntered =
-    price.trim() !== "" && Number.isFinite(priceCents) && priceCents > 0;
+  const priceEntered = parsedPrice.ok && parsedPrice.cents > 0;
+  const priceError = isUnparseable(parsedPrice);
 
   // Itemized expenses replace the single estimate only once a real amount is
   // entered — an empty, mid-edit row must not zero out the estimate.
@@ -107,7 +114,7 @@ export function App() {
   const itemized = items.length > 0;
   const monthlyExpenses = itemized
     ? monthlyExpensesTotal(items)
-    : clamp(expensesCents);
+    : optionalCents(parseAmount(expenses));
 
   const updateRow = (index: number, patch: Partial<ExpenseRow>) =>
     setExpenseRows((rows) =>
@@ -123,16 +130,18 @@ export function App() {
     ? evaluate(
         {
           income: {
-            monthlyNet: incomeCents,
+            monthlyNet: parsedIncome.ok ? parsedIncome.cents : 0,
             hoursPerWeek: hoursPerWeekNum,
             paymentsPerYear,
           },
           hoursPerDay: 8,
-          savings: clamp(savingsCents) + clamp(windfallCents),
+          savings:
+            optionalCents(parseAmount(savings)) +
+            optionalCents(parseAmount(windfall)),
           monthlyExpenses,
           monthlyContribution: customContribution,
         },
-        { price: priceEntered ? priceCents : 0 },
+        { price: priceEntered ? parsedPrice.cents : 0 },
         {
           currency,
           significanceThreshold: {
@@ -148,13 +157,13 @@ export function App() {
   const canSaveGoal =
     evaluation != null && priceEntered && goalName.trim() !== "";
   const saveGoal = () => {
-    if (!evaluation || !priceEntered) return;
+    if (!evaluation || !priceEntered || !parsedPrice.ok) return;
     setGoals((gs) => [
       ...gs,
       {
         id: crypto.randomUUID(),
         name: goalName.trim(),
-        price: priceCents,
+        price: parsedPrice.cents,
         verdict: evaluation.verdict,
       },
     ]);
@@ -187,6 +196,11 @@ export function App() {
         value={income}
         onChange={(e) => setIncome(e.target.value)}
       />
+      {incomeError && (
+        <p data-testid="income-error" role="alert">
+          Enter an amount like 1.234,56.
+        </p>
+      )}
 
       <label htmlFor="hours">Hours per week</label>
       <input
@@ -232,6 +246,11 @@ export function App() {
 
       <label htmlFor="price">Price</label>
       <input id="price" value={price} onChange={(e) => setPrice(e.target.value)} />
+      {priceError && (
+        <p data-testid="price-error" role="alert">
+          Enter an amount like 1.234,56.
+        </p>
+      )}
 
       <label htmlFor="savings">Current savings</label>
       <input

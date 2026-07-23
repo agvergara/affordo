@@ -48,6 +48,18 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.queryByTestId("hourly-wage")).toBeNull();
   });
 
+  it("flags unparseable income with a hint and computes nothing", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Empty income shows no hint — a blank field is not an error.
+    expect(screen.queryByTestId("income-error")).toBeNull();
+
+    await user.type(screen.getByLabelText(/monthly net income/i), "abc");
+    expect(screen.getByTestId("income-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("hourly-wage")).toBeNull();
+  });
+
   it("shows no Time Cost for a non-positive price", async () => {
     const user = userEvent.setup();
     render(<App />);
