@@ -25,6 +25,7 @@ describe("loadProfile", () => {
     expect(loaded).not.toBeNull();
     expect(loaded!.expenseRows).toEqual([]);
     expect(loaded!.paymentsPerYear).toBe(12);
+    expect(loaded!.hoursPerDay).toBe(8);
     expect(loaded!.income).toBe("1.300,00");
   });
 

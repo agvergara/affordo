@@ -11,6 +11,8 @@ export interface PersistedProfile {
   expenseRows: ExpenseRow[];
   paymentsPerYear: number;
   hoursPerWeek: number;
+  /** Contracted hours in one work day, used to build Work-Time Units (default 8). */
+  hoursPerDay: number;
   currency: Settings["currency"];
   /** Significance Threshold percentage (default 10). */
   thresholdPercent: number;
@@ -40,6 +42,7 @@ export function loadProfile(): PersistedProfile | null {
       contribution: profile.contribution ?? "",
       expenseRows: profile.expenseRows ?? [],
       paymentsPerYear: profile.paymentsPerYear ?? 12,
+      hoursPerDay: profile.hoursPerDay ?? 8,
       thresholdPercent: profile.thresholdPercent ?? 10,
       thresholdBasis: profile.thresholdBasis ?? "monthly",
     };

@@ -40,6 +40,55 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByText(/never leaves your browser/i)).toBeInTheDocument();
   });
 
+  it("reshapes the Time Cost when hours per day changes", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // €7.50/h, €240 = 32 work-hours. At the default 8h/day → 4 work days.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.getByTestId("time-cost")).toHaveTextContent(/4 work days/i);
+
+    // At 4h/day the same 32 hours is 8 work days.
+    await user.clear(screen.getByLabelText(/hours per day/i));
+    await user.type(screen.getByLabelText(/hours per day/i), "4");
+    expect(screen.getByTestId("time-cost")).toHaveTextContent(/8 work days/i);
+  });
+
+  it("persists hours per day across a reload", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.clear(screen.getByLabelText(/hours per day/i));
+    await user.type(screen.getByLabelText(/hours per day/i), "6");
+    first.unmount();
+
+    render(<App />);
+    expect(screen.getByLabelText(/hours per day/i)).toHaveValue(6);
+  });
+
+  it("falls back to an 8-hour day when hours per day is cleared", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    // Clearing hours/day must not break evaluation — it falls back to 8h → 4 work days.
+    await user.clear(screen.getByLabelText(/hours per day/i));
+    expect(screen.getByTestId("time-cost")).toHaveTextContent(/4 work days/i);
+    expect(document.body).not.toHaveTextContent("NaN");
+  });
+
+  it("bounds hours per day to a physical 24-hour maximum", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00"); // 32 work-hours
+
+    // 200h/day is impossible; clamped to 24h → 32h is work days, not raw hours.
+    await user.clear(screen.getByLabelText(/hours per day/i));
+    await user.type(screen.getByLabelText(/hours per day/i), "200");
+    expect(screen.getByTestId("time-cost")).toHaveTextContent(/work day/i);
+    expect(screen.getByTestId("time-cost")).not.toHaveTextContent(/32 hours/i);
+  });
+
   it("shows no wage when hours per week is cleared to zero", async () => {
     const user = userEvent.setup();
     render(<App />);
