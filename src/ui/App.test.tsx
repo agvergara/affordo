@@ -60,6 +60,41 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.queryByTestId("hourly-wage")).toBeNull();
   });
 
+  it("flags an unparseable price and recovers once it is corrected", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+
+    await user.type(screen.getByLabelText(/price/i), "1,2,3");
+    expect(screen.getByTestId("price-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("time-cost")).toBeNull();
+    expect(screen.queryByTestId("verdict")).toBeNull();
+
+    // Correcting the price clears the hint and produces a verdict.
+    await user.clear(screen.getByLabelText(/price/i));
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.queryByTestId("price-error")).toBeNull();
+    expect(screen.getByTestId("verdict")).toBeInTheDocument();
+  });
+
+  it("treats a valid 0,00 as zero and never renders NaN from garbage input", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+
+    // A real 0,00 in an optional field is a valid zero, not an error.
+    await user.type(screen.getByLabelText(/current savings/i), "0,00");
+    expect(screen.queryByTestId("verdict")).not.toHaveTextContent(
+      /afford this right now/i,
+    );
+
+    // Garbage in optional fields is absorbed as zero — nothing renders "NaN".
+    await user.type(screen.getByLabelText(/monthly expenses/i), "xyz");
+    await user.type(screen.getByLabelText(/windfall/i), "!!!");
+    expect(document.body).not.toHaveTextContent("NaN");
+  });
+
   it("shows no Time Cost for a non-positive price", async () => {
     const user = userEvent.setup();
     render(<App />);
