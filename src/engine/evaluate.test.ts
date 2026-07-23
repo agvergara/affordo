@@ -5,11 +5,12 @@ import type { Profile, Purchase, Settings } from "./types";
 const settings: Settings = { currency: "EUR" };
 
 /** A profile whose Net Hourly Wage works out to exactly €10.00/hour. */
-function profileAt10PerHour(): Profile {
+function profileAt10PerHour(savings: number = 0): Profile {
   // monthlyHours = 30 * 52/12 = 130; monthlyNet €1300.00 / 130h = €10.00/h
   return {
     income: { monthlyNet: 130_000, hoursPerWeek: 30, paymentsPerYear: 12 },
     hoursPerDay: 8,
+    savings,
   };
 }
 
@@ -25,6 +26,7 @@ describe("evaluate — Time Cost", () => {
     const profile: Profile = {
       income: { monthlyNet: 200_000, hoursPerWeek: 40, paymentsPerYear: 12 },
       hoursPerDay: 8,
+      savings: 0,
     };
     const result = evaluate(profile, { price: 0 }, settings);
     expect(result.netHourlyWage).toBe(1_154);
@@ -34,12 +36,12 @@ describe("evaluate — Time Cost", () => {
     const income = { monthlyNet: 200_000, hoursPerWeek: 40 };
     const purchase: Purchase = { price: 100_000 };
     const twelve = evaluate(
-      { income: { ...income, paymentsPerYear: 12 }, hoursPerDay: 8 },
+      { income: { ...income, paymentsPerYear: 12 }, hoursPerDay: 8, savings: 0 },
       purchase,
       settings,
     );
     const fourteen = evaluate(
-      { income: { ...income, paymentsPerYear: 14 }, hoursPerDay: 8 },
+      { income: { ...income, paymentsPerYear: 14 }, hoursPerDay: 8, savings: 0 },
       purchase,
       settings,
     );
@@ -81,8 +83,26 @@ describe("evaluate — Time Cost", () => {
     const profile: Profile = {
       income: { monthlyNet: 200_000, hoursPerWeek: 40, paymentsPerYear: 12 },
       hoursPerDay: 8,
+      savings: 0,
     };
     const result = evaluate(profile, { price: 50_000 }, settings);
     expect(result.timeCost.display).toEqual({ value: 1, unit: "work-weeks" });
+  });
+});
+
+describe("evaluate — Affordability Verdict", () => {
+  it("is Affordable Now when savings cover the price", () => {
+    const result = evaluate(profileAt10PerHour(50_000), { price: 40_000 }, settings);
+    expect(result.verdict.kind).toBe("affordable-now");
+  });
+
+  it("is not-yet when savings fall short of the price", () => {
+    const result = evaluate(profileAt10PerHour(30_000), { price: 40_000 }, settings);
+    expect(result.verdict.kind).toBe("not-yet");
+  });
+
+  it("is Affordable Now when savings exactly equal the price", () => {
+    const result = evaluate(profileAt10PerHour(40_000), { price: 40_000 }, settings);
+    expect(result.verdict.kind).toBe("affordable-now");
   });
 });

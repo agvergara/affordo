@@ -61,15 +61,35 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.queryByTestId("time-cost")).toBeNull();
   });
 
+  it("says you can afford it now when savings cover the price", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.type(screen.getByLabelText(/current savings/i), "500,00");
+    expect(screen.getByTestId("verdict")).toHaveTextContent(/afford this right now/i);
+  });
+
+  it("says not yet when savings fall short of the price", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.type(screen.getByLabelText(/current savings/i), "100,00");
+    expect(screen.getByTestId("verdict")).toHaveTextContent(/not yet/i);
+  });
+
   it("restores the saved profile after the app is reopened", async () => {
     const user = userEvent.setup();
     const first = render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/current savings/i), "500,00");
     await user.selectOptions(screen.getByLabelText(/currency/i), "GBP");
     first.unmount();
 
     render(<App />);
     expect(screen.getByLabelText(/monthly net income/i)).toHaveValue("1.300,00");
+    expect(screen.getByLabelText(/current savings/i)).toHaveValue("500,00");
     expect(screen.getByLabelText(/currency/i)).toHaveValue("GBP");
   });
 });
