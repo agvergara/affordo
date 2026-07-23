@@ -19,3 +19,24 @@ test("shows Affordable Now when savings cover the price", async ({ page }) => {
 
   await expect(page.getByTestId("verdict")).toContainText("afford this right now");
 });
+
+test("shows a Save-Up horizon in months when saving is needed", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+  await page.getByLabel("Monthly expenses").fill("300,00");
+  await page.getByLabel("Price").fill("3.000,00");
+
+  // surplus €1000/mo, €3000 needed → about 3 months
+  await expect(page.getByTestId("verdict")).toContainText("about 3 months");
+});
+
+test("shows Not Reachable when expenses exceed income", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+  await page.getByLabel("Monthly expenses").fill("1.500,00");
+  await page.getByLabel("Price").fill("240,00");
+
+  await expect(page.getByTestId("verdict")).toContainText("Not reachable");
+});

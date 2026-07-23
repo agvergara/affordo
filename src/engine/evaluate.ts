@@ -44,6 +44,26 @@ function toDisplay(hours: number, profile: Profile): TimeCost["display"] {
   return { value: roundForUnit(value, unit), unit };
 }
 
+/** The three-way Affordability Verdict (ADR 0007). Never emits ∞/NaN/negative. */
+function affordabilityVerdict(
+  profile: Profile,
+  purchase: Purchase,
+  monthlyNet: number,
+): Evaluation["verdict"] {
+  if (profile.savings >= purchase.price) return { kind: "affordable-now" };
+
+  const surplus = monthlyNet - profile.monthlyExpenses;
+  if (surplus <= 0) {
+    return {
+      kind: "not-reachable",
+      monthlyShortfall: profile.monthlyExpenses - monthlyNet,
+    };
+  }
+
+  const remaining = purchase.price - profile.savings;
+  return { kind: "save-up", months: Math.ceil(remaining / surplus) };
+}
+
 export function evaluate(
   profile: Profile,
   purchase: Purchase,
@@ -55,10 +75,7 @@ export function evaluate(
   const hours = (purchase.price * monthlyHours) / monthlyNet;
   const netHourlyWage = Math.round(monthlyNet / monthlyHours);
 
-  const verdict: Evaluation["verdict"] =
-    profile.savings >= purchase.price
-      ? { kind: "affordable-now" }
-      : { kind: "not-yet" };
+  const verdict = affordabilityVerdict(profile, purchase, monthlyNet);
 
   return {
     netHourlyWage,

@@ -4,6 +4,7 @@ import type { Settings } from "../engine";
 export interface PersistedProfile {
   income: string;
   savings: string;
+  monthlyExpenses: string;
   hoursPerWeek: number;
   currency: Settings["currency"];
 }

@@ -4,13 +4,17 @@ import type { Profile, Purchase, Settings } from "./types";
 
 const settings: Settings = { currency: "EUR" };
 
-/** A profile whose Net Hourly Wage works out to exactly €10.00/hour. */
-function profileAt10PerHour(savings: number = 0): Profile {
+/** A profile whose Net Hourly Wage works out to exactly €10.00/hour (net €1300/mo). */
+function profileAt10PerHour(
+  savings: number = 0,
+  monthlyExpenses: number = 0,
+): Profile {
   // monthlyHours = 30 * 52/12 = 130; monthlyNet €1300.00 / 130h = €10.00/h
   return {
     income: { monthlyNet: 130_000, hoursPerWeek: 30, paymentsPerYear: 12 },
     hoursPerDay: 8,
     savings,
+    monthlyExpenses,
   };
 }
 
@@ -27,6 +31,7 @@ describe("evaluate — Time Cost", () => {
       income: { monthlyNet: 200_000, hoursPerWeek: 40, paymentsPerYear: 12 },
       hoursPerDay: 8,
       savings: 0,
+      monthlyExpenses: 0,
     };
     const result = evaluate(profile, { price: 0 }, settings);
     expect(result.netHourlyWage).toBe(1_154);
@@ -36,12 +41,12 @@ describe("evaluate — Time Cost", () => {
     const income = { monthlyNet: 200_000, hoursPerWeek: 40 };
     const purchase: Purchase = { price: 100_000 };
     const twelve = evaluate(
-      { income: { ...income, paymentsPerYear: 12 }, hoursPerDay: 8, savings: 0 },
+      { income: { ...income, paymentsPerYear: 12 }, hoursPerDay: 8, savings: 0, monthlyExpenses: 0 },
       purchase,
       settings,
     );
     const fourteen = evaluate(
-      { income: { ...income, paymentsPerYear: 14 }, hoursPerDay: 8, savings: 0 },
+      { income: { ...income, paymentsPerYear: 14 }, hoursPerDay: 8, savings: 0, monthlyExpenses: 0 },
       purchase,
       settings,
     );
@@ -84,6 +89,7 @@ describe("evaluate — Time Cost", () => {
       income: { monthlyNet: 200_000, hoursPerWeek: 40, paymentsPerYear: 12 },
       hoursPerDay: 8,
       savings: 0,
+      monthlyExpenses: 0,
     };
     const result = evaluate(profile, { price: 50_000 }, settings);
     expect(result.timeCost.display).toEqual({ value: 1, unit: "work-weeks" });
@@ -96,13 +102,65 @@ describe("evaluate — Affordability Verdict", () => {
     expect(result.verdict.kind).toBe("affordable-now");
   });
 
-  it("is not-yet when savings fall short of the price", () => {
-    const result = evaluate(profileAt10PerHour(30_000), { price: 40_000 }, settings);
-    expect(result.verdict.kind).toBe("not-yet");
-  });
-
   it("is Affordable Now when savings exactly equal the price", () => {
     const result = evaluate(profileAt10PerHour(40_000), { price: 40_000 }, settings);
     expect(result.verdict.kind).toBe("affordable-now");
+  });
+
+  it("projects a Save-Up Date in whole months when Surplus is positive", () => {
+    // net €1300, expenses €300 → surplus €1000/mo. Price €3000, savings €0 → 3 months.
+    const result = evaluate(
+      profileAt10PerHour(0, 30_000),
+      { price: 300_000 },
+      settings,
+    );
+    expect(result.verdict).toEqual({ kind: "save-up", months: 3 });
+  });
+
+  it("rounds the number of months up (never earlier than affordable)", () => {
+    // surplus €1000/mo, price €2500, savings €0 → 2.5 months → 3.
+    const result = evaluate(
+      profileAt10PerHour(0, 30_000),
+      { price: 250_000 },
+      settings,
+    );
+    expect(result.verdict).toEqual({ kind: "save-up", months: 3 });
+  });
+
+  it("is Not Reachable with a monthly shortfall when Surplus is negative", () => {
+    // net €1300, expenses €1500 → surplus −€200/mo.
+    const result = evaluate(
+      profileAt10PerHour(0, 150_000),
+      { price: 40_000 },
+      settings,
+    );
+    expect(result.verdict).toEqual({
+      kind: "not-reachable",
+      monthlyShortfall: 20_000,
+    });
+  });
+
+  it("is Not Reachable when Surplus is exactly zero (no divide-by-zero)", () => {
+    // net €1300, expenses €1300 → surplus 0.
+    const result = evaluate(
+      profileAt10PerHour(0, 130_000),
+      { price: 40_000 },
+      settings,
+    );
+    expect(result.verdict).toEqual({ kind: "not-reachable", monthlyShortfall: 0 });
+  });
+
+  it("gives an honest long but finite horizon for a tiny Surplus", () => {
+    // net €1300, expenses €1299.99 → surplus 1 cent/mo. Price €400 → 40,000 months, finite.
+    const result = evaluate(
+      profileAt10PerHour(0, 129_999),
+      { price: 40_000 },
+      settings,
+    );
+    expect(result.verdict.kind).toBe("save-up");
+    if (result.verdict.kind === "save-up") {
+      expect(Number.isFinite(result.verdict.months)).toBe(true);
+      expect(result.verdict.months).toBe(40_000);
+    }
   });
 });

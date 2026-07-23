@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { evaluate, parseAmount } from "../engine";
 import type { Settings } from "../engine";
-import { formatMoney, formatTimeCost } from "./format";
+import { formatMoney, formatTimeCost, formatVerdict } from "./format";
 import { loadProfile, saveProfile } from "./storage";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
@@ -11,18 +11,27 @@ export function App() {
   const [price, setPrice] = useState("");
   const [income, setIncome] = useState(saved?.income ?? "");
   const [savings, setSavings] = useState(saved?.savings ?? "");
+  const [expenses, setExpenses] = useState(saved?.monthlyExpenses ?? "");
   const [hoursPerWeek, setHoursPerWeek] = useState(saved?.hoursPerWeek ?? 40);
   const [currency, setCurrency] = useState<Settings["currency"]>(
     saved?.currency ?? "EUR",
   );
 
   useEffect(() => {
-    saveProfile({ income, savings, hoursPerWeek, currency });
-  }, [income, savings, hoursPerWeek, currency]);
+    saveProfile({
+      income,
+      savings,
+      monthlyExpenses: expenses,
+      hoursPerWeek,
+      currency,
+    });
+  }, [income, savings, expenses, hoursPerWeek, currency]);
 
   const incomeCents = parseAmount(income);
   const priceCents = parseAmount(price);
   const savingsCents = parseAmount(savings);
+  const expensesCents = parseAmount(expenses);
+  const clamp = (n: number) => (Number.isFinite(n) ? Math.max(0, n) : 0);
   const incomeValid = Number.isFinite(incomeCents) && incomeCents > 0;
   const hoursValid = Number.isFinite(hoursPerWeek) && hoursPerWeek > 0;
   const canEvaluate = incomeValid && hoursValid;
@@ -34,7 +43,8 @@ export function App() {
         {
           income: { monthlyNet: incomeCents, hoursPerWeek, paymentsPerYear: 12 },
           hoursPerDay: 8,
-          savings: Number.isFinite(savingsCents) ? Math.max(0, savingsCents) : 0,
+          savings: clamp(savingsCents),
+          monthlyExpenses: clamp(expensesCents),
         },
         { price: priceEntered ? priceCents : 0 },
         { currency },
@@ -86,6 +96,13 @@ export function App() {
         onChange={(e) => setSavings(e.target.value)}
       />
 
+      <label htmlFor="expenses">Monthly expenses</label>
+      <input
+        id="expenses"
+        value={expenses}
+        onChange={(e) => setExpenses(e.target.value)}
+      />
+
       {evaluation && (
         <p data-testid="hourly-wage">
           Your time is worth {formatMoney(evaluation.netHourlyWage, currency)} per
@@ -106,9 +123,7 @@ export function App() {
 
       {evaluation && priceEntered && (
         <p data-testid="verdict">
-          {evaluation.verdict.kind === "affordable-now"
-            ? "You can afford this right now."
-            : "Not yet — keep saving toward this."}
+          {formatVerdict(evaluation.verdict, currency)}
         </p>
       )}
     </main>
