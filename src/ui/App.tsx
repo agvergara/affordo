@@ -66,6 +66,9 @@ export function App() {
   const [hoursPerWeek, setHoursPerWeek] = useState(
     String(saved?.hoursPerWeek ?? 40),
   );
+  const [hoursPerDay, setHoursPerDay] = useState(
+    String(saved?.hoursPerDay ?? 8),
+  );
   const [currency, setCurrency] = useState<Settings["currency"]>(
     saved?.currency ?? "EUR",
   );
@@ -90,13 +93,14 @@ export function App() {
       expenseRows,
       paymentsPerYear,
       hoursPerWeek: hoursValid ? hoursPerWeekNum : 40,
+      hoursPerDay: hoursPerDayForCalc,
       currency,
       thresholdPercent: Number.isFinite(thresholdPercentNum)
         ? thresholdPercentNum
         : 10,
       thresholdBasis,
     });
-  }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency, thresholdPercent, thresholdBasis]);
+  }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, hoursPerDay, currency, thresholdPercent, thresholdBasis]);
 
   const parsedIncome = parseAmount(income);
   const parsedPrice = parseAmount(price);
@@ -113,6 +117,11 @@ export function App() {
   const hoursPerWeekNum = Number(hoursPerWeek);
   const hoursValid = Number.isFinite(hoursPerWeekNum) && hoursPerWeekNum > 0;
   const canEvaluate = incomeValid && hoursValid;
+  // Hours per day only shapes the Work-Time Unit ladder, so a cleared/invalid
+  // value falls back to 8 rather than blocking evaluation.
+  const hoursPerDayNum = Number(hoursPerDay);
+  const hoursPerDayForCalc =
+    Number.isFinite(hoursPerDayNum) && hoursPerDayNum > 0 ? hoursPerDayNum : 8;
   // A cleared threshold falls back to the 10% default; a deliberate "0" is kept
   // (0% means "never challenge", so we must not collapse it into the default).
   const thresholdPercentNum =
@@ -145,7 +154,7 @@ export function App() {
             hoursPerWeek: hoursPerWeekNum,
             paymentsPerYear,
           },
-          hoursPerDay: 8,
+          hoursPerDay: hoursPerDayForCalc,
           savings: optionalCents(parsedSavings) + optionalCents(parsedWindfall),
           monthlyExpenses,
           monthlyContribution: customContribution,
@@ -213,6 +222,14 @@ export function App() {
         type="number"
         value={hoursPerWeek}
         onChange={(e) => setHoursPerWeek(e.target.value)}
+      />
+
+      <label htmlFor="hours-per-day">Hours per day</label>
+      <input
+        id="hours-per-day"
+        type="number"
+        value={hoursPerDay}
+        onChange={(e) => setHoursPerDay(e.target.value)}
       />
 
       <label htmlFor="payments">Payments per year</label>
