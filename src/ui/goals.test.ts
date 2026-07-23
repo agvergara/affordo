@@ -28,4 +28,16 @@ describe("goals storage", () => {
     );
     expect(loadGoals()).toEqual([]);
   });
+
+  it("drops malformed Goals rather than returning a shape that crashes rendering", () => {
+    // A schema-1 record hand-corrupted: one entry is missing its verdict.
+    window.localStorage.setItem(
+      "affordo.goals",
+      JSON.stringify({
+        schemaVersion: 1,
+        goals: [macbook, { id: "bad", name: "Broken", price: 100 }],
+      }),
+    );
+    expect(loadGoals()).toEqual([macbook]);
+  });
 });
