@@ -10,17 +10,19 @@ export function App() {
   const saved = loadProfile();
   const [price, setPrice] = useState("");
   const [income, setIncome] = useState(saved?.income ?? "");
+  const [savings, setSavings] = useState(saved?.savings ?? "");
   const [hoursPerWeek, setHoursPerWeek] = useState(saved?.hoursPerWeek ?? 40);
   const [currency, setCurrency] = useState<Settings["currency"]>(
     saved?.currency ?? "EUR",
   );
 
   useEffect(() => {
-    saveProfile({ income, hoursPerWeek, currency });
-  }, [income, hoursPerWeek, currency]);
+    saveProfile({ income, savings, hoursPerWeek, currency });
+  }, [income, savings, hoursPerWeek, currency]);
 
   const incomeCents = parseAmount(income);
   const priceCents = parseAmount(price);
+  const savingsCents = parseAmount(savings);
   const incomeValid = Number.isFinite(incomeCents) && incomeCents > 0;
   const hoursValid = Number.isFinite(hoursPerWeek) && hoursPerWeek > 0;
   const canEvaluate = incomeValid && hoursValid;
@@ -32,6 +34,7 @@ export function App() {
         {
           income: { monthlyNet: incomeCents, hoursPerWeek, paymentsPerYear: 12 },
           hoursPerDay: 8,
+          savings: Number.isFinite(savingsCents) ? Math.max(0, savingsCents) : 0,
         },
         { price: priceEntered ? priceCents : 0 },
         { currency },
@@ -76,6 +79,13 @@ export function App() {
       <label htmlFor="price">Price</label>
       <input id="price" value={price} onChange={(e) => setPrice(e.target.value)} />
 
+      <label htmlFor="savings">Current savings</label>
+      <input
+        id="savings"
+        value={savings}
+        onChange={(e) => setSavings(e.target.value)}
+      />
+
       {evaluation && (
         <p data-testid="hourly-wage">
           Your time is worth {formatMoney(evaluation.netHourlyWage, currency)} per
@@ -91,6 +101,14 @@ export function App() {
             evaluation.timeCost.display.unit,
           )}{" "}
           of your working life.
+        </p>
+      )}
+
+      {evaluation && priceEntered && (
+        <p data-testid="verdict">
+          {evaluation.verdict.kind === "affordable-now"
+            ? "You can afford this right now."
+            : "Not yet — keep saving toward this."}
         </p>
       )}
     </main>

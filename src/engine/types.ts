@@ -22,6 +22,8 @@ export interface Profile {
   income: Income;
   /** Contracted hours in one work day, used to build Work-Time Units (UI default 8). */
   hoursPerDay: number;
+  /** Current money available toward purchases (ADR: Savings). */
+  savings: Cents;
 }
 
 export interface Purchase {
@@ -39,8 +41,16 @@ export interface TimeCost {
   display: { value: number; unit: WorkTimeUnit };
 }
 
+/**
+ * The Affordability Verdict. In this slice only "affordable-now" and the
+ * "not-yet" placeholder exist; a later slice refines "not-yet" into a Save-Up
+ * Date or Not Reachable.
+ */
+export type Verdict = { kind: "affordable-now" } | { kind: "not-yet" };
+
 export interface Evaluation {
   /** Per-hour value of the user's time, rounded to whole cents for display. */
   netHourlyWage: Cents;
   timeCost: TimeCost;
+  verdict: Verdict;
 }

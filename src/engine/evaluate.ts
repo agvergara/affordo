@@ -55,8 +55,14 @@ export function evaluate(
   const hours = (purchase.price * monthlyHours) / monthlyNet;
   const netHourlyWage = Math.round(monthlyNet / monthlyHours);
 
+  const verdict: Evaluation["verdict"] =
+    profile.savings >= purchase.price
+      ? { kind: "affordable-now" }
+      : { kind: "not-yet" };
+
   return {
     netHourlyWage,
     timeCost: { hours, display: toDisplay(hours, profile) },
+    verdict,
   };
 }
