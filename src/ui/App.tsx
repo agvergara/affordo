@@ -50,7 +50,7 @@ export function App() {
     saved?.currency ?? "EUR",
   );
   const [thresholdPercent, setThresholdPercent] = useState(
-    saved?.thresholdPercent ?? 10,
+    String(saved?.thresholdPercent ?? 10),
   );
   const [thresholdBasis, setThresholdBasis] = useState<ThresholdBasis>(
     saved?.thresholdBasis ?? "monthly",
@@ -67,7 +67,9 @@ export function App() {
       paymentsPerYear,
       hoursPerWeek: hoursValid ? hoursPerWeekNum : 40,
       currency,
-      thresholdPercent,
+      thresholdPercent: Number.isFinite(thresholdPercentNum)
+        ? thresholdPercentNum
+        : 10,
       thresholdBasis,
     });
   }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency, thresholdPercent, thresholdBasis]);
@@ -87,6 +89,10 @@ export function App() {
   const hoursPerWeekNum = Number(hoursPerWeek);
   const hoursValid = Number.isFinite(hoursPerWeekNum) && hoursPerWeekNum > 0;
   const canEvaluate = incomeValid && hoursValid;
+  // A cleared threshold falls back to the 10% default; a deliberate "0" is kept
+  // (0% means "never challenge", so we must not collapse it into the default).
+  const thresholdPercentNum =
+    thresholdPercent.trim() === "" ? 10 : Number(thresholdPercent);
   const priceEntered =
     price.trim() !== "" && Number.isFinite(priceCents) && priceCents > 0;
 
@@ -122,7 +128,9 @@ export function App() {
         {
           currency,
           significanceThreshold: {
-            percent: Number.isFinite(thresholdPercent) ? thresholdPercent : 10,
+            percent: Number.isFinite(thresholdPercentNum)
+              ? thresholdPercentNum
+              : 10,
             basis: thresholdBasis,
           },
         },
@@ -182,7 +190,7 @@ export function App() {
         id="threshold-percent"
         type="number"
         value={thresholdPercent}
-        onChange={(e) => setThresholdPercent(Number(e.target.value))}
+        onChange={(e) => setThresholdPercent(e.target.value)}
       />
 
       <label htmlFor="threshold-basis">Reference period</label>

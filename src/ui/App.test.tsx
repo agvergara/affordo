@@ -193,6 +193,23 @@ describe("App — stage 1 Time Cost", () => {
     errorSpy.mockRestore();
   });
 
+  it("clears the Significance threshold to empty and falls back to the default 10%", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.clear(screen.getByLabelText(/significance threshold/i));
+    expect(screen.getByLabelText(/significance threshold/i)).toHaveValue(null);
+
+    // With the threshold cleared, evaluation falls back to 10% of monthly net:
+    // €130 for €1300/mo, so a €240 purchase is still challenged.
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.getByTestId("challenge")).toBeInTheDocument();
+    expect(warnedAboutNaN(errorSpy)).toBe(false);
+    errorSpy.mockRestore();
+  });
+
   it("challenges a purchase above the Significance Threshold and stays quiet below it", async () => {
     const user = userEvent.setup();
     render(<App />);
