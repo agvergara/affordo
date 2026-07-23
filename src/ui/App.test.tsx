@@ -319,4 +319,22 @@ describe("App — Saved Goals", () => {
     expect(screen.getByTestId("goals")).toHaveTextContent("Bike");
     expect(screen.getByTestId("goals")).not.toHaveTextContent("MacBook");
   });
+
+  it("keeps a Goal's snapshotted verdict when the profile later changes", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/current savings/i), "500,00");
+    // €500 savings covers €240 → Affordable Now at save time.
+    await saveGoal(user, "MacBook", "240,00");
+    expect(screen.getByTestId("goals")).toHaveTextContent(
+      /afford this right now/i,
+    );
+
+    // Drain savings after saving; the snapshot must not recompute.
+    await user.clear(screen.getByLabelText(/current savings/i));
+    expect(screen.getByTestId("goals")).toHaveTextContent(
+      /afford this right now/i,
+    );
+  });
 });
