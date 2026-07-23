@@ -104,6 +104,21 @@ test("saves a Goal, survives reload, and reopens it", async ({ page }) => {
   await expect(page.getByLabel("Price")).toHaveValue("240,00");
 });
 
+test("flags an unparseable price, then recovers when corrected", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+
+  await page.getByLabel("Price").fill("1,2,3");
+  await expect(page.getByTestId("price-error")).toBeVisible();
+  await expect(page.getByTestId("verdict")).toHaveCount(0);
+
+  await page.getByLabel("Price").fill("240,00");
+  await expect(page.getByTestId("price-error")).toHaveCount(0);
+  await expect(page.getByTestId("verdict")).toBeVisible();
+});
+
 test("itemizes expenses into a monthly total", async ({ page }) => {
   await page.goto("/");
 
