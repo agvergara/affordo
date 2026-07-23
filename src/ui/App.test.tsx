@@ -337,4 +337,30 @@ describe("App — Saved Goals", () => {
       /afford this right now/i,
     );
   });
+
+  it("reopens a Goal by repopulating the Price field so it can be revisited", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await saveGoal(user, "MacBook", "240,00");
+
+    // Clear the price, then reopen the saved goal to bring it back.
+    await user.clear(screen.getByLabelText(/price/i));
+    expect(screen.getByLabelText(/price/i)).toHaveValue("");
+
+    await user.click(screen.getByRole("button", { name: /reopen/i }));
+    expect(screen.getByLabelText(/price/i)).toHaveValue("240,00");
+  });
+
+  it("keeps saved Goals across a reload", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await saveGoal(user, "MacBook", "240,00");
+    first.unmount();
+
+    render(<App />);
+    expect(screen.getByTestId("goals")).toHaveTextContent("MacBook");
+    expect(screen.getByTestId("goals")).toHaveTextContent("€240,00");
+  });
 });
