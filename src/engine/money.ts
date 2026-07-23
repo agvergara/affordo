@@ -15,13 +15,20 @@ export type ParsedAmount =
   | { ok: true; cents: Cents }
   | { ok: false; reason: "empty" | "invalid" };
 
+/**
+ * A well-formed European amount: an optional sign, then either a plain run of
+ * digits or dot-grouped thousands (each group exactly 3 digits), then an
+ * optional comma-decimal of 1–2 digits. Rejects malformed groupings ("10.00")
+ * and number literals Number() would otherwise accept ("1e3", "0x10").
+ */
+const EUROPEAN_AMOUNT = /^-?(\d+|\d{1,3}(\.\d{3})+)(,\d{1,2})?$/;
+
 /** Parse a European-formatted amount (e.g. "1.234,56") into integer cents. */
 export function parseAmount(input: string): ParsedAmount {
   const trimmed = input.trim();
   if (trimmed === "") return { ok: false, reason: "empty" };
-  const normalized = trimmed.replace(/\./g, "").replace(",", ".");
-  const value = Number(normalized);
-  if (!Number.isFinite(value)) return { ok: false, reason: "invalid" };
+  if (!EUROPEAN_AMOUNT.test(trimmed)) return { ok: false, reason: "invalid" };
+  const value = Number(trimmed.replace(/\./g, "").replace(",", "."));
   return { ok: true, cents: Math.round(value * 100) };
 }
 

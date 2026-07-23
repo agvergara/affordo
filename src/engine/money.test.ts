@@ -24,6 +24,23 @@ describe("money — European formatting", () => {
     expect(parseAmount("1,2,3")).toEqual({ ok: false, reason: "invalid" });
   });
 
+  it("rejects malformed thousands groupings rather than silently misreading them", () => {
+    // "10.00" is not €1000 under European grouping (a group must be 3 digits).
+    expect(parseAmount("10.00")).toEqual({ ok: false, reason: "invalid" });
+    expect(parseAmount("1.2.3")).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  it("rejects non-decimal number literals that Number() would accept", () => {
+    expect(parseAmount("1e3")).toEqual({ ok: false, reason: "invalid" });
+    expect(parseAmount("0x10")).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  it("accepts a properly grouped amount and an ungrouped integer alike", () => {
+    expect(parseAmount("10.000")).toEqual({ ok: true, cents: 1_000_000 });
+    expect(parseAmount("1234,56")).toEqual({ ok: true, cents: 123_456 });
+    expect(parseAmount("240")).toEqual({ ok: true, cents: 24_000 });
+  });
+
   it("sums parsed amounts without floating-point drift", () => {
     // 0.1 + 0.2 !== 0.3 as floats; as integer cents it is exact.
     const a = parseAmount("0,10");
