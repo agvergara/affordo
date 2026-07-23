@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App";
 
 beforeEach(() => window.localStorage.clear());
+
+/** True if React logged a "Received NaN for the value attribute" warning. */
+function warnedAboutNaN(spy: ReturnType<typeof vi.spyOn>): boolean {
+  return spy.mock.calls.some((args) =>
+    args.some((arg) => typeof arg === "string" && arg.includes("NaN")),
+  );
+}
 
 describe("App — stage 1 Time Cost", () => {
   it("shows the Time Cost once price and income are entered", async () => {
@@ -172,6 +179,18 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByTestId("verdict")).toHaveTextContent(
       /afford this right now/i,
     );
+  });
+
+  it("leaves Hours per week empty without a NaN warning when cleared", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.clear(screen.getByLabelText(/hours per week/i));
+
+    expect(screen.getByLabelText(/hours per week/i)).toHaveValue(null);
+    expect(warnedAboutNaN(errorSpy)).toBe(false);
+    errorSpy.mockRestore();
   });
 
   it("challenges a purchase above the Significance Threshold and stays quiet below it", async () => {
