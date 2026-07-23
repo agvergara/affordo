@@ -54,6 +54,28 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByTestId("time-cost")).toHaveTextContent(/8 work days/i);
   });
 
+  it("persists hours per day across a reload", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.clear(screen.getByLabelText(/hours per day/i));
+    await user.type(screen.getByLabelText(/hours per day/i), "6");
+    first.unmount();
+
+    render(<App />);
+    expect(screen.getByLabelText(/hours per day/i)).toHaveValue(6);
+  });
+
+  it("falls back to an 8-hour day when hours per day is cleared", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    // Clearing hours/day must not break evaluation — it falls back to 8h → 4 work days.
+    await user.clear(screen.getByLabelText(/hours per day/i));
+    expect(screen.getByTestId("time-cost")).toHaveTextContent(/4 work days/i);
+    expect(document.body).not.toHaveTextContent("NaN");
+  });
+
   it("shows no wage when hours per week is cleared to zero", async () => {
     const user = userEvent.setup();
     render(<App />);
