@@ -1,10 +1,13 @@
 import type { Settings } from "../engine";
+import type { ExpenseRow } from "./expenses";
 
 /** The persisted financial profile (ADR 0011 — plain, versioned localStorage). */
 export interface PersistedProfile {
   income: string;
   savings: string;
   monthlyExpenses: string;
+  expenseRows: ExpenseRow[];
+  paymentsPerYear: number;
   hoursPerWeek: number;
   currency: Settings["currency"];
 }
@@ -22,7 +25,14 @@ export function loadProfile(): PersistedProfile | null {
       profile?: PersistedProfile;
     };
     if (parsed.schemaVersion !== SCHEMA_VERSION || !parsed.profile) return null;
-    return parsed.profile;
+    // Backfill fields added after a profile was first saved, so the returned
+    // shape always satisfies PersistedProfile (no undefined slipping through).
+    const profile = parsed.profile;
+    return {
+      ...profile,
+      expenseRows: profile.expenseRows ?? [],
+      paymentsPerYear: profile.paymentsPerYear ?? 12,
+    };
   } catch {
     return null;
   }

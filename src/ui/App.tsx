@@ -2,9 +2,26 @@ import { useEffect, useState } from "react";
 import { evaluate, parseAmount } from "../engine";
 import type { Settings } from "../engine";
 import { formatMoney, formatTimeCost, formatVerdict } from "./format";
+import {
+  monthlyExpensesTotal,
+  type ExpenseItem,
+  type ExpenseRow,
+  type Frequency,
+} from "./expenses";
 import { loadProfile, saveProfile } from "./storage";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
+const PAYMENT_PERIODS = [12, 14];
+const FREQUENCIES: Frequency[] = ["weekly", "monthly", "quarterly", "annual"];
+
+function rowToItem(row: ExpenseRow): ExpenseItem {
+  const amount = parseAmount(row.amount);
+  return {
+    label: row.label,
+    amount: Number.isFinite(amount) ? Math.max(0, amount) : 0,
+    frequency: row.frequency,
+  };
+}
 
 export function App() {
   const saved = loadProfile();
@@ -12,6 +29,12 @@ export function App() {
   const [income, setIncome] = useState(saved?.income ?? "");
   const [savings, setSavings] = useState(saved?.savings ?? "");
   const [expenses, setExpenses] = useState(saved?.monthlyExpenses ?? "");
+  const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>(
+    saved?.expenseRows ?? [],
+  );
+  const [paymentsPerYear, setPaymentsPerYear] = useState(
+    saved?.paymentsPerYear ?? 12,
+  );
   const [hoursPerWeek, setHoursPerWeek] = useState(saved?.hoursPerWeek ?? 40);
   const [currency, setCurrency] = useState<Settings["currency"]>(
     saved?.currency ?? "EUR",
@@ -22,10 +45,12 @@ export function App() {
       income,
       savings,
       monthlyExpenses: expenses,
+      expenseRows,
+      paymentsPerYear,
       hoursPerWeek,
       currency,
     });
-  }, [income, savings, expenses, hoursPerWeek, currency]);
+  }, [income, savings, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency]);
 
   const incomeCents = parseAmount(income);
   const priceCents = parseAmount(price);
@@ -38,13 +63,28 @@ export function App() {
   const priceEntered =
     price.trim() !== "" && Number.isFinite(priceCents) && priceCents > 0;
 
+  // Itemized expenses replace the single estimate only once a real amount is
+  // entered — an empty, mid-edit row must not zero out the estimate.
+  const items = expenseRows.map(rowToItem).filter((item) => item.amount > 0);
+  const itemized = items.length > 0;
+  const monthlyExpenses = itemized
+    ? monthlyExpensesTotal(items)
+    : clamp(expensesCents);
+
+  const updateRow = (index: number, patch: Partial<ExpenseRow>) =>
+    setExpenseRows((rows) =>
+      rows.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+  const removeRow = (index: number) =>
+    setExpenseRows((rows) => rows.filter((_, i) => i !== index));
+
   const evaluation = canEvaluate
     ? evaluate(
         {
-          income: { monthlyNet: incomeCents, hoursPerWeek, paymentsPerYear: 12 },
+          income: { monthlyNet: incomeCents, hoursPerWeek, paymentsPerYear },
           hoursPerDay: 8,
           savings: clamp(savingsCents),
-          monthlyExpenses: clamp(expensesCents),
+          monthlyExpenses,
         },
         { price: priceEntered ? priceCents : 0 },
         { currency },
@@ -86,6 +126,19 @@ export function App() {
         onChange={(e) => setHoursPerWeek(Number(e.target.value))}
       />
 
+      <label htmlFor="payments">Payments per year</label>
+      <select
+        id="payments"
+        value={paymentsPerYear}
+        onChange={(e) => setPaymentsPerYear(Number(e.target.value))}
+      >
+        {PAYMENT_PERIODS.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </select>
+
       <label htmlFor="price">Price</label>
       <input id="price" value={price} onChange={(e) => setPrice(e.target.value)} />
 
@@ -102,6 +155,51 @@ export function App() {
         value={expenses}
         onChange={(e) => setExpenses(e.target.value)}
       />
+
+      <fieldset>
+        <legend>Break down expenses (optional)</legend>
+        {expenseRows.map((row, i) => (
+          <div key={i}>
+            <input
+              aria-label="Expense amount"
+              value={row.amount}
+              onChange={(e) => updateRow(i, { amount: e.target.value })}
+            />
+            <select
+              aria-label="Expense frequency"
+              value={row.frequency}
+              onChange={(e) =>
+                updateRow(i, { frequency: e.target.value as Frequency })
+              }
+            >
+              {FREQUENCIES.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={() => removeRow(i)}>
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() =>
+            setExpenseRows((rows) => [
+              ...rows,
+              { label: "", amount: "", frequency: "monthly" },
+            ])
+          }
+        >
+          Add expense item
+        </button>
+        {itemized && (
+          <p data-testid="monthly-expenses-total">
+            Monthly expenses: {formatMoney(monthlyExpenses, currency)}
+          </p>
+        )}
+      </fieldset>
 
       {evaluation && (
         <p data-testid="hourly-wage">
