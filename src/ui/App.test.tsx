@@ -40,6 +40,27 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByText(/never leaves your browser/i)).toBeInTheDocument();
   });
 
+  it("shows no wage when hours per week is cleared to zero", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.clear(screen.getByLabelText(/hours per week/i));
+    expect(screen.queryByTestId("hourly-wage")).toBeNull();
+  });
+
+  it("shows no Time Cost for a non-positive price", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+
+    await user.type(screen.getByLabelText(/price/i), "-50,00");
+    expect(screen.queryByTestId("time-cost")).toBeNull();
+
+    await user.clear(screen.getByLabelText(/price/i));
+    await user.type(screen.getByLabelText(/price/i), "0,00");
+    expect(screen.queryByTestId("time-cost")).toBeNull();
+  });
+
   it("restores the saved profile after the app is reopened", async () => {
     const user = userEvent.setup();
     const first = render(<App />);

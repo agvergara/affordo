@@ -22,9 +22,12 @@ export function App() {
   const incomeCents = parseAmount(income);
   const priceCents = parseAmount(price);
   const incomeValid = Number.isFinite(incomeCents) && incomeCents > 0;
-  const priceEntered = price.trim() !== "" && Number.isFinite(priceCents);
+  const hoursValid = Number.isFinite(hoursPerWeek) && hoursPerWeek > 0;
+  const canEvaluate = incomeValid && hoursValid;
+  const priceEntered =
+    price.trim() !== "" && Number.isFinite(priceCents) && priceCents > 0;
 
-  const evaluation = incomeValid
+  const evaluation = canEvaluate
     ? evaluate(
         {
           income: { monthlyNet: incomeCents, hoursPerWeek, paymentsPerYear: 12 },
