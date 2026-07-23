@@ -270,3 +270,29 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getAllByLabelText(/expense amount/i)[0]!).toHaveValue("100,00");
   });
 });
+
+describe("App — Saved Goals", () => {
+  /** Enter income + price so a result exists, then save it under a name. */
+  async function saveGoal(
+    user: ReturnType<typeof userEvent.setup>,
+    name: string,
+    price: string,
+  ) {
+    await user.type(screen.getByLabelText(/price/i), price);
+    await user.type(screen.getByLabelText(/goal name/i), name);
+    await user.click(screen.getByRole("button", { name: /save as goal/i }));
+  }
+
+  it("saves a result as a named Goal listed with its price and verdict", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // €1300/mo, no savings, €240 → save-up about 1 month.
+    await saveGoal(user, "MacBook", "240,00");
+
+    const goals = screen.getByTestId("goals");
+    expect(goals).toHaveTextContent("MacBook");
+    expect(goals).toHaveTextContent("€240,00");
+    expect(goals).toHaveTextContent(/about 1 month/i);
+  });
+});
