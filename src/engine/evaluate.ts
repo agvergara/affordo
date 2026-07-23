@@ -5,6 +5,7 @@ import type {
   Purchase,
   Settings,
   TimeCost,
+  WorkTimeUnit,
 } from "./types";
 
 const MONTHS_PER_YEAR = 12;
@@ -20,16 +21,27 @@ function normalizedMonthlyNet(income: Income): number {
   return (income.monthlyNet * income.paymentsPerYear) / MONTHS_PER_YEAR;
 }
 
+/** Round a display figure per ADR 0012: hours to 1 decimal, larger units to the nearest half. */
+function roundForUnit(value: number, unit: WorkTimeUnit): number {
+  // Nearest half is exact in binary; one decimal via toFixed avoids float artifacts.
+  if (unit === "hours") return Number(value.toFixed(1));
+  return Math.round(value * 2) / 2;
+}
+
 /** Express work-hours in the most readable Work-Time Unit for their magnitude. */
 function toDisplay(hours: number, profile: Profile): TimeCost["display"] {
   const { hoursPerDay } = profile;
   const perWeek = profile.income.hoursPerWeek;
   const perMonth = hoursPerMonth(perWeek);
 
-  if (hours < hoursPerDay) return { value: hours, unit: "hours" };
-  if (hours < perWeek) return { value: hours / hoursPerDay, unit: "work-days" };
-  if (hours < perMonth) return { value: hours / perWeek, unit: "work-weeks" };
-  return { value: hours / perMonth, unit: "work-months" };
+  let value: number;
+  let unit: WorkTimeUnit;
+  if (hours < hoursPerDay) [value, unit] = [hours, "hours"];
+  else if (hours < perWeek) [value, unit] = [hours / hoursPerDay, "work-days"];
+  else if (hours < perMonth) [value, unit] = [hours / perWeek, "work-weeks"];
+  else [value, unit] = [hours / perMonth, "work-months"];
+
+  return { value: roundForUnit(value, unit), unit };
 }
 
 export function evaluate(

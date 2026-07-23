@@ -68,4 +68,21 @@ describe("evaluate — Time Cost", () => {
     const result = evaluate(profileAt10PerHour(), { price: 260_000 }, settings);
     expect(result.timeCost.display).toEqual({ value: 2, unit: "work-months" });
   });
+
+  it("rounds the displayed hours figure to one decimal (ADR 0012)", () => {
+    // €10/h → €23.40 = 2.34h, rounded to 2.3h; raw hours stays exact.
+    const result = evaluate(profileAt10PerHour(), { price: 2_340 }, settings);
+    expect(result.timeCost.hours).toBeCloseTo(2.34, 6);
+    expect(result.timeCost.display).toEqual({ value: 2.3, unit: "hours" });
+  });
+
+  it("rounds larger Work-Time Units to the nearest half (ADR 0012)", () => {
+    // €2000/mo, 40h/wk, 8h/day. €500 = 43.33h = 1.083 work weeks → 1.0.
+    const profile: Profile = {
+      income: { monthlyNet: 200_000, hoursPerWeek: 40, paymentsPerYear: 12 },
+      hoursPerDay: 8,
+    };
+    const result = evaluate(profile, { price: 50_000 }, settings);
+    expect(result.timeCost.display).toEqual({ value: 1, unit: "work-weeks" });
+  });
 });
