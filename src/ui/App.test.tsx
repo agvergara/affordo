@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App";
 
@@ -294,5 +294,29 @@ describe("App — Saved Goals", () => {
     expect(goals).toHaveTextContent("MacBook");
     expect(goals).toHaveTextContent("€240,00");
     expect(goals).toHaveTextContent(/about 1 month/i);
+  });
+
+  it("lists multiple Goals and removes one without touching the others", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+
+    await saveGoal(user, "MacBook", "240,00");
+    await user.clear(screen.getByLabelText(/price/i));
+    await saveGoal(user, "Bike", "500,00");
+
+    let items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+
+    // Remove the MacBook goal; the Bike goal survives.
+    const macbook = items.find((li) => li.textContent?.includes("MacBook"))!;
+    await user.click(
+      within(macbook).getByRole("button", { name: /remove goal/i }),
+    );
+
+    items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(screen.getByTestId("goals")).toHaveTextContent("Bike");
+    expect(screen.getByTestId("goals")).not.toHaveTextContent("MacBook");
   });
 });
