@@ -62,7 +62,11 @@ function affordabilityVerdict(
   }
 
   const remaining = purchase.price - profile.savings;
-  return { kind: "save-up", months: Math.ceil(remaining / surplus) };
+  const contribution =
+    profile.monthlyContribution != null && profile.monthlyContribution > 0
+      ? Math.min(profile.monthlyContribution, surplus)
+      : surplus;
+  return { kind: "save-up", months: Math.ceil(remaining / contribution) };
 }
 
 export function evaluate(

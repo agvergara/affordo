@@ -26,6 +26,8 @@ export interface Profile {
   savings: Cents;
   /** Estimated recurring monthly expenses. Income − this is the Surplus. */
   monthlyExpenses: Cents;
+  /** Optional custom monthly Contribution toward a goal; defaults to full Surplus, capped at it. */
+  monthlyContribution?: Cents;
 }
 
 export interface Purchase {

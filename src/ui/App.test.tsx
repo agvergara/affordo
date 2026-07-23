@@ -146,11 +146,41 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByTestId("hourly-wage")).toHaveTextContent("€8,75");
   });
 
+  it("lengthens the Save-Up horizon when a custom contribution below surplus is set", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "300,00");
+    await user.type(screen.getByLabelText(/price/i), "3.000,00");
+    expect(screen.getByTestId("verdict")).toHaveTextContent(/about 3 months/i);
+
+    await user.type(screen.getByLabelText(/monthly contribution/i), "500,00");
+    expect(screen.getByTestId("verdict")).toHaveTextContent(/about 6 months/i);
+  });
+
+  it("adds a windfall to savings, flipping a goal to Affordable Now", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.type(screen.getByLabelText(/current savings/i), "100,00");
+    expect(screen.getByTestId("verdict")).not.toHaveTextContent(
+      /afford this right now/i,
+    );
+
+    await user.type(screen.getByLabelText(/windfall/i), "200,00");
+    expect(screen.getByTestId("verdict")).toHaveTextContent(
+      /afford this right now/i,
+    );
+  });
+
   it("restores the saved profile after the app is reopened", async () => {
     const user = userEvent.setup();
     const first = render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
     await user.type(screen.getByLabelText(/current savings/i), "500,00");
+    await user.type(screen.getByLabelText(/windfall/i), "250,00");
+    await user.type(screen.getByLabelText(/monthly contribution/i), "300,00");
     await user.type(screen.getByLabelText(/monthly expenses/i), "800,00");
     await user.selectOptions(screen.getByLabelText(/currency/i), "GBP");
     await user.selectOptions(screen.getByLabelText(/payments per year/i), "14");
@@ -161,6 +191,8 @@ describe("App — stage 1 Time Cost", () => {
     render(<App />);
     expect(screen.getByLabelText(/monthly net income/i)).toHaveValue("1.300,00");
     expect(screen.getByLabelText(/current savings/i)).toHaveValue("500,00");
+    expect(screen.getByLabelText(/windfall/i)).toHaveValue("250,00");
+    expect(screen.getByLabelText(/monthly contribution/i)).toHaveValue("300,00");
     expect(screen.getByLabelText(/monthly expenses/i)).toHaveValue("800,00");
     expect(screen.getByLabelText(/currency/i)).toHaveValue("GBP");
     expect(screen.getByLabelText(/payments per year/i)).toHaveValue("14");

@@ -41,6 +41,22 @@ test("shows Not Reachable when expenses exceed income", async ({ page }) => {
   await expect(page.getByTestId("verdict")).toContainText("Not reachable");
 });
 
+test("a windfall flips a goal to Affordable Now", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+  await page.getByLabel("Price").fill("240,00");
+  await page.getByLabel("Current savings").fill("100,00");
+  await expect(page.getByTestId("verdict")).not.toContainText(
+    "afford this right now",
+  );
+
+  await page.getByLabel("Windfall (one-off, optional)").fill("200,00");
+  await expect(page.getByTestId("verdict")).toContainText(
+    "afford this right now",
+  );
+});
+
 test("itemizes expenses into a monthly total", async ({ page }) => {
   await page.goto("/");
 

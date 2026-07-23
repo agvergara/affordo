@@ -28,6 +28,8 @@ export function App() {
   const [price, setPrice] = useState("");
   const [income, setIncome] = useState(saved?.income ?? "");
   const [savings, setSavings] = useState(saved?.savings ?? "");
+  const [windfall, setWindfall] = useState(saved?.windfall ?? "");
+  const [contribution, setContribution] = useState(saved?.contribution ?? "");
   const [expenses, setExpenses] = useState(saved?.monthlyExpenses ?? "");
   const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>(
     saved?.expenseRows ?? [],
@@ -44,19 +46,26 @@ export function App() {
     saveProfile({
       income,
       savings,
+      windfall,
+      contribution,
       monthlyExpenses: expenses,
       expenseRows,
       paymentsPerYear,
       hoursPerWeek,
       currency,
     });
-  }, [income, savings, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency]);
+  }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, currency]);
 
   const incomeCents = parseAmount(income);
   const priceCents = parseAmount(price);
   const savingsCents = parseAmount(savings);
+  const windfallCents = parseAmount(windfall);
+  const contributionCents = parseAmount(contribution);
   const expensesCents = parseAmount(expenses);
   const clamp = (n: number) => (Number.isFinite(n) ? Math.max(0, n) : 0);
+  const customContribution = contribution.trim() !== "" && clamp(contributionCents) > 0
+    ? clamp(contributionCents)
+    : undefined;
   const incomeValid = Number.isFinite(incomeCents) && incomeCents > 0;
   const hoursValid = Number.isFinite(hoursPerWeek) && hoursPerWeek > 0;
   const canEvaluate = incomeValid && hoursValid;
@@ -83,8 +92,9 @@ export function App() {
         {
           income: { monthlyNet: incomeCents, hoursPerWeek, paymentsPerYear },
           hoursPerDay: 8,
-          savings: clamp(savingsCents),
+          savings: clamp(savingsCents) + clamp(windfallCents),
           monthlyExpenses,
+          monthlyContribution: customContribution,
         },
         { price: priceEntered ? priceCents : 0 },
         { currency },
@@ -147,6 +157,20 @@ export function App() {
         id="savings"
         value={savings}
         onChange={(e) => setSavings(e.target.value)}
+      />
+
+      <label htmlFor="windfall">Windfall (one-off, optional)</label>
+      <input
+        id="windfall"
+        value={windfall}
+        onChange={(e) => setWindfall(e.target.value)}
+      />
+
+      <label htmlFor="contribution">Monthly contribution (optional)</label>
+      <input
+        id="contribution"
+        value={contribution}
+        onChange={(e) => setContribution(e.target.value)}
       />
 
       <label htmlFor="expenses">Monthly expenses</label>

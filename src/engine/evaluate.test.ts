@@ -166,6 +166,28 @@ describe("evaluate — Affordability Verdict", () => {
     expect(result.verdict).toEqual({ kind: "not-reachable", monthlyShortfall: 0 });
   });
 
+  it("uses a custom Contribution below Surplus, lengthening the Save-Up horizon", () => {
+    const base = profileAt10PerHour(0, 30_000); // surplus €1000/mo
+    const full = evaluate(base, { price: 300_000 }, settings);
+    const custom = evaluate(
+      { ...base, monthlyContribution: 50_000 },
+      { price: 300_000 },
+      settings,
+    );
+    expect(full.verdict).toEqual({ kind: "save-up", months: 3 });
+    expect(custom.verdict).toEqual({ kind: "save-up", months: 6 });
+  });
+
+  it("caps a Contribution above Surplus at the Surplus", () => {
+    const base = profileAt10PerHour(0, 30_000); // surplus €1000/mo
+    const capped = evaluate(
+      { ...base, monthlyContribution: 500_000 },
+      { price: 300_000 },
+      settings,
+    );
+    expect(capped.verdict).toEqual({ kind: "save-up", months: 3 });
+  });
+
   it("gives an honest long but finite horizon for a tiny Surplus", () => {
     // net €1300, expenses €1299.99 → surplus 1 cent/mo. Price €400 → 40,000 months, finite.
     const result = evaluate(
