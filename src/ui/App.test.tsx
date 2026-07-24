@@ -399,6 +399,26 @@ describe("App — stage 1 Time Cost", () => {
     );
   });
 
+  it("opens the savings refinement by default when a Windfall is already set", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.click(screen.getByText(/refine savings/i));
+    await user.type(screen.getByLabelText(/windfall/i), "200,00");
+    first.unmount();
+
+    // Reopened with a persisted Windfall (and a price to reveal the stage): the
+    // refinement starts open, so the hidden driver of the verdict is visible.
+    render(<App />);
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    const details = screen
+      .getByText(/refine savings/i)
+      .closest("details") as HTMLDetailsElement;
+    expect(details).toHaveAttribute("open");
+    expect(screen.getByLabelText(/windfall/i)).toHaveValue("200,00");
+  });
+
   it("leaves Hours per week empty, not zero, when cleared", async () => {
     const user = userEvent.setup();
     render(<App />);

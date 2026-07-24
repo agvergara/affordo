@@ -247,7 +247,10 @@ export function App() {
             onChange={(e) => setHoursPerWeek(e.target.value)}
           />
 
-          <Disclosure summary="Refine income">
+          <Disclosure
+            summary="Refine income"
+            defaultOpen={hoursPerDay.trim() !== "8" || paymentsPerYear !== 12}
+          >
             <label htmlFor="hours-per-day">Hours per day</label>
             <input
               id="hours-per-day"
@@ -420,7 +423,12 @@ export function App() {
                 errorTestId="savings-error"
               />
 
-              <Disclosure summary="Refine savings">
+              <Disclosure
+                summary="Refine savings"
+                defaultOpen={
+                  windfall.trim() !== "" || contribution.trim() !== ""
+                }
+              >
                 <MoneyField
                   id="windfall"
                   label="Windfall (one-off, optional)"
