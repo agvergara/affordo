@@ -649,6 +649,20 @@ describe("App — Saved Goals", () => {
     expect(goals).toHaveTextContent(/about 1 month/i);
   });
 
+  it("tags each saved goal row with its snapshotted verdict kind", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    // €500 savings covers €240 → the snapshot is Affordable Now.
+    await user.type(screen.getByLabelText(/current savings/i), "500,00");
+    await user.type(screen.getByLabelText(/goal name/i), "MacBook");
+    await user.click(screen.getByRole("button", { name: /save as goal/i }));
+
+    const row = within(screen.getByTestId("goals")).getByRole("listitem");
+    expect(row).toHaveAttribute("data-verdict", "affordable-now");
+  });
+
   it("lists multiple Goals and removes one without touching the others", async () => {
     const user = userEvent.setup();
     render(<App />);
