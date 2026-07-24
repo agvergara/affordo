@@ -114,3 +114,27 @@
     color: var(--stone);
   }
 }
+
+/* Additive reveal (Reveal.tsx): each answer fades and slides in as it appears,
+   never displacing what's above. Honoured only when the user hasn't asked for
+   reduced motion. */
+@layer components {
+  .reveal {
+    animation: reveal-in 0.28s ease-out both;
+  }
+  @keyframes reveal-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      animation: none;
+    }
+  }
+}

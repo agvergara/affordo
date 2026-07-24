@@ -16,6 +16,8 @@ import {
 import { loadProfile, saveProfile } from "./storage";
 import { loadGoals, saveGoals, type Goal } from "./goals";
 import { MoneyField } from "./MoneyField";
+import { Disclosure } from "./Disclosure";
+import { Reveal } from "./Reveal";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
 const PAYMENT_PERIODS = [12, 14];
@@ -244,28 +246,30 @@ export function App() {
             onChange={(e) => setHoursPerWeek(e.target.value)}
           />
 
-          <label htmlFor="hours-per-day">Hours per day</label>
-          <input
-            id="hours-per-day"
-            type="number"
-            min="1"
-            max="24"
-            value={hoursPerDay}
-            onChange={(e) => setHoursPerDay(e.target.value)}
-          />
+          <Disclosure summary="Refine income">
+            <label htmlFor="hours-per-day">Hours per day</label>
+            <input
+              id="hours-per-day"
+              type="number"
+              min="1"
+              max="24"
+              value={hoursPerDay}
+              onChange={(e) => setHoursPerDay(e.target.value)}
+            />
 
-          <label htmlFor="payments">Payments per year</label>
-          <select
-            id="payments"
-            value={paymentsPerYear}
-            onChange={(e) => setPaymentsPerYear(Number(e.target.value))}
-          >
-            {PAYMENT_PERIODS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
+            <label htmlFor="payments">Payments per year</label>
+            <select
+              id="payments"
+              value={paymentsPerYear}
+              onChange={(e) => setPaymentsPerYear(Number(e.target.value))}
+            >
+              {PAYMENT_PERIODS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </Disclosure>
 
           <label htmlFor="threshold-percent">Significance threshold (%)</label>
           <input
@@ -383,19 +387,30 @@ export function App() {
           )}
 
           {evaluation && priceEntered && (
-            <p
-              data-testid="time-cost"
-              className="mt-3 rounded-xl border border-border bg-card p-6 font-display text-2xl leading-snug"
-            >
-              That&apos;s{" "}
-              <span className="text-accent">
-                {formatTimeCost(
-                  evaluation.timeCost.display.value,
-                  evaluation.timeCost.display.unit,
-                )}
-              </span>{" "}
-              of your working life.
-            </p>
+            <Reveal>
+              <div
+                data-testid="time-cost"
+                className="mt-3 rounded-xl border border-border bg-card p-6"
+              >
+                <p
+                  data-testid="time-cost-headline"
+                  className="font-display text-2xl leading-snug"
+                >
+                  That&apos;s{" "}
+                  <span className="text-accent">
+                    {formatTimeCost(
+                      evaluation.timeCost.display.value,
+                      evaluation.timeCost.display.unit,
+                    )}
+                  </span>{" "}
+                  of your working life.
+                </p>
+                <p className="mt-2 text-sm text-stone">
+                  {formatMoney(parsedPrice.cents, currency)} ·{" "}
+                  {Math.round(evaluation.timeCost.hours)} hours
+                </p>
+              </div>
+            </Reveal>
           )}
 
           {evaluation && priceEntered && evaluation.challenge.triggered && (
