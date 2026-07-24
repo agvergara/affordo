@@ -46,13 +46,17 @@ either: an embedded key on a client-only app is security theater — see
 |---------------|------------------------------------------|-----|
 | Language      | TypeScript 5.5                           | The contracts are the spec; correctness is enforced at compile time |
 | UI            | React 18 + Vite 5                        | A form and a few results — a static bundle with instant dev reload |
+| Styling       | Tailwind CSS v4 (CSS-first, `@theme`)    | Utility styling that compiles away at build time — no runtime weight ([ADR 0014](docs/adr/0014-tailwind-v4-utility-styling.md)) |
 | Domain logic  | Pure-TypeScript engine, zero UI imports  | The money lives away from the framework: testable in milliseconds, reusable by a future native app |
 | Money         | Integer cents, everywhere                | No floating-point drift — €0,10 + €0,20 is exactly €0,30 |
 | Persistence   | Versioned `localStorage`, plain JSON     | Client-only, with a `schemaVersion` so future migrations don't hurt |
 | Unit tests    | Vitest + Testing Library                 | Near-exhaustive on the engine, thin on the UI |
 | E2E           | Playwright                               | Real-browser journeys for the paths that matter |
 
-No runtime dependencies beyond React. Nothing to configure, nothing to sign up for.
+React stays the only *runtime* dependency — Tailwind is a build-time tool that compiles
+to plain CSS and ships no JavaScript. Its config is deliberately minimal (v4's CSS-first
+`@theme`, no `tailwind.config.js`), and there's still nothing to sign up for. Fonts are
+self-hosted, never loaded from a CDN, so the "no network calls" promise holds.
 
 ---
 
