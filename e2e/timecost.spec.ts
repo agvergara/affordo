@@ -86,6 +86,21 @@ test("challenges a significant purchase but stays quiet below the threshold", as
   await expect(page.getByTestId("challenge")).toHaveCount(0);
 });
 
+test("raising the Significance Threshold silences the Challenge", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+  await page.getByLabel("Price").fill("240,00");
+  await expect(page.getByTestId("challenge")).toBeVisible();
+
+  // The threshold refinement is collapsed beside the Challenge (ADR 0006).
+  await page.getByText("Adjust the challenge threshold").click();
+  // 25% of €1300/mo = €325 > €240 → no longer significant.
+  await page.getByLabel("Significance threshold (%)").fill("25");
+  await expect(page.getByTestId("challenge")).toHaveCount(0);
+});
+
 test("clearing Hours per week leaves it empty, not zero", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Hours per week").fill("");
