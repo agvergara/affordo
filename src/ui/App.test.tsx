@@ -81,6 +81,18 @@ describe("App — stage 1 Time Cost", () => {
     expect(hero).toHaveTextContent(/32 hours/i);
   });
 
+  it("shows fractional work-hours without collapsing a real cost to zero", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // €3 at €7.50/h = 0.4 work-hours — a real cost that must not round to "0 hours".
+    await user.type(screen.getByLabelText(/price/i), "3,00");
+
+    const hero = screen.getByTestId("time-cost");
+    expect(hero).toHaveTextContent(/0\.4 hours/i);
+    expect(hero).not.toHaveTextContent(/·\s*0 hours/i);
+  });
+
   it("reshapes the Time Cost when hours per day changes", async () => {
     const user = userEvent.setup();
     render(<App />);

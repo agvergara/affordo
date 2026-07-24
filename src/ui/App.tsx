@@ -407,7 +407,13 @@ export function App() {
                 </p>
                 <p className="mt-2 text-sm text-stone">
                   {formatMoney(parsedPrice.cents, currency)} ·{" "}
-                  {Math.round(evaluation.timeCost.hours)} hours
+                  {/* Raw work-hours at the engine's 1-decimal precision (ADR
+                      0012), via the same formatter as the headline — so a small
+                      purchase reads "0.4 hours", never a contradictory "0 hours". */}
+                  {formatTimeCost(
+                    Number(evaluation.timeCost.hours.toFixed(1)),
+                    "hours",
+                  )}
                 </p>
               </div>
             </Reveal>
