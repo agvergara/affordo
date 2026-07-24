@@ -32,8 +32,9 @@ test("shows a Save-Up horizon in months when saving is needed", async ({
   await page.goto("/");
 
   await page.getByLabel("Monthly net income").fill("1.300,00");
-  await page.getByLabel("Monthly expenses").fill("300,00");
   await page.getByLabel("Price").fill("3.000,00");
+  // Expenses is the last stage — revealed after the Time Cost / Verdict.
+  await page.getByLabel("Monthly expenses").fill("300,00");
 
   // surplus €1000/mo, €3000 needed → about 3 months
   await expect(page.getByTestId("verdict")).toContainText("about 3 months");
@@ -43,8 +44,8 @@ test("shows Not Reachable when expenses exceed income", async ({ page }) => {
   await page.goto("/");
 
   await page.getByLabel("Monthly net income").fill("1.300,00");
-  await page.getByLabel("Monthly expenses").fill("1.500,00");
   await page.getByLabel("Price").fill("240,00");
+  await page.getByLabel("Monthly expenses").fill("1.500,00");
 
   await expect(page.getByTestId("verdict")).toContainText("Not reachable");
 });
@@ -149,6 +150,10 @@ test("recomputes the Time Cost from a personal hours-per-day", async ({
 test("itemizes expenses into a monthly total", async ({ page }) => {
   await page.goto("/");
 
+  // The itemized breakdown lives in the Expenses stage, behind a disclosure.
+  await page.getByLabel("Monthly net income").fill("1.300,00");
+  await page.getByLabel("Price").fill("240,00");
+  await page.getByText("Break down expenses").click();
   await page.getByRole("button", { name: "Add expense item" }).click();
   await page.getByLabel("Expense amount").fill("100,00");
   await page.getByLabel("Expense frequency").selectOption("weekly");

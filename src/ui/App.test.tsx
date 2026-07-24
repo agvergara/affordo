@@ -253,8 +253,8 @@ describe("App — stage 1 Time Cost", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
-    await user.type(screen.getByLabelText(/monthly expenses/i), "300,00");
     await user.type(screen.getByLabelText(/price/i), "3.000,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "300,00");
     // surplus €1000/mo, need €3000 → 3 months
     expect(screen.getByTestId("verdict")).toHaveTextContent(/about 3 months/i);
   });
@@ -263,8 +263,8 @@ describe("App — stage 1 Time Cost", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
-    await user.type(screen.getByLabelText(/monthly expenses/i), "1.500,00");
     await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "1.500,00");
     const verdict = screen.getByTestId("verdict");
     expect(verdict).toHaveTextContent(/not reachable/i);
     expect(verdict).toHaveTextContent("€200,00");
@@ -273,6 +273,9 @@ describe("App — stage 1 Time Cost", () => {
   it("itemizes expenses into a monthly total that replaces the estimate", async () => {
     const user = userEvent.setup();
     render(<App />);
+    // The itemized breakdown lives in the Expenses stage — reveal it first.
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     await user.click(screen.getByRole("button", { name: /add expense/i }));
     await user.type(screen.getAllByLabelText(/expense amount/i)[0]!, "100,00");
     await user.selectOptions(
@@ -288,6 +291,8 @@ describe("App — stage 1 Time Cost", () => {
   it("keeps the single estimate until an itemized amount is actually entered", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     await user.type(screen.getByLabelText(/monthly expenses/i), "800,00");
     await user.click(screen.getByRole("button", { name: /add expense/i }));
     // An empty row must not replace the €800 estimate with €0.
@@ -297,12 +302,58 @@ describe("App — stage 1 Time Cost", () => {
   it("removes an itemized expense row", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     await user.click(screen.getByRole("button", { name: /add expense/i }));
     await user.type(screen.getAllByLabelText(/expense amount/i)[0]!, "100,00");
     expect(screen.getByTestId("monthly-expenses-total")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /remove/i }));
     expect(screen.queryByTestId("monthly-expenses-total")).toBeNull();
+  });
+
+  it("reveals Monthly expenses only after the Time Cost appears", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.queryByLabelText(/monthly expenses/i)).toBeNull();
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // Income alone doesn't reveal expenses — the Time Cost hasn't appeared yet.
+    expect(screen.queryByLabelText(/monthly expenses/i)).toBeNull();
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.getByLabelText(/monthly expenses/i)).toBeInTheDocument();
+  });
+
+  it("keeps the itemized breakdown behind a collapsed disclosure", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    const details = screen
+      .getByText(/break down expenses/i)
+      .closest("details") as HTMLDetailsElement;
+    expect(details).not.toHaveAttribute("open");
+    expect(
+      within(details).getByRole("button", { name: /add expense/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the expenses breakdown by default when itemized rows already exist", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.click(screen.getByRole("button", { name: /add expense/i }));
+    await user.type(screen.getAllByLabelText(/expense amount/i)[0]!, "100,00");
+    first.unmount();
+
+    // Reopened (with a price to reveal the stage): the persisted itemized rows
+    // open the breakdown so the figure driving the estimate is visible.
+    render(<App />);
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    const details = screen
+      .getByText(/break down expenses/i)
+      .closest("details") as HTMLDetailsElement;
+    expect(details).toHaveAttribute("open");
   });
 
   it("raises income when more pay periods per year are selected", async () => {
@@ -319,8 +370,8 @@ describe("App — stage 1 Time Cost", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
-    await user.type(screen.getByLabelText(/monthly expenses/i), "300,00");
     await user.type(screen.getByLabelText(/price/i), "3.000,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "300,00");
     expect(screen.getByTestId("verdict")).toHaveTextContent(/about 3 months/i);
 
     await user.type(screen.getByLabelText(/monthly contribution/i), "500,00");
@@ -370,8 +421,8 @@ describe("App — stage 1 Time Cost", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
-    await user.type(screen.getByLabelText(/monthly expenses/i), "1.500,00");
     await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "1.500,00");
     const verdict = screen.getByTestId("verdict");
     expect(verdict).toHaveAttribute("data-verdict", "not-reachable");
     expect(verdict).toHaveTextContent(/short each month/i);

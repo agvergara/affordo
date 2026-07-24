@@ -306,59 +306,6 @@ export function App() {
             errorTestId="price-error"
           />
 
-          <MoneyField
-            id="expenses"
-            label="Monthly expenses"
-            value={expenses}
-            onChange={setExpenses}
-            errorTestId="expenses-error"
-          />
-
-          <fieldset>
-            <legend>Break down expenses (optional)</legend>
-            {expenseRows.map((row, i) => (
-              <div key={i}>
-                <input
-                  aria-label="Expense amount"
-                  value={row.amount}
-                  onChange={(e) => updateRow(i, { amount: e.target.value })}
-                />
-                <select
-                  aria-label="Expense frequency"
-                  value={row.frequency}
-                  onChange={(e) =>
-                    updateRow(i, { frequency: e.target.value as Frequency })
-                  }
-                >
-                  {FREQUENCIES.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => removeRow(i)}>
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                setExpenseRows((rows) => [
-                  ...rows,
-                  { label: "", amount: "", frequency: "monthly" },
-                ])
-              }
-            >
-              Add expense item
-            </button>
-            {itemized && (
-              <p data-testid="monthly-expenses-total">
-                Monthly expenses: {formatMoney(monthlyExpenses, currency)}
-              </p>
-            )}
-          </fieldset>
-
           {evaluation && (
             <p data-testid="hourly-wage" className="mt-6 text-sm text-stone">
               Your time is worth{" "}
@@ -446,6 +393,67 @@ export function App() {
               </Disclosure>
 
               <VerdictCard verdict={evaluation.verdict} currency={currency} />
+            </Reveal>
+          )}
+
+          {/* Expenses stage — refines the Save-Up Date and can surface Not
+              Reachable (ADR 0006: asked last, as "make this more accurate"). */}
+          {evaluation && priceEntered && (
+            <Reveal>
+              <MoneyField
+                id="expenses"
+                label="Monthly expenses"
+                value={expenses}
+                onChange={setExpenses}
+                errorTestId="expenses-error"
+              />
+
+              <Disclosure
+                summary="Break down expenses"
+                defaultOpen={expenseRows.length > 0}
+              >
+                {expenseRows.map((row, i) => (
+                  <div key={i}>
+                    <input
+                      aria-label="Expense amount"
+                      value={row.amount}
+                      onChange={(e) => updateRow(i, { amount: e.target.value })}
+                    />
+                    <select
+                      aria-label="Expense frequency"
+                      value={row.frequency}
+                      onChange={(e) =>
+                        updateRow(i, { frequency: e.target.value as Frequency })
+                      }
+                    >
+                      {FREQUENCIES.map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => removeRow(i)}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpenseRows((rows) => [
+                      ...rows,
+                      { label: "", amount: "", frequency: "monthly" },
+                    ])
+                  }
+                >
+                  Add expense item
+                </button>
+                {itemized && (
+                  <p data-testid="monthly-expenses-total">
+                    Monthly expenses: {formatMoney(monthlyExpenses, currency)}
+                  </p>
+                )}
+              </Disclosure>
             </Reveal>
           )}
 
