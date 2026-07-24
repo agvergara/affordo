@@ -356,6 +356,27 @@ describe("App — stage 1 Time Cost", () => {
     expect(details).toHaveAttribute("open");
   });
 
+  it("keeps a refinement the user collapsed collapsed across a price change", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    const details = () =>
+      screen.getByText(/refine savings/i).closest("details");
+    // Open, then collapse the refinement.
+    await user.click(screen.getByText(/refine savings/i));
+    expect(details()).toHaveAttribute("open");
+    await user.click(screen.getByText(/refine savings/i));
+    expect(details()).not.toHaveAttribute("open");
+
+    // Clearing then re-entering the price remounts the Savings stage; the user's
+    // collapse must survive it (open state is owned by App, not the stage).
+    await user.clear(screen.getByLabelText(/price/i));
+    expect(screen.queryByText(/refine savings/i)).toBeNull();
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(details()).not.toHaveAttribute("open");
+  });
+
   it("raises income when more pay periods per year are selected", async () => {
     const user = userEvent.setup();
     render(<App />);

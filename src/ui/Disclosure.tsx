@@ -1,34 +1,31 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export interface DisclosureProps {
   /** The always-visible label that toggles the panel. */
   summary: string;
-  /**
-   * Whether the panel starts open. Defaults to collapsed (ADR 0006), but a
-   * stage opens it when it already holds a value — so a refinement that drives
-   * a visible answer (e.g. a persisted Windfall behind an "Affordable Now") is
-   * never a hidden driver the user has to hunt for.
-   */
-  defaultOpen?: boolean;
+  /** Whether the panel is open. Owned by the parent so it survives the stage
+   *  unmounting/remounting when the price toggles in and out of validity. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   children: ReactNode;
 }
 
 /**
- * A collapsed-by-default refinement panel — ADR 0006's "make this more
- * accurate", never a required door field. Native <details>/<summary> gives
- * keyboard and screen-reader behaviour for free; the open state is seeded from
- * `defaultOpen` and then owned by the user's toggles.
+ * A refinement panel — ADR 0006's "make this more accurate", never a required
+ * door field. Native <details>/<summary> gives keyboard and screen-reader
+ * behaviour for free; open/closed is a controlled value the parent owns, so a
+ * user's collapse isn't undone when the surrounding stage remounts.
  */
 export function Disclosure({
   summary,
-  defaultOpen = false,
+  open,
+  onOpenChange,
   children,
 }: DisclosureProps) {
-  const [open, setOpen] = useState(defaultOpen);
   return (
     <details
       open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
+      onToggle={(e) => onOpenChange(e.currentTarget.open)}
       className="mt-3 rounded-lg border border-border bg-card px-3 py-2"
     >
       <summary className="cursor-pointer select-none text-sm text-stone">
