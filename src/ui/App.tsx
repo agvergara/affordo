@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { evaluate, formatAmount, parseAmount } from "../engine";
 import type { ParsedAmount, Settings, ThresholdBasis } from "../engine";
-import { formatMoney, formatTimeCost, formatVerdict } from "./format";
+import { formatMoney, formatTimeCost } from "./format";
 import {
   monthlyExpensesTotal,
   type ExpenseItem,
@@ -15,6 +15,7 @@ import { Disclosure } from "./Disclosure";
 import { Reveal } from "./Reveal";
 import { VerdictCard } from "./VerdictCard";
 import { ChallengeCard } from "./ChallengeCard";
+import { SavedGoals } from "./SavedGoals";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
 const PAYMENT_PERIODS = [12, 14];
@@ -485,41 +486,27 @@ export function App() {
           )}
 
           {evaluation && priceEntered && (
-            <div>
-              <label htmlFor="goal-name">Goal name</label>
-              <input
-                id="goal-name"
-                value={goalName}
-                onChange={(e) => setGoalName(e.target.value)}
-              />
+            <div className="mt-6 flex flex-wrap items-end gap-2">
+              <div className="grow">
+                <label htmlFor="goal-name">Goal name</label>
+                <input
+                  id="goal-name"
+                  value={goalName}
+                  onChange={(e) => setGoalName(e.target.value)}
+                />
+              </div>
               <button type="button" onClick={saveGoal} disabled={!canSaveGoal}>
                 Save as goal
               </button>
             </div>
           )}
 
-          {goals.length > 0 && (
-            <section data-testid="goals">
-              <h2>Saved goals</h2>
-              <ul>
-                {goals.map((goal) => (
-                  <li key={goal.id}>
-                    {goal.name} — {formatMoney(goal.price, currency)} —{" "}
-                    {formatVerdict(goal.verdict, currency)}
-                    <button
-                      type="button"
-                      onClick={() => setPrice(formatAmount(goal.price))}
-                    >
-                      Reopen
-                    </button>
-                    <button type="button" onClick={() => removeGoal(goal.id)}>
-                      Remove goal
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <SavedGoals
+            goals={goals}
+            currency={currency}
+            onReopen={(priceCents) => setPrice(formatAmount(priceCents))}
+            onRemove={removeGoal}
+          />
         </main>
       </div>
     </div>
