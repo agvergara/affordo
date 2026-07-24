@@ -100,7 +100,20 @@ export function App() {
         : 10,
       thresholdBasis,
     });
-  }, [income, savings, windfall, contribution, expenses, expenseRows, paymentsPerYear, hoursPerWeek, hoursPerDay, currency, thresholdPercent, thresholdBasis]);
+  }, [
+    income,
+    savings,
+    windfall,
+    contribution,
+    expenses,
+    expenseRows,
+    paymentsPerYear,
+    hoursPerWeek,
+    hoursPerDay,
+    currency,
+    thresholdPercent,
+    thresholdBasis,
+  ]);
 
   const parsedIncome = parseAmount(income);
   const parsedPrice = parseAmount(price);
@@ -192,232 +205,272 @@ export function App() {
   };
 
   return (
-    <main>
-      <h1>Affordo</h1>
+    <div className="min-h-screen bg-canvas text-ink">
+      <div className="mx-auto w-full max-w-xl px-4 py-8 sm:py-12">
+        <header className="mb-8 border-b border-border pb-6">
+          <div className="flex items-baseline justify-between gap-4">
+            <h1 className="font-display text-4xl font-semibold tracking-tight">
+              Affordo
+            </h1>
+            <div className="flex shrink-0 items-center gap-2">
+              <label htmlFor="currency" className="!mt-0">
+                Currency
+              </label>
+              <select
+                id="currency"
+                value={currency}
+                onChange={(e) =>
+                  setCurrency(e.target.value as Settings["currency"])
+                }
+                className="!mt-0 w-auto"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-stone">
+            Your data is private — it never leaves your browser.
+          </p>
+          <p className="mt-1 text-sm text-stone">
+            Amounts use European formatting: 1.234,56 (dot for thousands, comma
+            for cents).
+          </p>
+        </header>
 
-      <p>Your data is private — it never leaves your browser.</p>
-      <p>Amounts use European formatting: 1.234,56 (dot for thousands, comma for cents).</p>
+        <main className="pb-12">
+          <label htmlFor="income">Monthly net income</label>
+          <input
+            id="income"
+            value={income}
+            onChange={(e) => setIncome(e.target.value)}
+          />
+          {moneyHint(parsedIncome, "income-error")}
 
-      <label htmlFor="currency">Currency</label>
-      <select
-        id="currency"
-        value={currency}
-        onChange={(e) => setCurrency(e.target.value as Settings["currency"])}
-      >
-        {CURRENCIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
+          <label htmlFor="hours">Hours per week</label>
+          <input
+            id="hours"
+            type="number"
+            value={hoursPerWeek}
+            onChange={(e) => setHoursPerWeek(e.target.value)}
+          />
 
-      <label htmlFor="income">Monthly net income</label>
-      <input
-        id="income"
-        value={income}
-        onChange={(e) => setIncome(e.target.value)}
-      />
-      {moneyHint(parsedIncome, "income-error")}
+          <label htmlFor="hours-per-day">Hours per day</label>
+          <input
+            id="hours-per-day"
+            type="number"
+            min="1"
+            max="24"
+            value={hoursPerDay}
+            onChange={(e) => setHoursPerDay(e.target.value)}
+          />
 
-      <label htmlFor="hours">Hours per week</label>
-      <input
-        id="hours"
-        type="number"
-        value={hoursPerWeek}
-        onChange={(e) => setHoursPerWeek(e.target.value)}
-      />
+          <label htmlFor="payments">Payments per year</label>
+          <select
+            id="payments"
+            value={paymentsPerYear}
+            onChange={(e) => setPaymentsPerYear(Number(e.target.value))}
+          >
+            {PAYMENT_PERIODS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
 
-      <label htmlFor="hours-per-day">Hours per day</label>
-      <input
-        id="hours-per-day"
-        type="number"
-        min="1"
-        max="24"
-        value={hoursPerDay}
-        onChange={(e) => setHoursPerDay(e.target.value)}
-      />
+          <label htmlFor="threshold-percent">Significance threshold (%)</label>
+          <input
+            id="threshold-percent"
+            type="number"
+            value={thresholdPercent}
+            onChange={(e) => setThresholdPercent(e.target.value)}
+          />
 
-      <label htmlFor="payments">Payments per year</label>
-      <select
-        id="payments"
-        value={paymentsPerYear}
-        onChange={(e) => setPaymentsPerYear(Number(e.target.value))}
-      >
-        {PAYMENT_PERIODS.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
-        ))}
-      </select>
+          <label htmlFor="threshold-basis">Reference period</label>
+          <select
+            id="threshold-basis"
+            value={thresholdBasis}
+            onChange={(e) =>
+              setThresholdBasis(e.target.value as ThresholdBasis)
+            }
+          >
+            {THRESHOLD_BASES.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
 
-      <label htmlFor="threshold-percent">Significance threshold (%)</label>
-      <input
-        id="threshold-percent"
-        type="number"
-        value={thresholdPercent}
-        onChange={(e) => setThresholdPercent(e.target.value)}
-      />
+          <label htmlFor="price">Price</label>
+          <input
+            id="price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+          {moneyHint(parsedPrice, "price-error")}
 
-      <label htmlFor="threshold-basis">Reference period</label>
-      <select
-        id="threshold-basis"
-        value={thresholdBasis}
-        onChange={(e) => setThresholdBasis(e.target.value as ThresholdBasis)}
-      >
-        {THRESHOLD_BASES.map((b) => (
-          <option key={b} value={b}>
-            {b}
-          </option>
-        ))}
-      </select>
+          <label htmlFor="savings">Current savings</label>
+          <input
+            id="savings"
+            value={savings}
+            onChange={(e) => setSavings(e.target.value)}
+          />
+          {moneyHint(parsedSavings, "savings-error")}
 
-      <label htmlFor="price">Price</label>
-      <input id="price" value={price} onChange={(e) => setPrice(e.target.value)} />
-      {moneyHint(parsedPrice, "price-error")}
+          <label htmlFor="windfall">Windfall (one-off, optional)</label>
+          <input
+            id="windfall"
+            value={windfall}
+            onChange={(e) => setWindfall(e.target.value)}
+          />
+          {moneyHint(parsedWindfall, "windfall-error")}
 
-      <label htmlFor="savings">Current savings</label>
-      <input
-        id="savings"
-        value={savings}
-        onChange={(e) => setSavings(e.target.value)}
-      />
-      {moneyHint(parsedSavings, "savings-error")}
+          <label htmlFor="contribution">Monthly contribution (optional)</label>
+          <input
+            id="contribution"
+            value={contribution}
+            onChange={(e) => setContribution(e.target.value)}
+          />
+          {moneyHint(parsedContribution, "contribution-error")}
 
-      <label htmlFor="windfall">Windfall (one-off, optional)</label>
-      <input
-        id="windfall"
-        value={windfall}
-        onChange={(e) => setWindfall(e.target.value)}
-      />
-      {moneyHint(parsedWindfall, "windfall-error")}
+          <label htmlFor="expenses">Monthly expenses</label>
+          <input
+            id="expenses"
+            value={expenses}
+            onChange={(e) => setExpenses(e.target.value)}
+          />
+          {moneyHint(parsedExpenses, "expenses-error")}
 
-      <label htmlFor="contribution">Monthly contribution (optional)</label>
-      <input
-        id="contribution"
-        value={contribution}
-        onChange={(e) => setContribution(e.target.value)}
-      />
-      {moneyHint(parsedContribution, "contribution-error")}
-
-      <label htmlFor="expenses">Monthly expenses</label>
-      <input
-        id="expenses"
-        value={expenses}
-        onChange={(e) => setExpenses(e.target.value)}
-      />
-      {moneyHint(parsedExpenses, "expenses-error")}
-
-      <fieldset>
-        <legend>Break down expenses (optional)</legend>
-        {expenseRows.map((row, i) => (
-          <div key={i}>
-            <input
-              aria-label="Expense amount"
-              value={row.amount}
-              onChange={(e) => updateRow(i, { amount: e.target.value })}
-            />
-            <select
-              aria-label="Expense frequency"
-              value={row.frequency}
-              onChange={(e) =>
-                updateRow(i, { frequency: e.target.value as Frequency })
+          <fieldset>
+            <legend>Break down expenses (optional)</legend>
+            {expenseRows.map((row, i) => (
+              <div key={i}>
+                <input
+                  aria-label="Expense amount"
+                  value={row.amount}
+                  onChange={(e) => updateRow(i, { amount: e.target.value })}
+                />
+                <select
+                  aria-label="Expense frequency"
+                  value={row.frequency}
+                  onChange={(e) =>
+                    updateRow(i, { frequency: e.target.value as Frequency })
+                  }
+                >
+                  {FREQUENCIES.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => removeRow(i)}>
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setExpenseRows((rows) => [
+                  ...rows,
+                  { label: "", amount: "", frequency: "monthly" },
+                ])
               }
             >
-              {FREQUENCIES.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={() => removeRow(i)}>
-              Remove
+              Add expense item
             </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() =>
-            setExpenseRows((rows) => [
-              ...rows,
-              { label: "", amount: "", frequency: "monthly" },
-            ])
-          }
-        >
-          Add expense item
-        </button>
-        {itemized && (
-          <p data-testid="monthly-expenses-total">
-            Monthly expenses: {formatMoney(monthlyExpenses, currency)}
-          </p>
-        )}
-      </fieldset>
+            {itemized && (
+              <p data-testid="monthly-expenses-total">
+                Monthly expenses: {formatMoney(monthlyExpenses, currency)}
+              </p>
+            )}
+          </fieldset>
 
-      {evaluation && (
-        <p data-testid="hourly-wage">
-          Your time is worth {formatMoney(evaluation.netHourlyWage, currency)} per
-          hour.
-        </p>
-      )}
-
-      {evaluation && priceEntered && (
-        <p data-testid="time-cost">
-          That&apos;s{" "}
-          {formatTimeCost(
-            evaluation.timeCost.display.value,
-            evaluation.timeCost.display.unit,
-          )}{" "}
-          of your working life.
-        </p>
-      )}
-
-      {evaluation && priceEntered && evaluation.challenge.triggered && (
-        <p data-testid="challenge">
-          {formatChallenge(
-            evaluation.timeCost.display.value,
-            evaluation.timeCost.display.unit,
+          {evaluation && (
+            <p data-testid="hourly-wage" className="mt-6 text-sm text-stone">
+              Your time is worth{" "}
+              {formatMoney(evaluation.netHourlyWage, currency)} per hour.
+            </p>
           )}
-        </p>
-      )}
 
-      {evaluation && priceEntered && (
-        <p data-testid="verdict">
-          {formatVerdict(evaluation.verdict, currency)}
-        </p>
-      )}
+          {evaluation && priceEntered && (
+            <p
+              data-testid="time-cost"
+              className="mt-3 rounded-xl border border-border bg-card p-6 font-display text-2xl leading-snug"
+            >
+              That&apos;s{" "}
+              <span className="text-accent">
+                {formatTimeCost(
+                  evaluation.timeCost.display.value,
+                  evaluation.timeCost.display.unit,
+                )}
+              </span>{" "}
+              of your working life.
+            </p>
+          )}
 
-      {evaluation && priceEntered && (
-        <div>
-          <label htmlFor="goal-name">Goal name</label>
-          <input
-            id="goal-name"
-            value={goalName}
-            onChange={(e) => setGoalName(e.target.value)}
-          />
-          <button type="button" onClick={saveGoal} disabled={!canSaveGoal}>
-            Save as goal
-          </button>
-        </div>
-      )}
+          {evaluation && priceEntered && evaluation.challenge.triggered && (
+            <p
+              data-testid="challenge"
+              className="mt-3 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm"
+            >
+              {formatChallenge(
+                evaluation.timeCost.display.value,
+                evaluation.timeCost.display.unit,
+              )}
+            </p>
+          )}
 
-      {goals.length > 0 && (
-        <section data-testid="goals">
-          <h2>Saved goals</h2>
-          <ul>
-            {goals.map((goal) => (
-              <li key={goal.id}>
-                {goal.name} — {formatMoney(goal.price, currency)} —{" "}
-                {formatVerdict(goal.verdict, currency)}
-                <button type="button" onClick={() => setPrice(formatAmount(goal.price))}>
-                  Reopen
-                </button>
-                <button type="button" onClick={() => removeGoal(goal.id)}>
-                  Remove goal
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </main>
+          {evaluation && priceEntered && (
+            <p
+              data-testid="verdict"
+              className="mt-3 rounded-xl border border-border bg-card p-4"
+            >
+              {formatVerdict(evaluation.verdict, currency)}
+            </p>
+          )}
+
+          {evaluation && priceEntered && (
+            <div>
+              <label htmlFor="goal-name">Goal name</label>
+              <input
+                id="goal-name"
+                value={goalName}
+                onChange={(e) => setGoalName(e.target.value)}
+              />
+              <button type="button" onClick={saveGoal} disabled={!canSaveGoal}>
+                Save as goal
+              </button>
+            </div>
+          )}
+
+          {goals.length > 0 && (
+            <section data-testid="goals">
+              <h2>Saved goals</h2>
+              <ul>
+                {goals.map((goal) => (
+                  <li key={goal.id}>
+                    {goal.name} — {formatMoney(goal.price, currency)} —{" "}
+                    {formatVerdict(goal.verdict, currency)}
+                    <button
+                      type="button"
+                      onClick={() => setPrice(formatAmount(goal.price))}
+                    >
+                      Reopen
+                    </button>
+                    <button type="button" onClick={() => removeGoal(goal.id)}>
+                      Remove goal
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
