@@ -18,6 +18,7 @@ import { loadGoals, saveGoals, type Goal } from "./goals";
 import { MoneyField } from "./MoneyField";
 import { Disclosure } from "./Disclosure";
 import { Reveal } from "./Reveal";
+import { VerdictCard } from "./VerdictCard";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
 const PAYMENT_PERIODS = [12, 14];
@@ -303,30 +304,6 @@ export function App() {
           />
 
           <MoneyField
-            id="savings"
-            label="Current savings"
-            value={savings}
-            onChange={setSavings}
-            errorTestId="savings-error"
-          />
-
-          <MoneyField
-            id="windfall"
-            label="Windfall (one-off, optional)"
-            value={windfall}
-            onChange={setWindfall}
-            errorTestId="windfall-error"
-          />
-
-          <MoneyField
-            id="contribution"
-            label="Monthly contribution (optional)"
-            value={contribution}
-            onChange={setContribution}
-            errorTestId="contribution-error"
-          />
-
-          <MoneyField
             id="expenses"
             label="Monthly expenses"
             value={expenses}
@@ -431,13 +408,37 @@ export function App() {
             </p>
           )}
 
+          {/* Savings stage — revealed once the Time Cost has appeared, ending
+              in the Affordability Verdict (ADR 0006). */}
           {evaluation && priceEntered && (
-            <p
-              data-testid="verdict"
-              className="mt-3 rounded-xl border border-border bg-card p-4"
-            >
-              {formatVerdict(evaluation.verdict, currency)}
-            </p>
+            <Reveal>
+              <MoneyField
+                id="savings"
+                label="Current savings"
+                value={savings}
+                onChange={setSavings}
+                errorTestId="savings-error"
+              />
+
+              <Disclosure summary="Refine savings">
+                <MoneyField
+                  id="windfall"
+                  label="Windfall (one-off, optional)"
+                  value={windfall}
+                  onChange={setWindfall}
+                  errorTestId="windfall-error"
+                />
+                <MoneyField
+                  id="contribution"
+                  label="Monthly contribution (optional)"
+                  value={contribution}
+                  onChange={setContribution}
+                  errorTestId="contribution-error"
+                />
+              </Disclosure>
+
+              <VerdictCard verdict={evaluation.verdict} currency={currency} />
+            </Reveal>
           )}
 
           {evaluation && priceEntered && (

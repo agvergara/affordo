@@ -16,6 +16,8 @@ test("shows Affordable Now when savings cover the price", async ({ page }) => {
   await page.goto("/");
 
   await page.getByLabel("Monthly net income").fill("1.300,00");
+  // Current savings is the Savings stage — revealed only after the Time Cost.
+  await expect(page.getByLabel("Current savings")).toHaveCount(0);
   await page.getByLabel("Price").fill("240,00");
   await page.getByLabel("Current savings").fill("500,00");
 
@@ -57,6 +59,8 @@ test("a windfall flips a goal to Affordable Now", async ({ page }) => {
     "afford this right now",
   );
 
+  // Windfall is a savings refinement, collapsed by default (ADR 0006).
+  await page.getByText("Refine savings").click();
   await page.getByLabel("Windfall (one-off, optional)").fill("200,00");
   await expect(page.getByTestId("verdict")).toContainText(
     "afford this right now",
