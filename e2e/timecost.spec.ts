@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-test("shows the Time Cost after entering income and price", async ({ page }) => {
+test("shows the Time Cost after entering income and price", async ({
+  page,
+}) => {
   await page.goto("/");
 
   await page.getByLabel("Monthly net income").fill("1.300,00");
@@ -17,10 +19,14 @@ test("shows Affordable Now when savings cover the price", async ({ page }) => {
   await page.getByLabel("Price").fill("240,00");
   await page.getByLabel("Current savings").fill("500,00");
 
-  await expect(page.getByTestId("verdict")).toContainText("afford this right now");
+  await expect(page.getByTestId("verdict")).toContainText(
+    "afford this right now",
+  );
 });
 
-test("shows a Save-Up horizon in months when saving is needed", async ({ page }) => {
+test("shows a Save-Up horizon in months when saving is needed", async ({
+  page,
+}) => {
   await page.goto("/");
 
   await page.getByLabel("Monthly net income").fill("1.300,00");
@@ -128,6 +134,10 @@ test("recomputes the Time Cost from a personal hours-per-day", async ({
 
   // €240 = 32 work-hours: 4 work days at 8h/day, 8 work days at 4h/day.
   await expect(page.getByTestId("time-cost")).toContainText("4 work days");
+  // Hours per day is an income refinement, collapsed by default (ADR 0006):
+  // hidden until the user opens the disclosure.
+  await expect(page.getByLabel("Hours per day")).toBeHidden();
+  await page.getByText("Refine income").click();
   await page.getByLabel("Hours per day").fill("4");
   await expect(page.getByTestId("time-cost")).toContainText("8 work days");
 });

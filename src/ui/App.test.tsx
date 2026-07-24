@@ -47,6 +47,52 @@ describe("App — stage 1 Time Cost", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps income refinements collapsed until the user opens them", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Payments-per-year and hours-per-day are refinements, not door fields
+    // (ADR 0006): they live in a disclosure that is closed on load.
+    const details = screen
+      .getByText(/refine income/i)
+      .closest("details") as HTMLDetailsElement;
+    expect(details).not.toHaveAttribute("open");
+    expect(
+      within(details).getByLabelText(/hours per day/i),
+    ).toBeInTheDocument();
+    expect(
+      within(details).getByLabelText(/payments per year/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByText(/refine income/i));
+    expect(details).toHaveAttribute("open");
+  });
+
+  it("shows the price and hours behind the Time Cost hero", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // €7.50/h, €240 = 32 work-hours = 4 work days.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+
+    const hero = screen.getByTestId("time-cost");
+    expect(hero).toHaveTextContent(/4 work days/i);
+    expect(hero).toHaveTextContent("€240,00");
+    expect(hero).toHaveTextContent(/32 hours/i);
+  });
+
+  it("shows fractional work-hours without collapsing a real cost to zero", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // €3 at €7.50/h = 0.4 work-hours — a real cost that must not round to "0 hours".
+    await user.type(screen.getByLabelText(/price/i), "3,00");
+
+    const hero = screen.getByTestId("time-cost");
+    expect(hero).toHaveTextContent(/0\.4 hours/i);
+    expect(hero).not.toHaveTextContent(/·\s*0 hours/i);
+  });
+
   it("reshapes the Time Cost when hours per day changes", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -89,11 +135,14 @@ describe("App — stage 1 Time Cost", () => {
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
     await user.type(screen.getByLabelText(/price/i), "240,00"); // 32 work-hours
 
-    // 200h/day is impossible; clamped to 24h → 32h is work days, not raw hours.
+    // 200h/day is impossible; clamped to 24h → the headline unit is work days,
+    // not raw hours. (The hero's figures line always shows the raw work-hours;
+    // it's the display ladder — the headline — that must not fall back to hours.)
     await user.clear(screen.getByLabelText(/hours per day/i));
     await user.type(screen.getByLabelText(/hours per day/i), "200");
-    expect(screen.getByTestId("time-cost")).toHaveTextContent(/work day/i);
-    expect(screen.getByTestId("time-cost")).not.toHaveTextContent(/32 hours/i);
+    const headline = screen.getByTestId("time-cost-headline");
+    expect(headline).toHaveTextContent(/work day/i);
+    expect(headline).not.toHaveTextContent(/hours/i);
   });
 
   it("shows no wage when hours per week is cleared to zero", async () => {
