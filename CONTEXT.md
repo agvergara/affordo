@@ -150,5 +150,5 @@ _Avoid_: i18n, currency conversion
 ## Where the rest lives
 
 This file is the glossary only. Architectural and product decisions are recorded
-as ADRs in `docs/adr/` (0001–0013). The v1 product spec and its work breakdown
+as ADRs in `docs/adr/` (0001–0014). The v1 product spec and its work breakdown
 live in the issue tracker: PRD issue #1 and its sub-issues #2–#7.
