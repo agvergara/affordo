@@ -14,6 +14,14 @@
   --stone: #6b655c; /* muted */
   --card: #ffffff;
   --border: #e7decf;
+
+  /* Verdict tones (ADR 0010: challenging, never shaming — so no alarm-red).
+     A calm positive for Affordable Now, a constructive slate/blue for Not
+     Reachable; Save-Up stays neutral (the plain card). */
+  --positive: #3f7d54;
+  --positive-bg: #eef6f0;
+  --constructive: #4a6b8a;
+  --constructive-bg: #eef2f7;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +32,10 @@
     --stone: #a8a093;
     --card: #26231f;
     --border: #35302a;
+    --positive: #7fb894;
+    --positive-bg: #223028;
+    --constructive: #8fb0cf;
+    --constructive-bg: #202a33;
   }
 }
 
@@ -34,6 +46,10 @@
   --color-stone: var(--stone);
   --color-card: var(--card);
   --color-border: var(--border);
+  --color-positive: var(--positive);
+  --color-positive-bg: var(--positive-bg);
+  --color-constructive: var(--constructive);
+  --color-constructive-bg: var(--constructive-bg);
 
   --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
   --font-sans:

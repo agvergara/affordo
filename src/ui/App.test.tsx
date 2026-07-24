@@ -343,6 +343,82 @@ describe("App — stage 1 Time Cost", () => {
     );
   });
 
+  it("reveals Current savings only after the Time Cost appears", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.queryByLabelText(/current savings/i)).toBeNull();
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // Income alone doesn't reveal savings — the Time Cost hasn't appeared yet.
+    expect(screen.queryByLabelText(/current savings/i)).toBeNull();
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    expect(screen.getByLabelText(/current savings/i)).toBeInTheDocument();
+  });
+
+  it("renders the verdict as a non-alarm card keyed to its outcome", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.type(screen.getByLabelText(/current savings/i), "500,00");
+    const verdict = screen.getByTestId("verdict");
+    expect(verdict).toHaveAttribute("data-verdict", "affordable-now");
+    // No shame-red (ADR 0010): the styling never reaches for an alarm palette.
+    expect(verdict.className).not.toMatch(/red/i);
+  });
+
+  it("frames Not Reachable constructively, without a red alarm", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/monthly expenses/i), "1.500,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    const verdict = screen.getByTestId("verdict");
+    expect(verdict).toHaveAttribute("data-verdict", "not-reachable");
+    expect(verdict).toHaveTextContent(/short each month/i);
+    expect(verdict.className).not.toMatch(/red/i);
+  });
+
+  it("keeps Windfall behind a savings refinement that can flip the verdict", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.type(screen.getByLabelText(/current savings/i), "100,00");
+
+    const details = screen
+      .getByText(/refine savings/i)
+      .closest("details") as HTMLDetailsElement;
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByLabelText(/windfall/i)).toBeInTheDocument();
+
+    await user.click(screen.getByText(/refine savings/i));
+    await user.type(screen.getByLabelText(/windfall/i), "200,00");
+    expect(screen.getByTestId("verdict")).toHaveAttribute(
+      "data-verdict",
+      "affordable-now",
+    );
+  });
+
+  it("opens the savings refinement by default when a Windfall is already set", async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    await user.click(screen.getByText(/refine savings/i));
+    await user.type(screen.getByLabelText(/windfall/i), "200,00");
+    first.unmount();
+
+    // Reopened with a persisted Windfall (and a price to reveal the stage): the
+    // refinement starts open, so the hidden driver of the verdict is visible.
+    render(<App />);
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+    const details = screen
+      .getByText(/refine savings/i)
+      .closest("details") as HTMLDetailsElement;
+    expect(details).toHaveAttribute("open");
+    expect(screen.getByLabelText(/windfall/i)).toHaveValue("200,00");
+  });
+
   it("leaves Hours per week empty, not zero, when cleared", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -421,6 +497,8 @@ describe("App — stage 1 Time Cost", () => {
     const user = userEvent.setup();
     const first = render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // A price reveals the Savings stage (savings/windfall/contribution live there).
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     await user.type(screen.getByLabelText(/current savings/i), "500,00");
     await user.type(screen.getByLabelText(/windfall/i), "250,00");
     await user.type(screen.getByLabelText(/monthly contribution/i), "300,00");
@@ -435,6 +513,8 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByLabelText(/monthly net income/i)).toHaveValue(
       "1.300,00",
     );
+    // Price isn't persisted; re-enter one to reveal the restored Savings stage.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     expect(screen.getByLabelText(/current savings/i)).toHaveValue("500,00");
     expect(screen.getByLabelText(/windfall/i)).toHaveValue("250,00");
     expect(screen.getByLabelText(/monthly contribution/i)).toHaveValue(
@@ -502,9 +582,11 @@ describe("App — Saved Goals", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // A price reveals the Savings stage; €500 covers €240 → Affordable Now.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     await user.type(screen.getByLabelText(/current savings/i), "500,00");
-    // €500 savings covers €240 → Affordable Now at save time.
-    await saveGoal(user, "MacBook", "240,00");
+    await user.type(screen.getByLabelText(/goal name/i), "MacBook");
+    await user.click(screen.getByRole("button", { name: /save as goal/i }));
     expect(screen.getByTestId("goals")).toHaveTextContent(
       /afford this right now/i,
     );

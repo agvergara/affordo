@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatChallenge, formatTimeCost } from "./format";
+import { formatChallenge, formatTimeCost, formatVerdict } from "./format";
 
 describe("formatTimeCost", () => {
   it("pluralizes multi-unit values", () => {
@@ -42,5 +42,27 @@ describe("formatChallenge", () => {
     ]) {
       expect(copy).not.toContain(banned);
     }
+  });
+});
+
+describe("formatVerdict — Not Reachable", () => {
+  it("names the monthly shortfall when expenses exceed income", () => {
+    const copy = formatVerdict(
+      { kind: "not-reachable", monthlyShortfall: 20000 },
+      "EUR",
+    );
+    expect(copy).toContain("€200,00 short each month");
+    expect(copy).toMatch(/trimming expenses/i);
+  });
+
+  it("names the break-even instead of a nonsensical €0,00 shortfall", () => {
+    const copy = formatVerdict(
+      { kind: "not-reachable", monthlyShortfall: 0 },
+      "EUR",
+    );
+    // Income only just covers expenses: there is no gap to quote.
+    expect(copy).not.toMatch(/0,00 short/);
+    expect(copy).toMatch(/nothing spare|only just covers/i);
+    expect(copy).toMatch(/trimming expenses/i);
   });
 });

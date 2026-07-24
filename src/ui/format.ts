@@ -8,7 +8,10 @@ const CURRENCY_SYMBOL: Record<Settings["currency"], string> = {
 };
 
 /** Money with its currency symbol, e.g. `formatMoney(750, "EUR")` → "€7,50". */
-export function formatMoney(cents: number, currency: Settings["currency"]): string {
+export function formatMoney(
+  cents: number,
+  currency: Settings["currency"],
+): string {
   return `${CURRENCY_SYMBOL[currency]}${formatAmount(cents)}`;
 }
 
@@ -49,10 +52,18 @@ export function formatVerdict(
       const m = verdict.months;
       return `You can afford this in about ${m} month${m === 1 ? "" : "s"} if you save your surplus.`;
     }
-    case "not-reachable":
+    case "not-reachable": {
+      const lever = "Trimming expenses would put this within reach.";
+      // A Surplus of exactly zero is still Not Reachable (nothing left to save),
+      // but the shortfall is €0,00 — so "you're €0,00 short" would be nonsense.
+      // Name the break-even instead of a zero gap.
+      if (verdict.monthlyShortfall <= 0) {
+        return `Not reachable at your current rate — your income only just covers your expenses, so there's nothing spare to save. ${lever}`;
+      }
       return `Not reachable at your current rate — you're ${formatMoney(
         verdict.monthlyShortfall,
         currency,
-      )} short each month. Trimming expenses would put this within reach.`;
+      )} short each month. ${lever}`;
+    }
   }
 }
