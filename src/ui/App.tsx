@@ -70,6 +70,21 @@ export function App() {
   const [goals, setGoals] = useState<Goal[]>(() => loadGoals());
   const [goalName, setGoalName] = useState("");
 
+  // Refinement panels open when they already hold a value (so a persisted
+  // driver of a visible answer isn't hidden), seeded once at mount and owned
+  // here so a user's collapse survives a stage remounting (ADR 0006).
+  const [incomeRefineOpen, setIncomeRefineOpen] = useState(
+    () =>
+      String(saved?.hoursPerDay ?? 8) !== "8" ||
+      (saved?.paymentsPerYear ?? 12) !== 12,
+  );
+  const [savingsRefineOpen, setSavingsRefineOpen] = useState(
+    () => (saved?.windfall ?? "") !== "" || (saved?.contribution ?? "") !== "",
+  );
+  const [expensesBreakdownOpen, setExpensesBreakdownOpen] = useState(
+    () => (saved?.expenseRows?.length ?? 0) > 0,
+  );
+
   useEffect(() => saveGoals(goals), [goals]);
 
   useEffect(() => {
@@ -249,7 +264,8 @@ export function App() {
 
           <Disclosure
             summary="Refine income"
-            defaultOpen={hoursPerDay.trim() !== "8" || paymentsPerYear !== 12}
+            open={incomeRefineOpen}
+            onOpenChange={setIncomeRefineOpen}
           >
             <label htmlFor="hours-per-day">Hours per day</label>
             <input
@@ -305,59 +321,6 @@ export function App() {
             onChange={setPrice}
             errorTestId="price-error"
           />
-
-          <MoneyField
-            id="expenses"
-            label="Monthly expenses"
-            value={expenses}
-            onChange={setExpenses}
-            errorTestId="expenses-error"
-          />
-
-          <fieldset>
-            <legend>Break down expenses (optional)</legend>
-            {expenseRows.map((row, i) => (
-              <div key={i}>
-                <input
-                  aria-label="Expense amount"
-                  value={row.amount}
-                  onChange={(e) => updateRow(i, { amount: e.target.value })}
-                />
-                <select
-                  aria-label="Expense frequency"
-                  value={row.frequency}
-                  onChange={(e) =>
-                    updateRow(i, { frequency: e.target.value as Frequency })
-                  }
-                >
-                  {FREQUENCIES.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => removeRow(i)}>
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                setExpenseRows((rows) => [
-                  ...rows,
-                  { label: "", amount: "", frequency: "monthly" },
-                ])
-              }
-            >
-              Add expense item
-            </button>
-            {itemized && (
-              <p data-testid="monthly-expenses-total">
-                Monthly expenses: {formatMoney(monthlyExpenses, currency)}
-              </p>
-            )}
-          </fieldset>
 
           {evaluation && (
             <p data-testid="hourly-wage" className="mt-6 text-sm text-stone">
@@ -425,9 +388,8 @@ export function App() {
 
               <Disclosure
                 summary="Refine savings"
-                defaultOpen={
-                  windfall.trim() !== "" || contribution.trim() !== ""
-                }
+                open={savingsRefineOpen}
+                onOpenChange={setSavingsRefineOpen}
               >
                 <MoneyField
                   id="windfall"
@@ -446,6 +408,68 @@ export function App() {
               </Disclosure>
 
               <VerdictCard verdict={evaluation.verdict} currency={currency} />
+            </Reveal>
+          )}
+
+          {/* Expenses stage — refines the Save-Up Date and can surface Not
+              Reachable (ADR 0006: asked last, as "make this more accurate"). */}
+          {evaluation && priceEntered && (
+            <Reveal>
+              <MoneyField
+                id="expenses"
+                label="Monthly expenses"
+                value={expenses}
+                onChange={setExpenses}
+                errorTestId="expenses-error"
+              />
+
+              <Disclosure
+                summary="Break down expenses"
+                open={expensesBreakdownOpen}
+                onOpenChange={setExpensesBreakdownOpen}
+              >
+                {expenseRows.map((row, i) => (
+                  <div key={i}>
+                    <input
+                      aria-label="Expense amount"
+                      value={row.amount}
+                      onChange={(e) => updateRow(i, { amount: e.target.value })}
+                    />
+                    <select
+                      aria-label="Expense frequency"
+                      value={row.frequency}
+                      onChange={(e) =>
+                        updateRow(i, { frequency: e.target.value as Frequency })
+                      }
+                    >
+                      {FREQUENCIES.map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => removeRow(i)}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpenseRows((rows) => [
+                      ...rows,
+                      { label: "", amount: "", frequency: "monthly" },
+                    ])
+                  }
+                >
+                  Add expense item
+                </button>
+                {itemized && (
+                  <p data-testid="monthly-expenses-total">
+                    Monthly expenses: {formatMoney(monthlyExpenses, currency)}
+                  </p>
+                )}
+              </Disclosure>
             </Reveal>
           )}
 
