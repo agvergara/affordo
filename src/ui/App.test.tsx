@@ -40,6 +40,13 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.getByText(/never leaves your browser/i)).toBeInTheDocument();
   });
 
+  it("renders the Affordo title in the page shell", () => {
+    render(<App />);
+    expect(
+      screen.getByRole("heading", { name: "Affordo", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
   it("reshapes the Time Cost when hours per day changes", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -178,7 +185,9 @@ describe("App — stage 1 Time Cost", () => {
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
     await user.type(screen.getByLabelText(/price/i), "240,00");
     await user.type(screen.getByLabelText(/current savings/i), "500,00");
-    expect(screen.getByTestId("verdict")).toHaveTextContent(/afford this right now/i);
+    expect(screen.getByTestId("verdict")).toHaveTextContent(
+      /afford this right now/i,
+    );
   });
 
   it("shows a Save-Up horizon when savings fall short but income covers expenses", async () => {
@@ -344,7 +353,10 @@ describe("App — stage 1 Time Cost", () => {
     // Raise the threshold to 25% (€325) so a €240 price no longer challenges.
     await user.clear(screen.getByLabelText(/threshold/i));
     await user.type(screen.getByLabelText(/threshold/i), "25");
-    await user.selectOptions(screen.getByLabelText(/reference period/i), "annual");
+    await user.selectOptions(
+      screen.getByLabelText(/reference period/i),
+      "annual",
+    );
     first.unmount();
 
     render(<App />);
@@ -371,14 +383,20 @@ describe("App — stage 1 Time Cost", () => {
     first.unmount();
 
     render(<App />);
-    expect(screen.getByLabelText(/monthly net income/i)).toHaveValue("1.300,00");
+    expect(screen.getByLabelText(/monthly net income/i)).toHaveValue(
+      "1.300,00",
+    );
     expect(screen.getByLabelText(/current savings/i)).toHaveValue("500,00");
     expect(screen.getByLabelText(/windfall/i)).toHaveValue("250,00");
-    expect(screen.getByLabelText(/monthly contribution/i)).toHaveValue("300,00");
+    expect(screen.getByLabelText(/monthly contribution/i)).toHaveValue(
+      "300,00",
+    );
     expect(screen.getByLabelText(/monthly expenses/i)).toHaveValue("800,00");
     expect(screen.getByLabelText(/currency/i)).toHaveValue("GBP");
     expect(screen.getByLabelText(/payments per year/i)).toHaveValue("14");
-    expect(screen.getAllByLabelText(/expense amount/i)[0]!).toHaveValue("100,00");
+    expect(screen.getAllByLabelText(/expense amount/i)[0]!).toHaveValue(
+      "100,00",
+    );
   });
 });
 
