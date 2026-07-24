@@ -15,6 +15,7 @@ import {
 } from "./expenses";
 import { loadProfile, saveProfile } from "./storage";
 import { loadGoals, saveGoals, type Goal } from "./goals";
+import { MoneyField } from "./MoneyField";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
 const PAYMENT_PERIODS = [12, 14];
@@ -24,21 +25,6 @@ const THRESHOLD_BASES: ThresholdBasis[] = ["monthly", "annual"];
 /** Cents from a parsed field, blank-as-zero: empty/unparseable/negative → 0. */
 function optionalCents(parsed: ParsedAmount): number {
   return parsed.ok ? Math.max(0, parsed.cents) : 0;
-}
-
-/** True only when a field holds non-empty input that could not be parsed. */
-function isUnparseable(parsed: ParsedAmount): boolean {
-  return !parsed.ok && parsed.reason === "invalid";
-}
-
-/** An inline hint for a money field whose input can't be parsed; else nothing. */
-function moneyHint(parsed: ParsedAmount, testid: string) {
-  if (!isUnparseable(parsed)) return null;
-  return (
-    <p data-testid={testid} role="alert">
-      Enter an amount like 1.234,56.
-    </p>
-  );
 }
 
 function rowToItem(row: ExpenseRow): ExpenseItem {
@@ -242,13 +228,13 @@ export function App() {
         </header>
 
         <main className="pb-12">
-          <label htmlFor="income">Monthly net income</label>
-          <input
+          <MoneyField
             id="income"
+            label="Monthly net income"
             value={income}
-            onChange={(e) => setIncome(e.target.value)}
+            onChange={setIncome}
+            errorTestId="income-error"
           />
-          {moneyHint(parsedIncome, "income-error")}
 
           <label htmlFor="hours">Hours per week</label>
           <input
@@ -304,45 +290,45 @@ export function App() {
             ))}
           </select>
 
-          <label htmlFor="price">Price</label>
-          <input
+          <MoneyField
             id="price"
+            label="Price"
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={setPrice}
+            errorTestId="price-error"
           />
-          {moneyHint(parsedPrice, "price-error")}
 
-          <label htmlFor="savings">Current savings</label>
-          <input
+          <MoneyField
             id="savings"
+            label="Current savings"
             value={savings}
-            onChange={(e) => setSavings(e.target.value)}
+            onChange={setSavings}
+            errorTestId="savings-error"
           />
-          {moneyHint(parsedSavings, "savings-error")}
 
-          <label htmlFor="windfall">Windfall (one-off, optional)</label>
-          <input
+          <MoneyField
             id="windfall"
+            label="Windfall (one-off, optional)"
             value={windfall}
-            onChange={(e) => setWindfall(e.target.value)}
+            onChange={setWindfall}
+            errorTestId="windfall-error"
           />
-          {moneyHint(parsedWindfall, "windfall-error")}
 
-          <label htmlFor="contribution">Monthly contribution (optional)</label>
-          <input
+          <MoneyField
             id="contribution"
+            label="Monthly contribution (optional)"
             value={contribution}
-            onChange={(e) => setContribution(e.target.value)}
+            onChange={setContribution}
+            errorTestId="contribution-error"
           />
-          {moneyHint(parsedContribution, "contribution-error")}
 
-          <label htmlFor="expenses">Monthly expenses</label>
-          <input
+          <MoneyField
             id="expenses"
+            label="Monthly expenses"
             value={expenses}
-            onChange={(e) => setExpenses(e.target.value)}
+            onChange={setExpenses}
+            errorTestId="expenses-error"
           />
-          {moneyHint(parsedExpenses, "expenses-error")}
 
           <fieldset>
             <legend>Break down expenses (optional)</legend>
