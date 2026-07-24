@@ -503,14 +503,15 @@ describe("App — stage 1 Time Cost", () => {
   it("clears the Significance threshold to empty and falls back to the default 10%", async () => {
     const user = userEvent.setup();
     render(<App />);
+    // The threshold refinement is revealed alongside the Challenge, after a price.
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
 
     await user.clear(screen.getByLabelText(/significance threshold/i));
     expect(screen.getByLabelText(/significance threshold/i)).toHaveValue(null);
 
     // With the threshold cleared, evaluation falls back to 10% of monthly net:
     // €130 for €1300/mo, so a €240 purchase is still challenged.
-    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
-    await user.type(screen.getByLabelText(/price/i), "240,00");
     expect(screen.getByTestId("challenge")).toBeInTheDocument();
   });
 
@@ -518,11 +519,11 @@ describe("App — stage 1 Time Cost", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
 
     // A deliberate 0% must not collapse into the 10% default: 0% never challenges.
     await user.clear(screen.getByLabelText(/significance threshold/i));
     await user.type(screen.getByLabelText(/significance threshold/i), "0");
-    await user.type(screen.getByLabelText(/price/i), "240,00");
 
     expect(screen.queryByTestId("challenge")).toBeNull();
   });
@@ -543,10 +544,32 @@ describe("App — stage 1 Time Cost", () => {
     expect(screen.queryByTestId("challenge")).toBeNull();
   });
 
+  it("keeps the threshold refinement in a disclosure revealed with the Challenge", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    // Not present until a price yields a Time Cost.
+    expect(screen.queryByLabelText(/significance threshold/i)).toBeNull();
+    await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    await user.type(screen.getByLabelText(/price/i), "240,00");
+
+    const details = screen
+      .getByText(/adjust the challenge threshold/i)
+      .closest("details") as HTMLDetailsElement;
+    expect(details).not.toHaveAttribute("open");
+    expect(
+      within(details).getByLabelText(/significance threshold/i),
+    ).toBeInTheDocument();
+    expect(
+      within(details).getByLabelText(/reference period/i),
+    ).toBeInTheDocument();
+  });
+
   it("persists a customized Significance Threshold across reopen and re-evaluates against it", async () => {
     const user = userEvent.setup();
     const first = render(<App />);
     await user.type(screen.getByLabelText(/monthly net income/i), "1.300,00");
+    // The threshold refinement is revealed alongside the Challenge, after a price.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     // Raise the threshold to 25% (€325) so a €240 price no longer challenges.
     await user.clear(screen.getByLabelText(/threshold/i));
     await user.type(screen.getByLabelText(/threshold/i), "25");
@@ -557,11 +580,11 @@ describe("App — stage 1 Time Cost", () => {
     first.unmount();
 
     render(<App />);
+    // Price isn't persisted; re-enter one to reveal the restored refinement.
+    await user.type(screen.getByLabelText(/price/i), "240,00");
     expect(screen.getByLabelText(/threshold/i)).toHaveValue(25);
     expect(screen.getByLabelText(/reference period/i)).toHaveValue("annual");
-
     // 25% of annual income is far above €240 → no challenge.
-    await user.type(screen.getByLabelText(/price/i), "240,00");
     expect(screen.queryByTestId("challenge")).toBeNull();
   });
 

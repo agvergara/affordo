@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { evaluate, formatAmount, parseAmount } from "../engine";
 import type { ParsedAmount, Settings, ThresholdBasis } from "../engine";
-import {
-  formatChallenge,
-  formatMoney,
-  formatTimeCost,
-  formatVerdict,
-} from "./format";
+import { formatMoney, formatTimeCost, formatVerdict } from "./format";
 import {
   monthlyExpensesTotal,
   type ExpenseItem,
@@ -19,6 +14,7 @@ import { MoneyField } from "./MoneyField";
 import { Disclosure } from "./Disclosure";
 import { Reveal } from "./Reveal";
 import { VerdictCard } from "./VerdictCard";
+import { ChallengeCard } from "./ChallengeCard";
 
 const CURRENCIES: Settings["currency"][] = ["EUR", "GBP", "USD"];
 const PAYMENT_PERIODS = [12, 14];
@@ -83,6 +79,11 @@ export function App() {
   );
   const [expensesBreakdownOpen, setExpensesBreakdownOpen] = useState(
     () => (saved?.expenseRows?.length ?? 0) > 0,
+  );
+  const [thresholdRefineOpen, setThresholdRefineOpen] = useState(
+    () =>
+      String(saved?.thresholdPercent ?? 10) !== "10" ||
+      (saved?.thresholdBasis ?? "monthly") !== "monthly",
   );
 
   useEffect(() => saveGoals(goals), [goals]);
@@ -291,29 +292,6 @@ export function App() {
             </select>
           </Disclosure>
 
-          <label htmlFor="threshold-percent">Significance threshold (%)</label>
-          <input
-            id="threshold-percent"
-            type="number"
-            value={thresholdPercent}
-            onChange={(e) => setThresholdPercent(e.target.value)}
-          />
-
-          <label htmlFor="threshold-basis">Reference period</label>
-          <select
-            id="threshold-basis"
-            value={thresholdBasis}
-            onChange={(e) =>
-              setThresholdBasis(e.target.value as ThresholdBasis)
-            }
-          >
-            {THRESHOLD_BASES.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-
           <MoneyField
             id="price"
             label="Price"
@@ -362,16 +340,49 @@ export function App() {
             </Reveal>
           )}
 
-          {evaluation && priceEntered && evaluation.challenge.triggered && (
-            <p
-              data-testid="challenge"
-              className="mt-3 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm"
-            >
-              {formatChallenge(
-                evaluation.timeCost.display.value,
-                evaluation.timeCost.display.unit,
+          {/* Think-twice Challenge and its Significance Threshold refinement,
+              beside each other (ADR 0010). The threshold is tunable whether or
+              not the Challenge is currently firing. */}
+          {evaluation && priceEntered && (
+            <>
+              {evaluation.challenge.triggered && (
+                <ChallengeCard
+                  value={evaluation.timeCost.display.value}
+                  unit={evaluation.timeCost.display.unit}
+                />
               )}
-            </p>
+
+              <Disclosure
+                summary="Adjust the challenge threshold"
+                open={thresholdRefineOpen}
+                onOpenChange={setThresholdRefineOpen}
+              >
+                <label htmlFor="threshold-percent">
+                  Significance threshold (%)
+                </label>
+                <input
+                  id="threshold-percent"
+                  type="number"
+                  value={thresholdPercent}
+                  onChange={(e) => setThresholdPercent(e.target.value)}
+                />
+
+                <label htmlFor="threshold-basis">Reference period</label>
+                <select
+                  id="threshold-basis"
+                  value={thresholdBasis}
+                  onChange={(e) =>
+                    setThresholdBasis(e.target.value as ThresholdBasis)
+                  }
+                >
+                  {THRESHOLD_BASES.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </Disclosure>
+            </>
           )}
 
           {/* Savings stage — revealed once the Time Cost has appeared, ending
