@@ -45,3 +45,24 @@ that promise (and the spirit of [ADR 0011](0011-plain-versioned-localstorage-no-
 privacy stance). Therefore the display font is **self-hosted** — a subsetted `woff2`
 bundled into the static build — and body text uses the system font stack. No font is
 ever loaded from a CDN.
+
+## Amendment (issue #44): reference oklch token layer
+
+The parity rebuild (#39) migrates onto a shadcn/new-york **oklch semantic token
+set** (`--background`/`--foreground`/`--card`/`--muted`/`--accent`/`--border`/… with
+light `:root` and latent `.dark` twins). Issue #44 lands that palette *additively*:
+
+- The reference tokens and their `@theme inline` `--color-*` aliases now back the
+  standard utilities (`bg-background`, `text-foreground`, `border-border`, `bg-card`,
+  `bg-accent`, `text-muted-foreground`, `ring`, …).
+- The legacy warm-editorial tokens (`--canvas`/`--ink`/`--stone` and the verdict
+  tones) **stay defined** so components that still read `bg-canvas`/`text-ink`/`stone`
+  keep resolving; the three shared roles (`--accent`/`--card`/`--border`) take their
+  reference oklch values, which are perceptually the legacy terracotta/white/hairline
+  so the current app stays visually faithful.
+- `.dark` is fully defined but **latent** — no toggle applies the class in this slice;
+  the auto `prefers-color-scheme` block is retained for the legacy tokens. A theme
+  toggle is a later slice.
+
+This coexistence is deliberate and temporary: once every component references the
+reference names, the legacy aliases can be removed.

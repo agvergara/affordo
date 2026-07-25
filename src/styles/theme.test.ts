@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+// The stylesheet is read as raw source text. A plain `import "./theme.css?raw"`
+// can't be used here: the `@tailwindcss/vite` plugin claims every `.css`
+// module and hands back a processed (empty-at-test-time) result, so we read
+// the file off disk instead. Vitest runs with the repo root as cwd.
+//
 // The reference oklch token system (dossier §3) is declared as plain custom
 // properties on :root (light) and .dark (latent). Those rules are ordinary
 // CSS — jsdom's CSSOM applies them and resolves the variables — so we can
