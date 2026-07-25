@@ -53,7 +53,7 @@ export function AffordoProvider({ children }: { children: ReactNode }) {
     setProfileState(next);
     saveProfile(next);
   };
-  const clearProfile = () => setProfile(defaultProfile);
+  const clearProfile = () => setProfile({ ...defaultProfile });
 
   const setGoals = (next: Goal[]) => {
     setGoalsState(next);

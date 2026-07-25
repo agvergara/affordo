@@ -48,6 +48,16 @@ describe("profile persistence", () => {
     expect(loadProfile()).toEqual(defaultProfile);
   });
 
+  it("returns a fresh default copy so callers cannot corrupt the shared constant", () => {
+    // A settings draft may seed from the fallback and edit in place (dossier §8).
+    // That mutation must not leak into the module-level `defaultProfile`.
+    const loaded = loadProfile();
+    expect(loaded).not.toBe(defaultProfile);
+    loaded.salary = 99999;
+    expect(defaultProfile.salary).toBe(0);
+    expect(loadProfile().salary).toBe(0);
+  });
+
   it("rejects a profile with an unknown currency", () => {
     window.localStorage.setItem(
       "affordo.profile",

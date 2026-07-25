@@ -62,23 +62,26 @@ function isProfile(value: unknown): value is Profile {
 }
 
 /**
- * Load the saved Profile, or `defaultProfile` if absent, unreadable, or from a
- * foreign/older schema. Never throws — a broken store degrades to defaults.
+ * Load the saved Profile, or a fresh copy of `defaultProfile` if absent,
+ * unreadable, or from a foreign/older schema. Never throws — a broken store
+ * degrades to defaults. Every fallback returns a NEW object so callers that
+ * edit a profile in place (e.g. the settings draft, dossier §8) can never
+ * mutate the shared `defaultProfile` constant.
  */
 export function loadProfile(): Profile {
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (!raw) return defaultProfile;
+    if (!raw) return { ...defaultProfile };
     const parsed = JSON.parse(raw) as {
       schemaVersion?: number;
       profile?: unknown;
     };
     if (parsed.schemaVersion !== SCHEMA_VERSION || !isProfile(parsed.profile)) {
-      return defaultProfile;
+      return { ...defaultProfile };
     }
     return parsed.profile;
   } catch {
-    return defaultProfile;
+    return { ...defaultProfile };
   }
 }
 
