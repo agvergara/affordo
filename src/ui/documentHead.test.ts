@@ -37,4 +37,22 @@ describe("document head", () => {
       "Weigh purchases against your working hours. A private, local-first affordability calculator.",
     );
   });
+
+  it("carries the reference Open Graph tags", () => {
+    expect(metaContent(html, "property", "og:title")).toBe(
+      "Affordo — Audit: Life/Cost",
+    );
+    expect(metaContent(html, "property", "og:description")).toBe(
+      "Weigh purchases against your working hours.",
+    );
+    expect(metaContent(html, "property", "og:type")).toBe("website");
+  });
+
+  it("carries the reference Twitter card tag", () => {
+    expect(metaContent(html, "name", "twitter:card")).toBe("summary");
+  });
+
+  it("references no og:image, matching the reference (no image asset)", () => {
+    expect(metaContent(html, "property", "og:image")).toBeNull();
+  });
 });
