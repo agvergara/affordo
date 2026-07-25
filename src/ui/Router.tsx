@@ -1,4 +1,9 @@
 import { App } from "./App";
+import {
+  GoalsScreen,
+  OnboardingScreen,
+  SettingsScreen,
+} from "./Placeholder";
 
 /**
  * Client-only path router. No SSR, no router framework (ADR 0004/0009):
@@ -7,6 +12,9 @@ import { App } from "./App";
  */
 const ROUTES: Record<string, () => JSX.Element> = {
   "/": () => <App />,
+  "/onboarding": () => <OnboardingScreen />,
+  "/goals": () => <GoalsScreen />,
+  "/settings": () => <SettingsScreen />,
 };
 
 export function Router() {

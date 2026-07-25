@@ -22,4 +22,35 @@ describe("Router", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/monthly net income/i)).toBeInTheDocument();
   });
+
+  it("renders the onboarding placeholder at /onboarding", () => {
+    navigateTo("/onboarding");
+    render(<Router />);
+
+    expect(
+      screen.getByRole("heading", { name: /onboarding/i }),
+    ).toBeInTheDocument();
+    // Not the calculator.
+    expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
+  });
+
+  it("renders the goals placeholder at /goals", () => {
+    navigateTo("/goals");
+    render(<Router />);
+
+    expect(
+      screen.getByRole("heading", { name: /goals/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
+  });
+
+  it("renders the settings placeholder at /settings", () => {
+    navigateTo("/settings");
+    render(<Router />);
+
+    expect(
+      screen.getByRole("heading", { name: /settings/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
+  });
 });
