@@ -18,4 +18,44 @@ describe("profile persistence", () => {
     saveProfile(profile);
     expect(loadProfile()).toEqual(profile);
   });
+
+  it("falls back to defaults when nothing is stored", () => {
+    expect(loadProfile()).toEqual(defaultProfile);
+  });
+
+  it("falls back to defaults for unparseable JSON", () => {
+    window.localStorage.setItem("affordo.profile", "{not json");
+    expect(loadProfile()).toEqual(defaultProfile);
+  });
+
+  it("falls back to defaults for a foreign schema version", () => {
+    window.localStorage.setItem(
+      "affordo.profile",
+      JSON.stringify({ schemaVersion: 99, profile: defaultProfile }),
+    );
+    expect(loadProfile()).toEqual(defaultProfile);
+  });
+
+  it("falls back to defaults for a foreign-shaped profile (missing/mistyped fields)", () => {
+    // The legacy string-valued shape from src/ui/storage.ts must not be accepted.
+    window.localStorage.setItem(
+      "affordo.profile",
+      JSON.stringify({
+        schemaVersion: 1,
+        profile: { income: "1.300,00", currency: "EUR", hoursPerWeek: 40 },
+      }),
+    );
+    expect(loadProfile()).toEqual(defaultProfile);
+  });
+
+  it("rejects a profile with an unknown currency", () => {
+    window.localStorage.setItem(
+      "affordo.profile",
+      JSON.stringify({
+        schemaVersion: 1,
+        profile: { ...defaultProfile, currency: "JPY" },
+      }),
+    );
+    expect(loadProfile()).toEqual(defaultProfile);
+  });
 });
