@@ -168,3 +168,34 @@
     }
   }
 }
+
+/* Reference motion primitives (dossier §3). `slide-up` re-runs on each staged
+   step (the body wrapper is keyed by step, so it re-mounts); `scale-in-x` grows
+   the threshold bar from its left edge. Both share the reference ease-out
+   cubic-bezier. Exposed as Tailwind v4 utilities so markup can opt in with
+   `animate-slide-up` / `animate-scale-in-x`. */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes scale-in-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@utility animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-scale-in-x {
+  animation: scale-in-x 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: left;
+}
