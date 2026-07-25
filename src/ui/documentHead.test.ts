@@ -31,4 +31,10 @@ describe("document head", () => {
   it("sets the reference root title with its em-dash", () => {
     expect(title(html)).toBe("Affordo — Audit: Life/Cost");
   });
+
+  it("carries the reference meta description", () => {
+    expect(metaContent(html, "name", "description")).toBe(
+      "Weigh purchases against your working hours. A private, local-first affordability calculator.",
+    );
+  });
 });
