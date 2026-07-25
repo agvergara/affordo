@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
-// The shipped document head lives in index.html (a plain Vite SPA), not in a
-// React route. These assertions read the real file so the reference title and
-// social meta can't silently drift out of the shell that actually serves them.
-const html = readFileSync(
-  fileURLToPath(new URL("../../index.html", import.meta.url)),
-  "utf8",
-);
+// Load the real shipped shell as a string via Vite's ?raw. The document head
+// lives in index.html (a plain Vite SPA), not a React route, so these
+// assertions read the actual file — the reference title and social meta can't
+// silently drift out of the shell that serves them.
+import html from "../../index.html?raw";
 
 /** Extract the text between the first <title>…</title>. */
 function title(source: string): string | null {

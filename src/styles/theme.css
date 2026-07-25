@@ -1,7 +1,14 @@
-/* Self-hosted display face (Fontsource bundles the woff2 into the build — never a
-   CDN, so the "no network calls" promise holds; ADR 0011 / ADR 0014). The browser
-   fetches only the subset its content needs, all from our own origin. */
+/* Self-hosted faces (Fontsource bundles the woff2 into the build — never a CDN,
+   so the "no network calls" promise holds; ADR 0011 / ADR 0014). The browser
+   fetches only the subset its content needs, all from our own origin.
+   The reference loads these from Google Fonts; we mirror the same faces locally.
+   Anton is a single-weight display face; Inter and JetBrains Mono are variable,
+   so their `wght.css` covers every weight the reference asks for (Inter
+   400/500/600/700, JetBrains Mono 400/500/700). */
 @import "@fontsource-variable/fraunces/wght.css";
+@import "@fontsource/anton/index.css";
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
 @import "tailwindcss";
 
 /* Warm editorial palette as semantic custom properties, with a dark variant via
@@ -51,10 +58,14 @@
   --color-constructive: var(--constructive);
   --color-constructive-bg: var(--constructive-bg);
 
-  --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  /* Reference face stacks (dossier §3). Fontsource registers the variable faces
+     under a "… Variable" family name, so that name is listed first to make the
+     local woff2 win; the reference's own family name and system fallbacks follow,
+     exactly as the reference declares them. */
+  --font-display: "Anton", "Impact", sans-serif;
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+    monospace;
 }
 
 @layer base {
@@ -66,6 +77,9 @@
     background-color: var(--canvas);
     color: var(--ink);
     font-family: var(--font-sans);
+    /* Inter stylistic sets the reference enables (dossier §3): ss01 and the
+       cv11 single-storey a. */
+    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
   }
 
