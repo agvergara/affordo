@@ -24,9 +24,12 @@
      dossier §3, verbatim light values. This is the token system the rebuild
      migrates onto (ADR 0014 amendment): the warm-editorial canvas/ink/stone
      stay above until every component references these names, and the three
-     shared roles (accent/card/border) are given their reference oklch values
-     — perceptually the same terracotta accent, white card, and faint hairline
-     the legacy hex expressed, so the current app stays visually faithful. */
+     shared roles (accent/card/border) are given their reference oklch values.
+     Accent (terracotta→orange) and card (white→white) read essentially as
+     before; --border deliberately changes — from opaque warm cream to a
+     translucent near-black hairline — the reference's fainter, cooler line on
+     existing `border-border`/form edges. A small, intended shift, not a
+     regression: the parity target owns these values now. */
   --radius: 0.5rem;
   --background: oklch(0.985 0.002 60);
   --foreground: oklch(0.13 0 0);
@@ -131,6 +134,7 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
 
   /* Radius scale derived from the reference --radius base. */
   --radius-sm: calc(var(--radius) - 4px);

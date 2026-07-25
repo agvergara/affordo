@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { cwd } from "node:process";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // The stylesheet is read as raw source text. A plain `import "./theme.css?raw"`
@@ -13,10 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // CSS — jsdom's CSSOM applies them and resolves the variables — so we can
 // assert the *computed* value of a token by mounting the stylesheet and
 // reading it back off a real element, exactly as the browser would.
-const css = readFileSync(
-  join(process.cwd(), "src/styles/theme.css"),
-  "utf8",
-);
+const css = readFileSync(join(cwd(), "src/styles/theme.css"), "utf8");
 
 // jsdom cannot parse Tailwind's @import / @theme / @utility at-rules; strip
 // everything that isn't a plain rule so the :root and .dark declarations we
@@ -110,14 +108,25 @@ describe("reference oklch color tokens (dossier §3)", () => {
   it("paints text selection in the accent via the base layer", () => {
     // ::selection can't be inspected through getComputedStyle in jsdom, so
     // assert the base-layer rule exists in source with the accent tokens.
-    const base = css.match(/@layer base\s*\{([\s\S]*)\n\}/)?.[1] ?? "";
-    expect(base).toMatch(
+    expect(baseLayer()).toMatch(
       /::selection\s*\{[^}]*background-color:\s*var\(--accent\);[^}]*color:\s*var\(--accent-foreground\);/,
     );
   });
 
   it("gives every element the border token as its default border color", () => {
-    const base = css.match(/@layer base\s*\{([\s\S]*)\n\}/)?.[1] ?? "";
-    expect(base).toMatch(/\*\s*\{\s*border-color:\s*var\(--border\);\s*\}/);
+    expect(baseLayer()).toMatch(
+      /\*\s*\{\s*border-color:\s*var\(--border\);\s*\}/,
+    );
   });
 });
+
+// The `@layer base` block contains nested `{}` rules, so no single regex can
+// balance to its own closing brace. Bounding the slice to the start of the
+// next top-level at-rule (`@layer components`) keeps the assertions scoped to
+// base — a rule that drifted into `components` no longer passes them.
+function baseLayer(): string {
+  const start = css.indexOf("@layer base {");
+  if (start === -1) return "";
+  const next = css.indexOf("@layer components", start);
+  return css.slice(start, next === -1 ? undefined : next);
+}

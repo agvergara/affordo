@@ -58,8 +58,11 @@ light `:root` and latent `.dark` twins). Issue #44 lands that palette *additivel
 - The legacy warm-editorial tokens (`--canvas`/`--ink`/`--stone` and the verdict
   tones) **stay defined** so components that still read `bg-canvas`/`text-ink`/`stone`
   keep resolving; the three shared roles (`--accent`/`--card`/`--border`) take their
-  reference oklch values, which are perceptually the legacy terracotta/white/hairline
-  so the current app stays visually faithful.
+  reference oklch values. Accent (terracotta → orange) and card (white → white) read
+  essentially unchanged; **`--border` intentionally shifts** — opaque warm cream
+  (`#e7decf`) → translucent near-black (`oklch(0.13 0 0 / 15%)`), the reference's
+  fainter, cooler hairline — on every existing `border-border`/form edge. That is an
+  intended step toward parity, not an accidental regression.
 - `.dark` is fully defined but **latent** — no toggle applies the class in this slice;
   the auto `prefers-color-scheme` block is retained for the legacy tokens. A theme
   toggle is a later slice.
