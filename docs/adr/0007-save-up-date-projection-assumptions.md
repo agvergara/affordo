@@ -1,5 +1,9 @@
 # Save-Up Date projection assumptions (v1)
 
+**Status:** Superseded by [ADR 0016](0016-reference-four-way-affordability-verdict.md).
+The four-way reference verdict is introduced additively; this ADR remains in
+force for the legacy engine until its last consumer migrates in a later slice.
+
 The Save-Up Date is projected under three deliberate simplifications:
 
 1. **Full Surplus by default.** All monthly Surplus is assumed to go toward the

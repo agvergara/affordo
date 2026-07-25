@@ -1,5 +1,9 @@
 # Money is integer minor units; Save-Up Date rounds up
 
+**Status:** Superseded by [ADR 0017](0017-money-as-floating-point-currency-units.md).
+The float-based reference money model is introduced additively; this ADR remains
+in force for the legacy engine until its last consumer migrates in a later slice.
+
 **Money is represented and computed as integer minor units (cents).** `€19.99`
 is `1999`; all engine arithmetic (summing expenses, month-by-month projection) is
 integer math, formatted to decimals only at the display edge. Floats are
