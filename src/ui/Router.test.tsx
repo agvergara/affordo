@@ -54,6 +54,15 @@ describe("Router", () => {
     expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
   });
 
+  it("ignores a trailing slash on a known path", () => {
+    navigateTo("/goals/");
+    render(<Router />);
+
+    expect(screen.getByRole("heading", { name: /goals/i })).toBeInTheDocument();
+    // A trailing slash must not fall through to the 404.
+    expect(screen.queryByRole("heading", { name: /404/i })).toBeNull();
+  });
+
   it("renders the 404 screen for an unknown path", () => {
     navigateTo("/nope");
     render(<Router />);

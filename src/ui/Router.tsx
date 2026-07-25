@@ -23,8 +23,13 @@ export const ROUTES: RouteTable = {
   "/settings": () => <SettingsScreen />,
 };
 
+/** Drop a trailing slash so `/goals/` matches `/goals`, but keep root `/`. */
+function normalize(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+}
+
 export function Router({ routes = ROUTES }: { routes?: RouteTable } = {}) {
-  const path = window.location.pathname;
+  const path = normalize(window.location.pathname);
   const screen = routes[path];
   return (
     <ErrorBoundary>{screen ? screen() : <NotFoundScreen />}</ErrorBoundary>
