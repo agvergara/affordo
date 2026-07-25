@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Router } from "./Router";
 
@@ -62,5 +62,19 @@ describe("Router", () => {
     expect(screen.getByText(/page not found/i)).toBeInTheDocument();
     // Unknown paths must NOT fall through to the calculator.
     expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
+  });
+
+  it("renders the root error boundary when a route throws", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    navigateTo("/");
+    const Boom = (): JSX.Element => {
+      throw new Error("kaboom");
+    };
+    render(<Router routes={{ "/": () => <Boom /> }} />);
+
+    expect(
+      screen.getByRole("heading", { name: /something went wrong/i }),
+    ).toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 });
