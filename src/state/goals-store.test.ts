@@ -14,4 +14,39 @@ describe("goals persistence", () => {
     saveGoals(goals);
     expect(loadGoals()).toEqual(goals);
   });
+
+  it("returns [] when nothing is stored", () => {
+    expect(loadGoals()).toEqual([]);
+  });
+
+  it("returns [] for unparseable JSON", () => {
+    window.localStorage.setItem("affordo.goals", "{not json");
+    expect(loadGoals()).toEqual([]);
+  });
+
+  it("returns [] for a foreign schema version", () => {
+    window.localStorage.setItem(
+      "affordo.goals",
+      JSON.stringify({ schemaVersion: 99, goals: [] }),
+    );
+    expect(loadGoals()).toEqual([]);
+  });
+
+  it("drops malformed rows and keeps the valid ones", () => {
+    window.localStorage.setItem(
+      "affordo.goals",
+      JSON.stringify({
+        schemaVersion: 1,
+        goals: [
+          { id: "a", name: "MacBook", price: 2499, note: "", createdAt: 1 },
+          // Legacy shape with a verdict but no note/createdAt — must be dropped.
+          { id: "b", name: "Old", price: 100, verdict: { kind: "afford" } },
+          { id: "c", name: "NaN price", price: "lots", note: "", createdAt: 3 },
+        ],
+      }),
+    );
+    expect(loadGoals()).toEqual([
+      { id: "a", name: "MacBook", price: 2499, note: "", createdAt: 1 },
+    ]);
+  });
 });
