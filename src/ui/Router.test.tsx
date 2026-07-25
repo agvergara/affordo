@@ -53,4 +53,14 @@ describe("Router", () => {
     ).toBeInTheDocument();
     expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
   });
+
+  it("renders the 404 screen for an unknown path", () => {
+    navigateTo("/nope");
+    render(<Router />);
+
+    expect(screen.getByRole("heading", { name: /404/i })).toBeInTheDocument();
+    expect(screen.getByText(/page not found/i)).toBeInTheDocument();
+    // Unknown paths must NOT fall through to the calculator.
+    expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
+  });
 });

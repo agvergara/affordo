@@ -1,6 +1,7 @@
 import { App } from "./App";
 import {
   GoalsScreen,
+  NotFoundScreen,
   OnboardingScreen,
   SettingsScreen,
 } from "./Placeholder";
@@ -20,5 +21,5 @@ const ROUTES: Record<string, () => JSX.Element> = {
 export function Router() {
   const path = window.location.pathname;
   const screen = ROUTES[path];
-  return screen ? screen() : <App />;
+  return screen ? screen() : <NotFoundScreen />;
 }
