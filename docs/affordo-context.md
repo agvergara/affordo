@@ -1,0 +1,933 @@
+# Affordo — Reference Context Dossier
+
+Extracted verbatim from the read-only Lovable reference source at
+`~/lovable/affordo_template/dream-purchase-planner`.
+Stack: **TanStack Start** (not plain Vite + react-router) + React 19 + TypeScript +
+Tailwind CSS **v4** + shadcn/ui (new-york style). Completeness and literal accuracy
+are prioritized over brevity. Anything undeterminable is under OPEN QUESTIONS.
+
+> ✅ Reference structural note: this reference is a file-based-routed multi-page app with a
+> 4-step wizard. Per TARGET CONSTRAINTS (v2) at the end of this document, the rebuild
+> reproduces that structure **in full** — router, routes, wizard, step counter, and Back/Start
+> controls are all in scope.
+
+---
+
+## 1. PRODUCT IDENTITY
+
+- **App name / brand wordmark:** `Affordo` (i18n key `brand`). Rendered as a wordmark in
+  the header and elsewhere in **font-mono, uppercase, bold, tracking-widest, 11px** — i.e.
+  it is set in JetBrains Mono, NOT in the display font. (`AppHeader.tsx:15-17`)
+- **Tagline** (i18n key `tagline`, defined but **not rendered** anywhere in the routes):
+  `Weigh purchases against your working hours.`
+- **package.json name:** `tanstack_start_ts` (scaffolding name, not user-facing).
+
+### Per-route `<title>` and `<meta>` strings
+
+Root defaults (`src/routes/__root.tsx`, `head()`):
+| tag | value |
+| --- | --- |
+| `charSet` | `utf-8` |
+| `viewport` | `width=device-width, initial-scale=1` |
+| `title` | `Affordo — Audit: Life/Cost` |
+| `meta[name=description]` | `Weigh purchases against your working hours. A private, local-first affordability calculator.` |
+| `meta[property=og:title]` | `Affordo — Audit: Life/Cost` |
+| `meta[property=og:description]` | `Weigh purchases against your working hours.` |
+| `meta[property=og:type]` | `website` |
+| `meta[name=twitter:card]` | `summary` |
+
+Note the em-dash `—` in the title and the `Audit: Life/Cost` phrasing.
+
+Route `/onboarding` (`src/routes/onboarding.tsx`):
+| tag | value |
+| --- | --- |
+| `title` | `Set up · Affordo` |
+| `description` | `Configure your financial profile once. Then weigh purchases in seconds.` |
+| `og:title` | `Set up · Affordo` |
+| `og:description` | `Configure your financial profile once. Then weigh purchases in seconds.` |
+
+Route `/goals` (`src/routes/goals.tsx`):
+| tag | value |
+| --- | --- |
+| `title` | `Goals · Affordo` |
+| `description` | `See every purchase weighed against your working hours.` |
+| `og:title` | `Goals · Affordo` |
+| `og:description` | `See every purchase weighed against your working hours.` |
+
+Route `/settings` (`src/routes/settings.tsx`):
+| tag | value |
+| --- | --- |
+| `title` | `Settings · Affordo` |
+| `description` | `Edit your financial profile and preferences.` |
+| `og:title` | `Settings · Affordo` |
+| `og:description` | `Edit your financial profile and preferences.` |
+
+Route `/` has no `head()` — inherits root defaults only.
+(The separator used in sub-page titles is a middle dot `·`, U+00B7.)
+
+### Favicon / og:image
+
+- Favicon: `<link rel="icon" href="/favicon.ico" type="image/x-icon" />` — file exists at
+  `public/favicon.ico` (20,373 bytes). No SVG/PNG variants.
+- **og:image: NONE.** No `og:image` meta tag and no image asset is referenced anywhere.
+- No apple-touch-icon, no manifest.
+
+---
+
+## 2. SCREEN INVENTORY
+
+File-based routing (TanStack Start). Routes live in `src/routes/`.
+
+| File | URL | Purpose |
+| --- | --- | --- |
+| `index.tsx` | `/` | State router / redirect gate. No UI beyond a loading line. |
+| `onboarding.tsx` | `/onboarding` | 4-step wizard to build the financial profile. |
+| `goals.tsx` | `/goals` | Dashboard: profile snapshot + saved goals list + add/edit/remove. |
+| `settings.tsx` | `/settings` | Edit profile fields; reset everything. |
+| `__root.tsx` | (shell) | HTML shell, providers, Toaster, 404 + error boundaries. |
+
+### Navigation flow
+
+- **`/`** — reads context. While `!hydrated`: shows a centered `loading…` line. Once
+  hydrated: `<Navigate to={hasProfile ? "/goals" : "/onboarding"} />`. `hasProfile` is
+  true when `profile.salary > 0`.
+- **`/onboarding`** — on finishing the last step, `setProfile(draft)` then
+  `navigate({ to: "/goals" })`.
+- **`/goals`** — guarded: if `!hasProfile` → `<Navigate to="/onboarding" />`. Header links
+  to `/settings`; brand link goes to `/goals`.
+- **`/settings`** — guarded the same way. "Save" toasts and stays. "Reset everything" (after
+  `window.confirm`) clears profile + goals and `navigate({ to: "/onboarding" })`.
+- **404** (`NotFoundComponent`) and **error boundary** (`ErrorComponent`) render full-screen
+  states with links back to `/`.
+
+### Onboarding wizard — the four steps individually
+
+Component: `src/components/affordo/OnboardingWizard.tsx`. Single component, local `step`
+state `0..3`. Header (`AppHeader`) shown with `showTimeValue={false}`. Layout container:
+`<main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-16">`.
+
+Persistent chrome across all steps:
+- **Eyebrow** (above the big title): `onboardingTitle` = `Set up your reckoning`.
+- **Big step title (h1):** `steps[step]` — the current step's label (see below).
+- **Step counter (top-right):** `String(step + 1).padStart(2, "0") + " / " + String(steps.length).padStart(2, "0")` → renders `01 / 04`, `02 / 04`, `03 / 04`, `04 / 04`.
+- **Progress bar:** a row of 4 equal segments (`h-1 flex-1`); segments with index `<= step`
+  are `bg-foreground`, the rest `bg-border`. `aria-hidden`.
+- **Step body** wrapped in `<div key={step} className="animate-slide-up space-y-8">` — the
+  `key={step}` re-mounts and re-triggers the slide-up animation on each step change.
+- **Footer nav** (`border-t border-border pt-6`, space-between):
+  - **Back button** (left): `← ` + `back` (=`Back`). `variant="ghost"`, `disabled` when `step === 0`.
+  - **Primary button** (right): label is `start` on step 0 (`Start`), `finish` on the last
+    step (`Finish setup`), otherwise `continue` (`Continue`); always suffixed with ` →`.
+    Disabled when `!canContinue`.
+
+Step labels array: `[stepWelcomeLabel, stepIncomeLabel, stepExpensesLabel, stepRulesLabel]`
+= `["Welcome", "Income", "Expenses", "Rules"]`.
+
+**Step 0 — "Welcome"** (index 0; counter `01 / 04`; forward button `Start →`; Back disabled)
+No inputs. Three stacked text blocks (`space-y-6`):
+- **Kicker** (`welcomeKicker`): `Before you buy` — mono, bold, uppercase, tracking-[0.2em], `text-accent`.
+- **Headline** (`welcomeHeadline`): `Measure any purchase in hours of your life.` — display font, 3xl→sm:4xl, uppercase.
+- **Body** (`welcomeBody`): `Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.` — `max-w-prose`, muted.
+
+**Step 1 — "Income"** (counter `02 / 04`; forward `Continue →`) — the only step with a gating validation. `canContinue` requires `salary > 0 && hoursPerWeek > 0 && hoursPerDay > 0 && paymentsPerYear > 0`.
+Fields, in order:
+- **Currency** (`currency` = `Currency`): shadcn `Select`. Options: `EUR — €`, `GBP — £`, `USD — $`.
+- **Net monthly salary** (`netMonthlySalary`): number input, `inputMode="decimal"`, `placeholder="0"`, `autoFocus`.
+- Two-column grid (`sm:grid-cols-2`):
+  - **Hours per week** (`hoursPerWeek`): number input.
+  - **Hours per day** (`hoursPerDay`): number input.
+- **Payments per year** (`paymentsPerYear`): number input, hint `paymentsHint` = `Use 14 for Spanish-style extra payments.`
+
+**Step 2 — "Expenses"** (counter `03 / 04`; forward `Continue →`)
+- **Monthly fixed expenses** (`monthlyExpenses`): number input, `inputMode="decimal"`, `placeholder="0"`, `autoFocus`, hint `expensesHint` = `Rent, groceries, subscriptions, transport, utilities.`
+
+**Step 3 — "Rules"** (counter `04 / 04`; forward `Finish setup →`)
+- **Significance threshold** (`threshold`): label reads `Significance threshold — {draft.threshold}%`, a `Slider` `min=1 max=50 step=1`, hint `thresholdHint` = `Purchases above this % of your monthly income are flagged.`
+- Two-column grid:
+  - **Current savings** (`currentSavings`): number input, `placeholder="0"`.
+  - **Extra monthly savings (optional)** (`monthlyContribution`): number input, `placeholder="0"`, hint `contributionHint` = `Money you consistently set aside on top of expenses.`
+
+On the last step the primary button calls `setProfile(draft)` then navigates to `/goals`.
+
+---
+
+## 3. DESIGN TOKENS — literal values
+
+There is **no `tailwind.config.ts`** (Tailwind v4). Tokens are declared in
+`src/styles.css` via `@theme inline`, `:root`, and `.dark`. There is **no `index.html`**;
+fonts are loaded via `head().links` in `src/routes/__root.tsx`.
+
+### `@theme inline` (radius scale, color aliases, font stacks) — `styles.css:7-35`
+
+| token | value |
+| --- | --- |
+| `--radius-sm` | `calc(var(--radius) - 4px)` |
+| `--radius-md` | `calc(var(--radius) - 2px)` |
+| `--radius-lg` | `var(--radius)` |
+| `--radius-xl` | `calc(var(--radius) + 4px)` |
+| `--color-background` | `var(--background)` |
+| `--color-foreground` | `var(--foreground)` |
+| `--color-card` / `--color-card-foreground` | `var(--card)` / `var(--card-foreground)` |
+| `--color-popover` / `--color-popover-foreground` | `var(--popover)` / `var(--popover-foreground)` |
+| `--color-primary` / `--color-primary-foreground` | `var(--primary)` / `var(--primary-foreground)` |
+| `--color-secondary` / `--color-secondary-foreground` | `var(--secondary)` / `var(--secondary-foreground)` |
+| `--color-muted` / `--color-muted-foreground` | `var(--muted)` / `var(--muted-foreground)` |
+| `--color-accent` / `--color-accent-foreground` | `var(--accent)` / `var(--accent-foreground)` |
+| `--color-destructive` / `--color-destructive-foreground` | `var(--destructive)` / `var(--destructive-foreground)` |
+| `--color-border` | `var(--border)` |
+| `--color-input` | `var(--input)` |
+| `--color-ring` | `var(--ring)` |
+| `--color-ring-offset-background` | `var(--background)` |
+| `--font-sans` | `"Inter", system-ui, sans-serif` |
+| `--font-display` | `"Anton", "Impact", sans-serif` |
+| `--font-mono` | `"JetBrains Mono", ui-monospace, monospace` |
+
+### Color custom properties — `:root` (light) and `.dark`
+
+| token | light (`:root`) | dark (`.dark`) | where used |
+| --- | --- | --- | --- |
+| `--radius` | `0.5rem` | (inherits) | radius scale base |
+| `--background` | `oklch(0.985 0.002 60)` | `oklch(0.13 0 0)` | page bg, button text-on-dark |
+| `--foreground` | `oklch(0.13 0 0)` | `oklch(0.985 0.002 60)` | body text, primary surfaces, big type |
+| `--card` | `oklch(1 0 0)` | `oklch(0.17 0 0)` | goal card bg |
+| `--card-foreground` | `oklch(0.13 0 0)` | `oklch(0.985 0.002 60)` | card text |
+| `--popover` | `oklch(1 0 0)` | `oklch(0.17 0 0)` | select/dialog popover |
+| `--popover-foreground` | `oklch(0.13 0 0)` | `oklch(0.985 0.002 60)` | popover text |
+| `--primary` | `oklch(0.13 0 0)` | `oklch(0.985 0.002 60)` | shadcn Button default |
+| `--primary-foreground` | `oklch(0.985 0.002 60)` | `oklch(0.13 0 0)` | Button default text |
+| `--secondary` | `oklch(0.95 0.005 60)` | `oklch(0.22 0 0)` | secondary button |
+| `--secondary-foreground` | `oklch(0.13 0 0)` | `oklch(0.985 0.002 60)` | — |
+| `--muted` | `oklch(0.94 0.004 60)` | `oklch(0.22 0 0)` | muted surfaces |
+| `--muted-foreground` | `oklch(0.45 0 0)` | `oklch(0.7 0 0)` | eyebrows, labels, captions |
+| `--accent` | `oklch(0.68 0.19 45)` | `oklch(0.72 0.19 45)` | **orange** — hovers, kicker, threshold marker, ring |
+| `--accent-foreground` | `oklch(0.985 0.002 60)` | `oklch(0.13 0 0)` | text on accent |
+| `--destructive` | `oklch(0.58 0.22 27)` | `oklch(0.7 0.19 22)` | remove/reset, "cannot" badge |
+| `--destructive-foreground` | `oklch(0.985 0.002 60)` | `oklch(0.13 0 0)` | text on destructive |
+| `--border` | `oklch(0.13 0 0 / 15%)` | `oklch(1 0 0 / 12%)` | hairlines, input underlines |
+| `--input` | `oklch(0.13 0 0 / 15%)` | `oklch(1 0 0 / 15%)` | shadcn input borders |
+| `--ring` | `oklch(0.68 0.19 45)` | `oklch(0.72 0.19 45)` | focus ring (= accent) |
+
+### Keyframes — `styles.css:82-100`
+
+```css
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in-x {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+```
+
+### Custom utilities — `styles.css:102-109`
+
+```css
+@utility animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-scale-in-x {
+  animation: scale-in-x 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: left;
+}
+```
+
+### `@layer base` — `styles.css:111-127`
+
+```css
+* { border-color: var(--color-border); }             /* default border color for all elements */
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";              /* Inter stylistic sets */
+}
+::selection {
+  background-color: var(--color-accent);
+  color: var(--color-accent-foreground);              /* orange selection highlight */
+}
+```
+
+### Top of `styles.css` (Tailwind v4 wiring) — `styles.css:1-5`
+
+```css
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+```
+(`tw-animate-css` provides `animate-in`/`fade-*`/`zoom-*`/`slide-in-from-*` used by shadcn
+dialog & select.)
+
+### Fonts loaded in `__root.tsx` head links
+
+```
+preconnect https://fonts.googleapis.com
+preconnect https://fonts.gstatic.com  (crossOrigin="anonymous")
+stylesheet https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap
+```
+Weights actually loaded: Anton (single weight 400), Inter 400/500/600/700,
+JetBrains Mono 400/500/700.
+
+---
+
+## 4. TYPOGRAPHY IN PRACTICE
+
+Tailwind defaults referenced: `text-xs`=12px/16px, `text-sm`=14px/20px, `text-base`=16px/24px,
+`text-xl`=20px/28px, `text-2xl`=24px/32px, `text-3xl`=30px/36px, `text-4xl`=36px/40px,
+`text-5xl`=48px/1, `text-6xl`=60px/1, `text-8xl`=96px/1. Tracking: `tracking-tight`=-0.025em,
+`tracking-wider`=0.05em, `tracking-widest`=0.1em, `tracking-[0.2em]`=0.2em. Weights:
+`font-medium`=500, `font-bold`=700. Leading: `leading-none`=1, `leading-tight`=1.25,
+`leading-relaxed`=1.625.
+
+| role | classes (verbatim) | resolves to |
+| --- | --- | --- |
+| **Wordmark / brand** | `font-mono text-[11px] font-bold uppercase tracking-widest` | JetBrains Mono, 11px, 700, +0.1em, uppercase |
+| **Eyebrow (page kicker)** | `font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground` | Mono 10px, 500, +0.2em, muted |
+| **Onboarding kicker (accent)** | `font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent` | Mono 10px, 700, +0.2em, orange |
+| **h1 (goals title)** | `font-display text-6xl uppercase leading-none tracking-tight sm:text-8xl` | Anton, 60px→96px, lh 1, -0.025em, uppercase |
+| **h1 (settings title)** | `font-display text-6xl uppercase leading-none tracking-tight` | Anton, 60px, lh 1, -0.025em |
+| **h1 (onboarding step)** | `font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl` | Anton, 48px→60px, lh 1 |
+| **Onboarding headline** | `font-display text-3xl uppercase leading-tight tracking-tight sm:text-4xl` | Anton, 30px→36px, lh 1.25 |
+| **Goal name (h2)** | `mt-1 truncate font-display text-3xl uppercase tracking-tight sm:text-4xl` | Anton, 30px→36px, -0.025em, truncated |
+| **Result figure (price)** | `font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl` | Anton, 48px→60px, lh 1 |
+| **Snapshot stat figure** | `mt-1 text-xl font-bold tracking-tight` | Inter, 20px, 700, -0.025em |
+| **Lead / body (welcome body)** | `max-w-prose text-base leading-relaxed text-muted-foreground` | Inter, 16px, lh 1.625, muted |
+| **Body (goal note)** | `mt-1 text-sm text-muted-foreground` | Inter, 14px, muted |
+| **Label (form)** | `font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground` | Mono 10px, 700, +0.1em, muted |
+| **Big input text** | (onboarding) `text-3xl font-bold` / (settings) `text-2xl font-bold` | Inter, 30px / 24px, 700 |
+| **Button label (primary)** | `font-mono text-[11px] font-bold uppercase tracking-widest` | Mono 11px, 700, +0.1em |
+| **Button label (ghost/small)** | `font-mono text-[10px] font-bold uppercase tracking-widest` | Mono 10px, 700, +0.1em |
+| **Verdict badge** | `font-mono text-[10px] font-bold uppercase tracking-widest` | Mono 10px, 700, +0.1em |
+| **Caption / meta (dates, %s)** | `font-mono text-[10px] uppercase tracking-wider text-muted-foreground` | Mono 10px, 400, +0.05em, muted |
+| **Work-hours caption** | `font-mono text-xs uppercase tracking-wider text-muted-foreground` | Mono 12px, +0.05em, muted |
+| **`/ hour` unit suffix** | `font-mono text-xs font-normal text-muted-foreground` | Mono 12px, 400, muted |
+| **404 numeral** | `font-display text-8xl uppercase tracking-tight` | Anton, 96px |
+| **loading… line** | `font-mono text-[11px] uppercase tracking-widest text-muted-foreground` | Mono 11px, +0.1em, muted |
+
+---
+
+## 5. COMPONENT INVENTORY
+
+### `src/components/affordo/` (route-specific)
+
+#### `AppHeader.tsx`
+- **Props:** `{ showTimeValue?: boolean }` (default `true`).
+- Computes `hourly` via `evaluate(profile, {id:"_",name:"_",price:0,note:"",createdAt:0}).hourlyRate` when `hasProfile`, else `0`.
+- Root `<nav>`: `"sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md"`.
+- Inner container: `"mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-4 sm:px-6"`.
+- Brand `<Link to="/goals">`: `"font-mono text-[11px] font-bold uppercase tracking-widest"` → renders `t("brand")` = `Affordo`.
+- Right group `<div>`: `"flex min-w-0 items-center gap-4"`.
+  - Time-value `<span>` (only if `showTimeValue && hasProfile && hourly > 0`): `"hidden truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground sm:inline"`; content: `t("hourlyRate")` (=`Time value`) + `: ` + inner `<span className="text-foreground">{formatMoney(hourly)} {t("perHour")}</span>`.
+  - Settings `<Link to="/settings">` (only if `hasProfile`): `"font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"` → `t("settings")` = `Settings`.
+
+#### `OnboardingWizard.tsx`
+- **Props:** none. Internal `Field` subcomponent: `{ label, hint?, children, id }`.
+- `Field` root: `"space-y-2"`; `<Label htmlFor={id}>` class `"font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"`; hint `<p>` class `"text-[11px] leading-relaxed text-muted-foreground"`.
+- `bigInputClass` = `"w-full border-0 border-b-2 border-border bg-transparent px-0 py-2 text-3xl font-bold outline-none transition-colors focus-visible:border-accent focus-visible:ring-0 rounded-none shadow-none"`.
+- Root `<div className="min-h-dvh bg-background">`; main `"mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-16"`.
+- Header row: `"mb-8 flex items-end justify-between gap-4"`; eyebrow `"font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground"`; h1 `"mt-2 font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl"`; counter `<span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">`.
+- Progress bar row: `"mb-10 flex gap-1.5"`; each segment `` `h-1 flex-1 ${i <= step ? "bg-foreground" : "bg-border"}` `` + `aria-hidden`.
+- Body wrapper: `<div key={step} className="animate-slide-up space-y-8">`.
+- Footer: `"mt-12 flex items-center justify-between border-t border-border pt-6"`; Back Button `variant="ghost"` class `"font-mono text-[11px] font-bold uppercase tracking-widest"`; primary Button class `"rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"`.
+
+#### `GoalCard.tsx`
+- **Props:** `{ goal: Goal; onEdit: () => void; onRemove: () => void }`.
+- Memoizes `v = evaluate(profile, goal)`. `showDays = v.daysOfWork >= 1`; `workLabel` = days-of-work or hours-of-work string. `pctForBar = Math.min(100, (v.pctOfMonthlyIncome / (profile.threshold * 2)) * 100)`.
+- Root `<article>`: `"border border-border bg-card p-6 sm:p-8"`.
+- Header grid: `"grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4"`.
+  - Left `<div className="min-w-0">`: date `<p>` `"font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"` (`new Date(goal.createdAt).toLocaleDateString("en-US")`); name `<h2>` `"mt-1 truncate font-display text-3xl uppercase tracking-tight sm:text-4xl"`; optional note `<p>` `"mt-1 text-sm text-muted-foreground"`.
+  - `<VerdictBadge kind={v.kind} />`.
+- Price row: `"mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-2"`; price `<span className="font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl">`; work caption `<span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">`.
+- Threshold meter block (`"mt-6"`):
+  - Caption row `"mb-2 flex justify-between font-mono text-[10px] uppercase tracking-wider"`: left `<span className="text-muted-foreground">{num(pct,1)}% {t("pctOfIncome")}</span>`; right `<span className={v.aboveThreshold ? "text-accent" : "text-muted-foreground"}>{t("threshold")}: {profile.threshold}%</span>`.
+  - Track `<div className="relative h-2 w-full bg-black/5 ring-1 ring-black/10 dark:bg-white/5 dark:ring-white/10">`; fill `<div className="animate-scale-in-x h-full bg-foreground" style={{width: `${pctForBar}%`}} />`; marker `<div className="absolute top-0 h-full w-px bg-accent" style={{left: `${Math.min(100,50)}%`}} aria-hidden />` (marker is hard-coded to the 50% midpoint).
+- Stats grid: `"mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2"`; each cell `"bg-background p-4"` with label `"font-mono text-[10px] uppercase tracking-wider text-muted-foreground"` and value `"mt-1 text-xl font-bold tracking-tight"`.
+  - Cell 1 `Time to save`: value is `—` if `afford`, else `{months} months`, else `{cutMonths} months *`, else `∞`.
+  - Cell 2 `Monthly surplus` (`t("disposable")`): `fmt(v.monthlyDisposable)`.
+- Verdict explainer paragraph (one of, by kind):
+  - `cutToAfford`: `"mt-4 border-l-2 border-accent bg-accent/5 p-3 text-sm"` — `Cut expenses by <b>{cutPct}%</b> to reach it in <b>{cutMonths} months</b>.`
+  - `cannot`: `"mt-4 border-l-2 border-destructive bg-destructive/5 p-3 text-sm"` — `Beyond a reasonable savings plan.`
+  - `afford`: `"mt-4 border-l-2 border-emerald-600 bg-emerald-600/5 p-3 text-sm"` — `You already have savings for this.`
+- Actions row: `"mt-6 flex justify-end gap-2"`; Edit Button (ghost, sm) `"font-mono text-[10px] font-bold uppercase tracking-widest"`; Remove Button (ghost, sm) `"font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:text-destructive"`.
+
+#### `GoalDialog.tsx`
+- **Props:** `{ open: boolean; onOpenChange: (open:boolean)=>void; initial?: Goal|null; onSave: (goal:Goal)=>void }`.
+- Local state `name`, `price`, `note` (strings). On `open`, resets from `initial`.
+- `valid = name.trim().length > 0 && parseFloat(price) > 0`.
+- `submit()` builds goal: `id: initial?.id ?? crypto.randomUUID()`, `name: name.trim().slice(0,80)`, `price: parseFloat(price)`, `note: note.trim().slice(0,200)`, `createdAt: initial?.createdAt ?? Date.now()`.
+- `DialogContent` class: `"rounded-none border-2 border-foreground sm:max-w-md"`.
+- `DialogTitle`: `"font-display text-3xl uppercase tracking-tight"` — `initial ? t("editGoal") : t("addGoal")`.
+- `DialogDescription`: `"font-mono text-[10px] uppercase tracking-widest"` — `t("brand")` = `Affordo`.
+- `<form className="space-y-5">` submits on Enter. Three fields (each `"space-y-2"` with a mono label):
+  - Name: `<Input id="g-name" maxLength={80} autoFocus placeholder="MacBook Pro">`.
+  - Price: `<Input id="g-price" type="number" inputMode="decimal" placeholder="0">`.
+  - Note: `<Textarea id="g-note" maxLength={200} rows={2}>`.
+- `DialogFooter className="gap-2"`: Cancel Button (ghost) `"font-mono text-[10px] font-bold uppercase tracking-widest"`; Save Button (type submit, `disabled={!valid}`) `"rounded-none bg-foreground font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"`.
+
+#### `VerdictBadge.tsx`
+- **Props:** `{ kind: VerdictKind }`.
+- `styles` map: `afford: "bg-emerald-600 text-white"`, `stretch: "bg-foreground text-background"`, `cutToAfford: "bg-accent text-accent-foreground"`, `cannot: "bg-destructive text-destructive-foreground"`.
+- Label map: `afford→t("verdictAfford")`, `stretch→t("verdictStretch")`, `cutToAfford→t("verdictCut")`, `cannot→t("verdictCannot")`.
+- Root `<span>`: `cn("inline-flex items-center px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest", styles[kind])`.
+
+### `src/components/ui/` shadcn primitives depended on by the routes
+
+Directly imported by in-scope screens: **button, input, label, slider, select, dialog,
+textarea, sonner**. (The full `ui/` folder contains ~45 shadcn components, but the rest are
+unused Lovable scaffolding.)
+
+| primitive | Radix / lib package | notes |
+| --- | --- | --- |
+| `button.tsx` | `@radix-ui/react-slot`, `class-variance-authority` | variants: default/destructive/outline/secondary/ghost/link; sizes: default/sm/lg/icon. Base has `rounded-md` — routes override with `rounded-none`. |
+| `input.tsx` | (native `<input>`) | base: `h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base … md:text-sm`. |
+| `label.tsx` | `@radix-ui/react-label`, `cva` | base: `text-sm font-medium leading-none …`. |
+| `slider.tsx` | `@radix-ui/react-slider` | Track `h-1.5 rounded-full bg-primary/20`, Range `bg-primary`, Thumb `h-4 w-4 rounded-full border border-primary/50 bg-background`. |
+| `select.tsx` | `@radix-ui/react-select`, `lucide-react` (Check, ChevronDown, ChevronUp) | Trigger `h-9 rounded-md border border-input`; Content uses `tw-animate-css` data-state animations. |
+| `dialog.tsx` | `@radix-ui/react-dialog`, `lucide-react` (X) | Overlay `bg-black/80`; Content centered `max-w-lg … sm:rounded-lg` (routes override `rounded-none`); built-in Close button with `sr-only` "Close". |
+| `textarea.tsx` | (native `<textarea>`) | base: `min-h-[60px] rounded-md border border-input`. |
+| `sonner.tsx` | `sonner` | wraps `<Toaster>`; toast classNames map bg/text/border to tokens. |
+
+Root also uses `@tanstack/react-query` (`QueryClientProvider`) and
+`@tanstack/react-router` (`Outlet`, `Link`, `Navigate`, `HeadContent`, `Scripts`).
+Icons from `lucide-react` used in routes: `Plus` (goals add button).
+
+---
+
+## 6. COPY — verbatim, every user-visible string
+
+Source of truth: `src/lib/i18n.ts` (single English dict; there is **no** Spanish dict in
+code despite the plan). Reproduced exactly, including punctuation and the ` (optional)`
+suffixes.
+
+### Brand / global
+- `brand`: `Affordo`
+- `tagline`: `Weigh purchases against your working hours.` *(defined, not rendered)*
+
+### Onboarding chrome
+- `onboardingTitle`: `Set up your reckoning`
+- `step`: `Step` *(defined, not rendered)*
+- `of`: `of` *(defined, not rendered)*
+- `back`: `Back`
+- `continue`: `Continue`
+- `start`: `Start`
+- `finish`: `Finish setup`
+- `stepWelcomeLabel`: `Welcome`
+- `stepIncomeLabel`: `Income`
+- `stepExpensesLabel`: `Expenses`
+- `stepRulesLabel`: `Rules`
+
+### Onboarding step 0 (Welcome)
+- `welcomeKicker`: `Before you buy`
+- `welcomeHeadline`: `Measure any purchase in hours of your life.`
+- `welcomeBody`: `Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.`
+
+### Field labels & hints (onboarding + settings)
+- `currency`: `Currency`
+- `netMonthlySalary`: `Net monthly salary`
+- `hoursPerWeek`: `Hours per week`
+- `hoursPerDay`: `Hours per day`
+- `paymentsPerYear`: `Payments per year`
+- `paymentsHint`: `Use 14 for Spanish-style extra payments.`
+- `monthlyExpenses`: `Monthly fixed expenses`
+- `expensesHint`: `Rent, groceries, subscriptions, transport, utilities.`
+- `threshold`: `Significance threshold`
+- `thresholdHint`: `Purchases above this % of your monthly income are flagged.`
+- `currentSavings`: `Current savings`
+- `monthlyContribution`: `Extra monthly savings (optional)`
+- `contributionHint`: `Money you consistently set aside on top of expenses.`
+
+### Dashboard / goals
+- `goalsTitle`: `Goals`
+- `addGoal`: `Add goal`
+- `editGoal`: `Edit goal`
+- `goalName`: `Name`
+- `goalPrice`: `Price`
+- `goalNote`: `Note (optional)`
+- `save`: `Save`
+- `cancel`: `Cancel`
+- `remove`: `Remove`
+- `edit`: `Edit`
+- `empty`: `No decisions to reckon with yet.`
+- `emptyHint`: `Add your first goal to see what it costs in hours of your life.`
+
+### Verdict + goal-card body
+- `verdictAfford`: `Afford`
+- `verdictStretch`: `Stretch`
+- `verdictCut`: `Cut to afford`
+- `verdictCannot`: `Cannot`
+- `daysOfWork`: `days of work`
+- `hoursOfWork`: `hours of work`
+- `pctOfIncome`: `of monthly income`
+- `timeToSave`: `Time to save`
+- `months`: `months`
+- `cutExpenses`: `Cut expenses by`
+- `toReachIn`: `to reach it in`
+- `aboveBudget`: `Beyond a reasonable savings plan.`
+- `payItOff`: `You already have savings for this.`
+
+### Snapshot
+- `hourlyRate`: `Time value`
+- `perHour`: `/ hour`
+- `disposable`: `Monthly surplus`
+
+### Settings
+- `settings`: `Settings`
+- `profile`: `Profile` *(defined, not rendered)*
+- `resetAll`: `Reset everything`
+- `resetConfirm`: `This will erase your profile and all goals. Continue?`
+- `savedGoals`: `Saved goals`
+
+### Footer
+- `footerLocal`: `Record persistent in local-cache`
+
+### Strings NOT in the dict (hard-coded in components)
+
+- Select option labels (onboarding + settings): `EUR — €`, `GBP — £`, `USD — $` (em-dash + currency symbol).
+- `/goals` snapshot eyebrow uses `t("brand")` = `Affordo`.
+- `/goals` "Saved goals" divider renders `t("savedGoals") + " · " + goals.length` → `Saved goals · 0`.
+- `/goals` footer right label: literal `Affordo` (not via dict), left label via `t("footerLocal")`.
+- Goal card composite sentence (cutToAfford): `Cut expenses by` **{cutPct}%** `to reach it in` **{cutMonths} months**`.`
+- Time-to-save `*` suffix appears when the value comes from `cutMonths` (`{cutMonths} months *`). No footnote explains the `*`.
+- Fallback glyphs: `—` (em-dash, for afford / non-finite money), `∞` (infinity, no path to save).
+- 404 page: `404` / `Page not found` / `Go home`.
+- Error boundary: `Something broke` / `The audit could not load.` / `Try again` / `Go home`.
+- Loading lines: `loading…` (goals/index) and `loading…` (with ellipsis char U+2026).
+- Placeholders: salary/expenses/savings/contribution inputs `0`; goal name `MacBook Pro`; goal price `0`.
+- Dialog close button screen-reader label: `Close` (`sr-only`).
+- Toast on settings save: `t("save")` = `Save` (uses `toast.success`).
+
+---
+
+## 7. FORMS AND INPUTS
+
+`num(v)` helper (onboarding + settings): `parseFloat(v.replace(",", "."))`, returns `0` if NaN.
+This accepts a comma as decimal separator but not thousands separators.
+
+### Onboarding / Settings profile fields
+
+| field | label | input | units | min/max/step | default | validation |
+| --- | --- | --- | --- | --- | --- | --- |
+| currency | `Currency` | Select (EUR/GBP/USD) | — | — | `EUR` | enum |
+| salary | `Net monthly salary` | number, `inputMode="decimal"`, placeholder `0` | currency | — | `0` | must be `> 0` to leave step 1 / have a profile |
+| hoursPerWeek | `Hours per week` | number | hours | — | `40` | `> 0` to leave step 1 |
+| hoursPerDay | `Hours per day` | number | hours | — | `8` | `> 0` to leave step 1 |
+| paymentsPerYear | `Payments per year` | number | count | — | `12` | `> 0` to leave step 1 |
+| expenses | `Monthly fixed expenses` | number, `inputMode="decimal"`, placeholder `0` | currency | — | `0` | none (nonnegative in schema) |
+| threshold | `Significance threshold` | Slider | `%` | min `1`, max `50`, step `1` | `10` | — |
+| savings | `Current savings` | number, placeholder `0` | currency | — | `0` | none |
+| monthlyContribution | `Extra monthly savings (optional)` | number, placeholder `0` | currency | — | `0` | none |
+
+Notes:
+- Number inputs bind `value={draft.X || ""}` so a `0` shows as an empty field (placeholder `0` visible).
+- Slider label interpolates live value: `Significance threshold — {threshold}%`.
+- Zod `ProfileSchema` (validation on load, not on input): `salary` nonnegative; `hoursPerWeek/hoursPerDay/paymentsPerYear` **positive**; `threshold` 0–100; `expenses/savings/monthlyContribution` nonnegative.
+
+### Goal dialog fields
+
+| field | label | input | limits | placeholder | validation |
+| --- | --- | --- | --- | --- | --- |
+| name | `Name` | text Input, `autoFocus` | `maxLength=80`, trimmed+`slice(0,80)` | `MacBook Pro` | `name.trim().length > 0` |
+| price | `Price` | number Input, `inputMode="decimal"` | `parseFloat`, must be `> 0` | `0` | `parseFloat(price) > 0` |
+| note | `Note (optional)` | Textarea `rows={2}` | `maxLength=200`, trimmed+`slice(0,200)` | — | none |
+
+Save button disabled until `valid`. No inline error messages are shown anywhere — validation
+is expressed purely by disabling the primary action.
+
+### Number formatting on display (`src/lib/format.ts`)
+
+- Locale by currency: `EUR → de-DE`, `GBP → en-GB`, `USD → en-US` (default `en-US`).
+- `formatMoney(value, currency)`: `Intl.NumberFormat(locale, {style:"currency", currency, maximumFractionDigits:2})`. Non-finite → `—`. try/catch fallback `` `${value.toFixed(2)} ${currency}` ``.
+  - So EUR renders e.g. `1.234,56 €`; USD `$1,234.56`; GBP `£1,234.56`.
+- `formatNumber(value, currency, digits=1)`: `Intl.NumberFormat(locale, {maximumFractionDigits:digits, minimumFractionDigits:0})`. Non-finite → `—`. Used for percentages, days/hours, months.
+- Dates: `new Date(goal.createdAt).toLocaleDateString("en-US")` (always US format, independent of currency).
+
+---
+
+## 8. DATA AND PERSISTENCE
+
+### State shape
+
+`Profile` (Zod-validated):
+```ts
+{ currency: "EUR"|"USD"|"GBP", salary, hoursPerWeek, hoursPerDay,
+  paymentsPerYear, expenses, threshold, savings, monthlyContribution }  // all numbers
+```
+`defaultProfile`: `{ currency:"EUR", salary:0, hoursPerWeek:40, hoursPerDay:8, paymentsPerYear:12, expenses:0, threshold:10, savings:0, monthlyContribution:0 }`.
+
+`Goal`:
+```ts
+{ id: string, name: string(1..80), price: number>=0, note: string(<=200, default ""), createdAt: number }
+```
+
+### Persistence
+
+- Hook `useLocalState<T>(key, initial, schema?)` in `src/hooks/use-local-state.ts`. SSR-safe:
+  starts with `initial`, hydrates from `localStorage` inside `useEffect` post-mount, sets
+  `hydrated=true`. Writes on every update via `localStorage.setItem(key, JSON.stringify(...))`.
+  On load, validates with Zod `safeParse`; on failure keeps `initial` (silently).
+- **localStorage keys actually used:**
+  - `affordo.profile` → the `Profile` object.
+  - `affordo.goals` → array of `Goal`.
+  - (The plan mentions `affordo.lang`, but **language is not persisted in the shipped code** — no lang state exists; only English is present.)
+- Context (`AffordoProvider`) exposes: `hydrated`, `profile`, `hasProfile` (`hydrated && salary>0`), `setProfile`, `clearProfile`, `goals`, `setGoals`, `clearGoals`, `t`.
+
+### Calculation logic — `src/lib/affordability.ts` `evaluate(profile, goal) → Verdict`
+
+Inputs destructured from profile + `goal.price`.
+
+Formulas:
+- `yearlyIncome = salary * paymentsPerYear`
+- `hourlyRate = hoursPerWeek > 0 ? yearlyIncome / (52 * hoursPerWeek) : 0`
+- `hoursOfWork = hourlyRate > 0 ? price / hourlyRate : Infinity`
+- `daysOfWork = hoursPerDay > 0 ? hoursOfWork / hoursPerDay : Infinity`
+- `pctOfMonthlyIncome = salary > 0 ? (price / salary) * 100 : Infinity`
+- `aboveThreshold = pctOfMonthlyIncome > threshold`
+- `monthlyDisposable = salary - expenses + monthlyContribution`
+- `remaining = Math.max(0, price - savings)`
+
+Verdict decision tree:
+1. `savings >= price` → **`afford`**.
+2. else if `monthlyDisposable > 0`:
+   - `monthsToSave = remaining / monthlyDisposable`.
+   - if `monthsToSave <= 12` → **`stretch`**.
+   - else: `targetMonthly = remaining / 12`; `extraNeeded = targetMonthly - monthlyDisposable`; `maxCut = expenses * 0.5`. If `extraNeeded <= maxCut` → **`cutToAfford`** (`cutPct = expenses>0 ? extraNeeded/expenses*100 : 0`, `cutMonths = 12`). Else → **`cannot`**.
+3. else (no surplus): `targetMonthly = remaining / 12`; `maxCut = expenses * 0.5`. If `targetMonthly - monthlyDisposable <= maxCut` → **`cutToAfford`** (`cutPct` similar, `cutMonths=12`). Else → **`cannot`**.
+
+Outputs (`Verdict`): `{ kind, hourlyRate, hoursOfWork, daysOfWork, pctOfMonthlyIncome, aboveThreshold, monthlyDisposable, monthsToSave|null, cutPct|null, cutMonths|null }`.
+
+Rounding: **none in the math** — all rounding is presentational via `formatNumber`
+(1 digit default) and `formatMoney` (max 2 digits). `daysOfWork >= 1` chooses days vs hours
+in the card. `pctForBar = min(100, pct/(threshold*2)*100)` — so the bar is full at `2×threshold`.
+
+---
+
+## 9. INTERACTION AND MOTION
+
+- **Step transition:** `<div key={step} className="animate-slide-up …">` — re-mount per step
+  re-runs `slide-up` (0.5s, `cubic-bezier(0.2,0.8,0.2,1)`, `opacity 0→1`, `translateY 16px→0`).
+- **Threshold bar fill:** `animate-scale-in-x` (0.7s, same easing, `scaleX 0→1`, origin left).
+- **Buttons:** base `transition-colors`; primary CTAs invert to accent on hover
+  (`hover:bg-accent hover:text-accent-foreground`), losing their black background.
+- **Ghost buttons:** shadcn ghost = `hover:bg-accent hover:text-accent-foreground`; destructive
+  ghost pins text with `text-destructive hover:text-destructive`.
+- **Header links:** `text-muted-foreground hover:text-foreground`.
+- **Inputs (big audit style):** `transition-colors`, `focus-visible:border-accent`,
+  `focus-visible:ring-0` — focus indicated by the bottom border turning orange, no ring.
+- **shadcn inputs/select/dialog:** default `focus-visible:ring-1 focus-visible:ring-ring`
+  (ring = accent). Select trigger `data-[placeholder]:text-muted-foreground`.
+- **Disabled:** shadcn buttons `disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed`; primary CTAs disabled when validation fails; Back disabled on step 0.
+- **Dialog:** overlay `bg-black/80` + `fade-in/out`; content `zoom-in-95/zoom-out-95` + `fade` via `tw-animate-css`, `duration-200`. Close (X) top-right `opacity-70 hover:opacity-100`.
+- **Select content:** slide-in-from-* by side, zoom + fade on open/close.
+- **Toast:** `sonner` `<Toaster position="top-center" />`; success toast on settings save; styled to tokens (`bg-background text-foreground border-border shadow-lg`).
+- **No skeleton loaders** — loading is a single mono `loading…` line; index/goals gate on `hydrated`.
+
+---
+
+## 10. RESPONSIVE AND THEME
+
+Breakpoints used: only Tailwind `sm:` (≥640px). No `md:`/`lg:`/`xl:` in the route/component
+code (shadcn primitives use `md:text-sm` internally). `min-h-dvh` for full-height pages.
+
+What changes at `sm:`:
+- Container padding: `px-4 → sm:px-6`; onboarding vertical `py-10 → sm:py-16`.
+- Goals title: `text-6xl → sm:text-8xl`. Onboarding h1: `text-5xl → sm:text-6xl`. Onboarding headline: `text-3xl → sm:text-4xl`. Goal name/price: `text-3xl/5xl → sm:text-4xl/6xl`.
+- Grids: snapshot `grid-cols-1 → sm:grid-cols-3`; goal stats `grid-cols-1 → sm:grid-cols-2`; income & rules field grids `sm:grid-cols-2`; settings hours grid `sm:grid-cols-3`.
+- Goal card padding `p-6 → sm:p-8`.
+- AppHeader time-value chip: `hidden … sm:inline` (hidden on mobile).
+- Dialog: `sm:max-w-md` (GoalDialog) / base `max-w-lg` (shadcn); footer `flex-col-reverse → sm:flex-row sm:justify-end`.
+- Max widths: header/goals `max-w-3xl`; onboarding/settings `max-w-2xl`; settings main `max-w-2xl`.
+
+**Dark mode:** Tokens for `.dark` are fully defined and `@custom-variant dark (&:is(.dark *))`
+is declared, plus dark-specific classes exist (`dark:bg-white/5 dark:ring-white/10` on the
+goal bar). **But there is no theme toggle and nothing ever adds the `.dark` class** — the app
+ships light-only. Dark mode is latent/unreachable via UI.
+
+---
+
+## 11. ACCESSIBILITY
+
+- **Semantic structure:** `<nav>` header, `<main>` per page, `<section>`, `<article>` per goal
+  card, `<h1>`/`<h2>` headings, `<footer>`. `RootShell` sets `<html lang="en">`.
+- **Heading order:** one `<h1>` per page (goals title / settings title / onboarding step
+  title / 404 numeral / error title); goal names are `<h2>`. Onboarding headline & welcome
+  body are `<p>` (not headings).
+- **Labelling:** form fields use shadcn `<Label htmlFor>` bound to input `id`s (onboarding
+  `Field` component, goal dialog). Settings labels are **not** associated via `htmlFor`/`id`
+  (labels present but not programmatically linked to inputs).
+- **Focus management:** `autoFocus` on the first meaningful field of steps 1 & 2, and on the
+  goal-dialog name input. Radix Dialog traps focus; provides `sr-only` "Close".
+- **Focus ring treatment:** big audit inputs suppress the ring (`focus-visible:ring-0`) and
+  instead turn the bottom border accent (`focus-visible:border-accent`). shadcn primitives use
+  `focus-visible:ring-1 focus-visible:ring-ring` (ring = accent/orange).
+- **aria:** progress-bar segments and the threshold midpoint marker are `aria-hidden`. No
+  `aria-label`s beyond the dialog close `sr-only`. No `aria-live` region for the toast beyond
+  sonner defaults. The `*` after cut-months has no accessible explanation.
+- **Reduced motion:** **not handled** — no `prefers-reduced-motion` guards; `animate-slide-up`
+  and `animate-scale-in-x` always run. (`tw-animate-css` may bring its own, but the custom
+  keyframes here have no reduced-motion variant.)
+
+---
+
+## 12. DEPENDENCIES
+
+From `package.json`.
+
+### dependencies
+`@hookform/resolvers ^5.2.2`, `@radix-ui/react-accordion ^1.2.12`,
+`@radix-ui/react-alert-dialog ^1.1.15`, `@radix-ui/react-aspect-ratio ^1.1.8`,
+`@radix-ui/react-avatar ^1.1.11`, `@radix-ui/react-checkbox ^1.3.3`,
+`@radix-ui/react-collapsible ^1.1.12`, `@radix-ui/react-context-menu ^2.2.16`,
+`@radix-ui/react-dialog ^1.1.15`, `@radix-ui/react-dropdown-menu ^2.1.16`,
+`@radix-ui/react-hover-card ^1.1.15`, `@radix-ui/react-label ^2.1.8`,
+`@radix-ui/react-menubar ^1.1.16`, `@radix-ui/react-navigation-menu ^1.2.14`,
+`@radix-ui/react-popover ^1.1.15`, `@radix-ui/react-progress ^1.1.8`,
+`@radix-ui/react-radio-group ^1.3.8`, `@radix-ui/react-scroll-area ^1.2.10`,
+`@radix-ui/react-select ^2.2.6`, `@radix-ui/react-separator ^1.1.8`,
+`@radix-ui/react-slider ^1.3.6`, `@radix-ui/react-slot ^1.2.4`,
+`@radix-ui/react-switch ^1.2.6`, `@radix-ui/react-tabs ^1.1.13`,
+`@radix-ui/react-toggle ^1.1.10`, `@radix-ui/react-toggle-group ^1.1.11`,
+`@radix-ui/react-tooltip ^1.2.8`, `@tailwindcss/vite ^4.2.1`,
+`@tanstack/react-query ^5.101.1`, `@tanstack/react-router ^1.170.16`,
+`@tanstack/react-start ^1.168.26`, `@tanstack/router-plugin ^1.168.18`,
+`class-variance-authority ^0.7.1`, `clsx ^2.1.1`, `cmdk ^1.1.1`, `date-fns ^4.1.0`,
+`embla-carousel-react ^8.6.0`, `input-otp ^1.4.2`, `lucide-react ^0.575.0`,
+`react ^19.2.0`, `react-day-picker ^9.14.0`, `react-dom ^19.2.0`,
+`react-hook-form ^7.71.2`, `react-resizable-panels ^4.6.5`, `recharts ^2.15.4`,
+`sonner ^2.0.7`, `tailwind-merge ^3.5.0`, `tailwindcss ^4.2.1`,
+`tw-animate-css ^1.3.4`, `vaul ^1.1.2`, `vite-tsconfig-paths ^6.0.2`, `zod ^3.24.2`.
+
+### devDependencies
+`@eslint/js ^9.32.0`, `@lovable.dev/vite-tanstack-config ^2.7.7`, `@types/node ^22.16.5`,
+`@types/react ^19.2.0`, `@types/react-dom ^19.2.0`, `@vitejs/plugin-react ^5.2.0`,
+`eslint ^9.32.0`, `eslint-config-prettier ^10.1.1`, `eslint-plugin-prettier ^5.2.6`,
+`eslint-plugin-react-hooks ^5.2.0`, `eslint-plugin-react-refresh ^0.4.20`,
+`globals ^15.15.0`, `nitro 3.0.260603-beta`, `prettier ^3.7.3`, `typescript ^5.8.3`,
+`typescript-eslint ^8.56.1`, `vite ^8.0.16`.
+
+### Actually imported by in-scope routes/components
+`react`, `react-dom`, `@tanstack/react-router`, `@tanstack/react-query`,
+`@radix-ui/react-slot`, `@radix-ui/react-label`, `@radix-ui/react-slider`,
+`@radix-ui/react-select`, `@radix-ui/react-dialog`, `class-variance-authority`,
+`clsx`, `tailwind-merge`, `lucide-react` (Plus, Check, ChevronDown, ChevronUp, X),
+`sonner`, `zod`, `tailwindcss` + `tw-animate-css` (via CSS), `@tailwindcss/vite`,
+`@tanstack/react-start`/`@lovable.dev/vite-tanstack-config` (build tooling).
+
+### Unused Lovable scaffolding (present but not used by in-scope screens)
+`@hookform/resolvers`, `react-hook-form`, `date-fns`, `react-day-picker`,
+`embla-carousel-react`, `cmdk`, `input-otp`, `react-resizable-panels`, `recharts`,
+`vaul`, and the many unused `@radix-ui/*` packages (accordion, alert-dialog, aspect-ratio,
+avatar, checkbox, collapsible, context-menu, dropdown-menu, hover-card, menubar,
+navigation-menu, popover, progress, radio-group, scroll-area, separator, switch, tabs,
+toggle, toggle-group, tooltip) — plus their corresponding `src/components/ui/*` files.
+
+---
+
+## 13. OPEN QUESTIONS
+
+1. **Spanish / i18n toggle:** the `.lovable/plan.md` describes an ES/EN toggle and
+   `affordo.lang` persistence, but the shipped code has a single English dict and **no
+   language state, toggle, or persistence**. Which is authoritative for the rebuild?
+   (Dict includes `step`/`of`/`profile` keys that are never rendered — leftovers.)
+2. **og:image:** none exists. Is a social preview image desired, or intentionally omitted?
+3. **Dark mode:** fully tokenized and referenced (`dark:` classes) but unreachable (no
+   toggle, `.dark` never applied). Ship light-only, or wire a toggle?
+4. **`*` footnote:** the "Time to save" value can render `{cutMonths} months *` with no
+   explanation of the asterisk anywhere. Intended, or an unfinished footnote?
+5. **Threshold marker position:** the goal-card bar marker is hard-coded to `left: 50%`
+   (`Math.min(100, 50)`), which corresponds to `pct === threshold` given `pctForBar` scales by
+   `threshold*2`. Confirm this fixed-midpoint marker is intended vs. a bug.
+6. **`hasProfile` heuristic:** presence of a profile is inferred solely from `salary > 0`.
+   A legitimately zero salary would be treated as "no profile." Acceptable?
+7. **`windfall` / duplicate action:** the plan references a `windfall` term in the afford
+   condition and a "Duplicate" goal action; neither exists in the shipped `evaluate` or
+   `GoalCard`. Out of scope for the rebuild?
+8. **Number parsing:** `num()` only swaps `,`→`.` and `parseFloat`s; it does not strip
+   thousands separators, so `1.234,56`-style input would misparse. Match verbatim or fix?
+9. **`toLocaleDateString("en-US")`** for goal dates is hard-coded regardless of currency
+   locale. Intended?
+10. **Favicon only** (`.ico`, 20 KB); no PWA manifest / apple-touch-icon. Needed?
+
+---
+
+## 14. ROUTING
+
+- **Library:** `@tanstack/react-router` `^1.170.16` (with `@tanstack/react-start ^1.168.26`,
+  `@tanstack/router-plugin ^1.168.18`). File-based routing; `src/routeTree.gen.ts` is
+  auto-generated (do not hand-edit).
+- **Router creation** (`src/router.tsx`): `createRouter({ routeTree, context: { queryClient }, scrollRestoration: true, defaultPreloadStaleTime: 0 })`. A fresh `QueryClient` is created per `getRouter()` call.
+- **Root** (`src/routes/__root.tsx`): `createRootRouteWithContext<{ queryClient: QueryClient }>()`. Provides `head()` (see §1), `shellComponent: RootShell` (`<html lang="en">` + `<head><HeadContent/></head>` + `<body>{children}<Scripts/></body>`), `component: RootComponent` (wraps `<Outlet/>` in `QueryClientProvider` → `AffordoProvider` and mounts `<Toaster position="top-center" />`), `notFoundComponent: NotFoundComponent`, `errorComponent: ErrorComponent`.
+
+### Route table (all children of `__root`)
+
+| id / path | file | component | fullPath | pattern |
+| --- | --- | --- | --- | --- |
+| `/` | `routes/index.tsx` | `IndexRedirect` | `/` | index / static |
+| `/goals` | `routes/goals.tsx` | `GoalsPage` | `/goals` | static |
+| `/onboarding` | `routes/onboarding.tsx` | `OnboardingWizard` | `/onboarding` | static |
+| `/settings` | `routes/settings.tsx` | `SettingsPage` | `/settings` | static |
+
+- **No** nested/layout routes (`_layout`), **no** dynamic (`$param`), **no** optional
+  (`{-$x}`), **no** splat (`$`) routes. Flat tree: all four are direct children of `__root`.
+- **Index route** `/` is a pure redirect gate (renders no lasting UI).
+- **404 route:** `notFoundComponent` on the root (`NotFoundComponent`) — catches unmatched
+  paths; full-screen `404` / `Page not found` / `Go home` (link `to="/"`).
+- **Error route:** `errorComponent` on the root (`ErrorComponent`) — logs via
+  `reportLovableError(error, { boundary: "tanstack_root_error_component" })`; offers
+  `Try again` (`router.invalidate()` + `reset()`) and `Go home` (`<a href="/">`).
+
+### Redirects & route guards (gating conditions)
+
+- **`/` (`IndexRedirect`):** if `!hydrated` → renders `loading…` line; else
+  `<Navigate to={hasProfile ? "/goals" : "/onboarding"} />`. `hasProfile = hydrated && profile.salary > 0`.
+- **`/goals` (`GoalsPage`):** if `!hydrated` → `loading…`; if `!hasProfile` → `<Navigate to="/onboarding" />`.
+- **`/settings` (`SettingsPage`):** if `!hydrated` → `return null`; if `!hasProfile` → `<Navigate to="/onboarding" />`.
+- **`/onboarding`:** no guard — always renders the wizard (even if a profile already exists;
+  the draft is seeded from the existing profile if `profile.salary > 0`).
+- Navigation actions: onboarding finish → `navigate({ to: "/goals" })`; settings reset →
+  `navigate({ to: "/onboarding" })`; settings save → stays (toast only). Header brand link →
+  `/goals`; header settings link → `/settings` (only when `hasProfile`).
+
+---
+
+## 15. WIZARD MECHANICS
+
+Component: `src/components/affordo/OnboardingWizard.tsx`.
+
+- **Where step state lives:** local component state `const [step, setStep] = useState(0)` —
+  a single integer `0..3`. **Not** in the router, **not** in the URL, **not** in localStorage.
+- **Draft state:** `const [draft, setDraft] = useState<Profile>(profile.salary > 0 ? profile : defaultProfile)` — a full `Profile` object edited in place via `update(key, value)`. Also local, not persisted until finish.
+- **Step labels:** `steps = [t("stepWelcomeLabel"), t("stepIncomeLabel"), t("stepExpensesLabel"), t("stepRulesLabel")]` → `["Welcome","Income","Expenses","Rules"]`; `steps.length === 4`.
+- **Advance (`next()`):** if `step < steps.length - 1` → `setStep(step + 1)`; else (last step) → `setProfile(draft)` then `navigate({ to: "/goals" })`. Wired to the right-hand primary Button's `onClick`. There is **no** Enter-key handler in the shipped code (the plan mentioned "Enter avanza" but no keydown listener exists; number inputs are not in a `<form>` here).
+- **Reverse (Back):** `onClick={() => setStep(Math.max(0, step - 1))}` — clamps at 0.
+- **Gating / validation:** `canContinue = step !== 1 || (draft.salary > 0 && draft.hoursPerWeek > 0 && draft.hoursPerDay > 0 && draft.paymentsPerYear > 0)`. So **only step 1 (Income) is gated**; steps 0, 2, 3 always allow advance. The primary Button is `disabled={!canContinue}`.
+- **Failed advance behaviour:** the button is simply disabled (greyed, `pointer-events-none`, `opacity-50`). No error message, no toast, no shake — advance is impossible until the four income fields are `> 0`.
+- **Step 0 Back control:** **rendered but disabled** (`disabled={step === 0}`), not hidden and does not navigate away. It stays visible as a greyed `← Back`.
+- **Final step action:** on step 3 the primary button reads `Finish setup →`; clicking it persists the draft (`setProfile`) and lands on `/goals`.
+- **Refresh persistence:** step and draft are **lost on refresh** (component-local state). On reload of `/onboarding`, `step` resets to `0` and `draft` re-seeds from the stored profile (or `defaultProfile`). Only a *completed* profile survives (in `affordo.profile`).
+- **Deep-linkability:** steps are **not** deep-linkable — there is a single `/onboarding` URL for all four steps; no query param or hash reflects `step`.
+
+---
+
+## 16. PER-STEP TEARDOWN
+
+Shared shell (present on every step, from `OnboardingWizard.tsx`) — reproduced per step below
+only where the source literally renders it:
+
+- Page root: `<div className="min-h-dvh bg-background">` with `<AppHeader showTimeValue={false} />`.
+- Main: `<main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-16">`.
+- Header row: `<div className="mb-8 flex items-end justify-between gap-4">` → left `<div>` holds eyebrow `<p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{onboardingTitle}</p>` and heading `<h1 className="mt-2 font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl">{steps[step]}</h1>`; right counter `<span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{NN} / 04</span>`.
+- Progress bar: `<div className="mb-10 flex gap-1.5">` with 4 `<div className="h-1 flex-1 (bg-foreground|bg-border)" aria-hidden />`.
+- Body wrapper: `<div key={step} className="animate-slide-up space-y-8">`.
+- Footer: `<div className="mt-12 flex items-center justify-between border-t border-border pt-6">` → Back `<Button variant="ghost" className="font-mono text-[11px] font-bold uppercase tracking-widest">← Back</Button>` and primary `<Button className="rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground">{label} →</Button>`.
+
+**The eyebrow (`Set up your reckoning`), the counter, the progress bar, and both footer buttons
+are identical markup on all four steps** — the source factors them out (they live outside the
+`{step === N}` conditionals), so they are genuinely shared, not per-step. Only the heading text,
+the body block, and the footer button *labels* differ per step.
+
+### STEP 0 — Welcome
+- **Counter string:** `01 / 04`
+- **Eyebrow:** `Set up your reckoning`
+- **Heading (h1):** `Welcome`
+- **Body block** (`<div className="space-y-6">`):
+  - Kicker `<p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent">`: `Before you buy`
+  - Headline `<p className="font-display text-3xl uppercase leading-tight tracking-tight sm:text-4xl">`: `Measure any purchase in hours of your life.`
+  - Body `<p className="max-w-prose text-base leading-relaxed text-muted-foreground">`: `Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.`
+- **Fields:** none.
+- **Back button:** `← Back` (disabled). **Primary button:** `Start →`.
+
+### STEP 1 — Income
+- **Counter string:** `02 / 04`
+- **Eyebrow:** `Set up your reckoning`
+- **Heading (h1):** `Income`
+- **Body:** wrapped in a React fragment (`<>…</>`); fields use the `Field` component
+  (`<div className="space-y-2">` + mono label + child + optional hint).
+  - **Currency** — label `Currency`; `Select` (trigger class `bigInputClass + " h-auto"`); options `EUR — €` / `GBP — £` / `USD — $`; no placeholder (bound value).
+  - **Net monthly salary** — label `Net monthly salary`; `<Input id="salary" type="number" inputMode="decimal" className={bigInputClass} placeholder="0" autoFocus />`.
+  - Two-col grid `<div className="grid gap-8 sm:grid-cols-2">`:
+    - **Hours per week** — label `Hours per week`; `<Input id="hoursPerWeek" type="number" className={bigInputClass} />` (no placeholder).
+    - **Hours per day** — label `Hours per day`; `<Input id="hoursPerDay" type="number" className={bigInputClass} />` (no placeholder).
+  - **Payments per year** — label `Payments per year`; `<Input id="paymentsPerYear" type="number" className={bigInputClass} />`; hint `Use 14 for Spanish-style extra payments.`
+- `bigInputClass` = `"w-full border-0 border-b-2 border-border bg-transparent px-0 py-2 text-3xl font-bold outline-none transition-colors focus-visible:border-accent focus-visible:ring-0 rounded-none shadow-none"`.
+- **Back button:** `← Back` (enabled). **Primary button:** `Continue →` (disabled until all four income fields `> 0`).
+
+### STEP 2 — Expenses
+- **Counter string:** `03 / 04`
+- **Eyebrow:** `Set up your reckoning`
+- **Heading (h1):** `Expenses`
+- **Body** (fragment, single `Field`):
+  - **Monthly fixed expenses** — label `Monthly fixed expenses`; `<Input id="expenses" type="number" inputMode="decimal" className={bigInputClass} placeholder="0" autoFocus />`; hint `Rent, groceries, subscriptions, transport, utilities.`
+- **Back button:** `← Back` (enabled). **Primary button:** `Continue →` (never gated on this step).
+
+### STEP 3 — Rules
+- **Counter string:** `04 / 04`
+- **Eyebrow:** `Set up your reckoning`
+- **Heading (h1):** `Rules`
+- **Body** (fragment):
+  - **Significance threshold** — `Field` label is the interpolated string `Significance threshold — {draft.threshold}%`; hint `Purchases above this % of your monthly income are flagged.`; control `<Slider id="threshold" min={1} max={50} step={1} value={[draft.threshold]} className="pt-3" />`.
+  - Two-col grid `<div className="grid gap-8 sm:grid-cols-2">`:
+    - **Current savings** — label `Current savings`; `<Input id="savings" type="number" className={bigInputClass} placeholder="0" />`.
+    - **Extra monthly savings (optional)** — label `Extra monthly savings (optional)`; `<Input id="monthlyContribution" type="number" className={bigInputClass} placeholder="0" />`; hint `Money you consistently set aside on top of expenses.`
+- **Back button:** `← Back` (enabled). **Primary button:** `Finish setup →` → persists profile, navigates to `/goals`.
+
+Button-label logic (verbatim): `{step === 0 ? t("start") : step === steps.length - 1 ? t("finish") : t("continue")} →` — i.e. `Start →` on step 0, `Finish setup →` on step 3, `Continue →` on steps 1–2; the ` →` suffix is always appended. Back label is always `← ` + `t("back")` = `← Back`.
+
+---
+
+## 17. TRANSITIONS BETWEEN SCREENS
+
+- **Between wizard steps:** the body wrapper `<div key={step} className="animate-slide-up …">`
+  changes its React `key` on every step change, forcing a remount that re-runs the
+  `slide-up` animation. Definition (`styles.css`):
+  `animation: slide-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;` where `slide-up` is
+  `opacity 0→1` and `transform: translateY(16px) → translateY(0)`.
+  - **Duration:** 0.5s. **Easing:** `cubic-bezier(0.2, 0.8, 0.2, 1)` (ease-out-ish). **Fill:** `both`.
+  - **Direction-awareness:** **none** — forward and backward step changes play the *same*
+    upward slide-in; there is no reverse/exit variant and no left/right directionality.
+  - **Exit animation:** **none** — the outgoing step is unmounted instantly (no fade/slide out);
+    only the incoming step animates in.
+  - Only the body column animates; the header, counter, progress bar and footer do not
+    re-animate on step change (they live outside the keyed wrapper). The progress-bar segment
+    colors flip instantly (no transition defined on them).
+- **Threshold-bar fill (goals screen):** `animate-scale-in-x` —
+  `animation: scale-in-x 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: left;`
+  (`scaleX 0→1`), runs on goal-card mount.
+- **Route transitions (between `/onboarding`, `/goals`, `/settings`):** no custom page
+  transition — TanStack Router swaps the `<Outlet>` content directly; `scrollRestoration: true`
+  is set on the router. Dialog and Select use `tw-animate-css` fade/zoom/slide data-state
+  animations (see §9).
+- **`prefers-reduced-motion`:** **not handled anywhere** — neither the custom keyframes
+  (`slide-up`, `scale-in-x`) nor the `@utility` wrappers include a reduced-motion guard, and
+  no media query disables them. Animations always play regardless of the user's OS setting.
+  (`tw-animate-css` ships its own reduced-motion handling for its `animate-in`/`fade`/`zoom`
+  utilities, but that does not cover these two project-defined animations.)
+
+---
+
+## TARGET CONSTRAINTS (v2 — recorded verbatim, authoritative for the rebuild)
+
+**Full parity.** The rebuild reproduces the reference app as it is, not a simplified version
+of it. Everything previously asked to be dropped is now **in scope** and must be preserved
+exactly:
+- The router and every route.
+- The four-step onboarding wizard and its step state.
+- The `01 / 04` step counter, in its exact format and position.
+- The `← Back` and `Start →` controls, verbatim, arrows included.
+- Any progress indicator, step transition, or animation between steps.
+
+There is **no** single-page collapse. There is **no** merging of steps.
+
+**Still out of scope:** the calculation logic itself, which already exists in this project and
+must not be touched. Step state, navigation state and form state are now **IN scope**, since
+they are part of the UI being reproduced.
+
+Fidelity bar is unchanged and absolute: **pixel-for-pixel and behaviour-for-behaviour** with
+the reference. Nothing gets improved, simplified, modernized, or tidied. **If it looks like a
+mistake, it is a requirement.**
+
+> Supersession note: this v2 replaces the original TARGET CONSTRAINTS (which called for a
+> single-page collapse, dropping the counter and Back control). That earlier version is void.
+> Sections 1–13 already document the wizard, router, counter and controls in full, so nothing
+> in them was omitted or flattened under the old constraints; §§14–17 add the routing/wizard
+> depth the wider scope requires.
