@@ -39,12 +39,22 @@ We picked Tailwind anyway.
 
 ## Derived constraint: self-hosted fonts, never a CDN
 
-The warm-editorial aesthetic uses a distinctive display face, but Affordo's pitch is
-"no network calls at all." A Google Fonts `<link>` is a network call and would break
-that promise (and the spirit of [ADR 0011](0011-plain-versioned-localstorage-no-encryption.md)'s
-privacy stance). Therefore the display font is **self-hosted** — a subsetted `woff2`
-bundled into the static build — and body text uses the system font stack. No font is
-ever loaded from a CDN.
+The aesthetic uses distinctive faces, but Affordo's pitch is "no network calls at
+all." A Google Fonts `<link>` is a network call and would break that promise (and the
+spirit of [ADR 0011](0011-plain-versioned-localstorage-no-encryption.md)'s privacy
+stance). Therefore every face is **self-hosted** — subsetted `woff2` files bundled into
+the static build and served from our own origin. No font is ever loaded from a CDN.
+
+**Amendment (reference parity, issue #43).** Reproducing the reference design replaces
+the single display face + system body stack with three named faces the reference loads
+from Google Fonts: **Anton** (display, single weight 400), **Inter** (body, 400/500/600/700),
+and **JetBrains Mono** (labels/mono, 400/500/700). We honor the no-CDN constraint by
+importing them through Fontsource packages — `@fontsource/anton` and the variable
+`@fontsource-variable/inter` / `@fontsource-variable/jetbrains-mono` — which bundle the
+woff2 into the build exactly like the pre-existing Fraunces import. The `--font-*` stacks
+list the Fontsource "… Variable" family name first (so the local file wins), then the
+reference's own family name and system fallbacks. Body text now sets Inter with the
+reference's `font-feature-settings: "ss01", "cv11"`.
 
 ## Amendment (issue #44): reference oklch token layer
 

@@ -1,7 +1,14 @@
-/* Self-hosted display face (Fontsource bundles the woff2 into the build — never a
-   CDN, so the "no network calls" promise holds; ADR 0011 / ADR 0014). The browser
-   fetches only the subset its content needs, all from our own origin. */
+/* Self-hosted faces (Fontsource bundles the woff2 into the build — never a CDN,
+   so the "no network calls" promise holds; ADR 0011 / ADR 0014). The browser
+   fetches only the subset its content needs, all from our own origin.
+   The reference loads these from Google Fonts; we mirror the same faces locally.
+   Anton is a single-weight display face; Inter and JetBrains Mono are variable,
+   so their `wght.css` covers every weight the reference asks for (Inter
+   400/500/600/700, JetBrains Mono 400/500/700). */
 @import "@fontsource-variable/fraunces/wght.css";
+@import "@fontsource/anton/index.css";
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
 @import "tailwindcss";
 
 /* Warm editorial palette as semantic custom properties, with a dark variant via
@@ -142,10 +149,14 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  /* Reference face stacks (dossier §3). Fontsource registers the variable faces
+     under a "… Variable" family name, so that name is listed first to make the
+     local woff2 win; the reference's own family name and system fallbacks follow,
+     exactly as the reference declares them. */
+  --font-display: "Anton", "Impact", sans-serif;
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+    monospace;
 }
 
 @layer base {
@@ -164,6 +175,9 @@
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
+    /* Inter stylistic sets the reference enables (dossier §3): ss01 and the
+       cv11 single-storey a. */
+    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
   }
   ::selection {
@@ -255,4 +269,35 @@
       animation: none;
     }
   }
+}
+
+/* Reference motion primitives (dossier §3). `slide-up` re-runs on each staged
+   step (the body wrapper is keyed by step, so it re-mounts); `scale-in-x` grows
+   the threshold bar from its left edge. Both share the reference ease-out
+   cubic-bezier. Exposed as Tailwind v4 utilities so markup can opt in with
+   `animate-slide-up` / `animate-scale-in-x`. */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes scale-in-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@utility animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-scale-in-x {
+  animation: scale-in-x 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: left;
 }

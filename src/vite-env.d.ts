@@ -1,17 +1,9 @@
-/// <reference types="vite/client" />
+/// <reference types="vitest/globals" />
 
-// Minimal ambient declarations for the sliver of Node built-ins the theme test
-// touches when reading its stylesheet off disk. The project doesn't depend on
-// `@types/node` (it's a browser SPA), so we declare only the two functions used
-// rather than pulling the whole Node type surface into the build.
-declare module "node:fs" {
-  export function readFileSync(path: string, encoding: "utf8"): string;
-}
-
-declare module "node:path" {
-  export function join(...paths: string[]): string;
-}
-
-declare module "node:process" {
-  export function cwd(): string;
+// Vite's `?raw` suffix imports a file's contents as a string. We declare only
+// the narrow case we use (an .html shell read in a test) rather than pulling in
+// all of `vite/client`, keeping the ambient surface minimal.
+declare module "*.html?raw" {
+  const content: string;
+  export default content;
 }
