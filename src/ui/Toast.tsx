@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -27,13 +28,15 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-let nextId = 0;
-
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
+  // Monotonic key source, kept out of the state updater so it stays pure
+  // (React double-invokes updaters under StrictMode).
+  const nextId = useRef(0);
 
   const toast = useCallback((message: string) => {
-    setToasts((current) => [...current, { id: nextId++, message }]);
+    const id = nextId.current++;
+    setToasts((current) => [...current, { id, message }]);
   }, []);
 
   return (
