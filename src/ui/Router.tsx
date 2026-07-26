@@ -6,6 +6,7 @@ import {
   OnboardingScreen,
   SettingsScreen,
 } from "./Placeholder";
+import { ToastProvider } from "./Toast";
 
 export type RouteTable = Record<string, () => JSX.Element>;
 
@@ -15,6 +16,8 @@ export type RouteTable = Record<string, () => JSX.Element>;
  * The redirect gate on `/` is a later slice — here `/` is the calculator.
  * The whole routed tree sits inside the root error boundary, so a render error
  * on any route falls back to the recovery screen rather than a blank page.
+ * The toast provider wraps that boundary, so any screen — and the recovery
+ * screen itself — can raise a toast (docs/affordo-context.md §9).
  */
 export const ROUTES: RouteTable = {
   "/": () => <App />,
@@ -32,6 +35,8 @@ export function Router({ routes = ROUTES }: { routes?: RouteTable } = {}) {
   const path = normalize(window.location.pathname);
   const screen = routes[path];
   return (
-    <ErrorBoundary>{screen ? screen() : <NotFoundScreen />}</ErrorBoundary>
+    <ToastProvider>
+      <ErrorBoundary>{screen ? screen() : <NotFoundScreen />}</ErrorBoundary>
+    </ToastProvider>
   );
 }

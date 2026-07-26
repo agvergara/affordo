@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Router } from "./Router";
+import { useToast } from "./Toast";
 
 /** Point the SPA at a client path before mounting the Router. */
 function navigateTo(path: string) {
@@ -85,5 +87,20 @@ describe("Router", () => {
       screen.getByRole("heading", { name: /something went wrong/i }),
     ).toBeInTheDocument();
     vi.restoreAllMocks();
+  });
+
+  it("mounts a toast provider at the root so any route can raise a toast", async () => {
+    const user = userEvent.setup();
+    navigateTo("/");
+    function Screen() {
+      const { toast } = useToast();
+      return <button onClick={() => toast("Saved")}>save</button>;
+    }
+    // A screen mounted under the router uses useToast without throwing,
+    // proving the provider sits above the routed tree at the root.
+    render(<Router routes={{ "/": () => <Screen /> }} />);
+
+    await user.click(screen.getByRole("button", { name: "save" }));
+    expect(screen.getByText("Saved")).toBeInTheDocument();
   });
 });
