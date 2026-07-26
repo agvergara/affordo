@@ -17,10 +17,7 @@
 :root {
   --canvas: #fbf7f0; /* cream */
   --ink: #1c1a17; /* ink */
-  --accent: #c8743c; /* terracotta / hourglass sand */
   --stone: #6b655c; /* muted */
-  --card: #ffffff;
-  --border: #e7decf;
 
   /* Verdict tones (ADR 0010: challenging, never shaming — so no alarm-red).
      A calm positive for Affordable Now, a constructive slate/blue for Not
@@ -29,20 +26,86 @@
   --positive-bg: #eef6f0;
   --constructive: #4a6b8a;
   --constructive-bg: #eef2f7;
+
+  /* Reference oklch palette — the shadcn/new-york semantic token set from
+     dossier §3, verbatim light values. This is the token system the rebuild
+     migrates onto (ADR 0014 amendment): the warm-editorial canvas/ink/stone
+     stay above until every component references these names, and the three
+     shared roles (accent/card/border) are given their reference oklch values.
+     Accent (terracotta→orange) and card (white→white) read essentially as
+     before; --border deliberately changes — from opaque warm cream to a
+     translucent near-black hairline — the reference's fainter, cooler line on
+     existing `border-border`/form edges. A small, intended shift, not a
+     regression: the parity target owns these values now. */
+  --radius: 0.5rem;
+  --background: oklch(0.985 0.002 60);
+  --foreground: oklch(0.13 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.13 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0 0);
+  --primary: oklch(0.13 0 0);
+  --primary-foreground: oklch(0.985 0.002 60);
+  --secondary: oklch(0.95 0.005 60);
+  --secondary-foreground: oklch(0.13 0 0);
+  --muted: oklch(0.94 0.004 60);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.68 0.19 45);
+  --accent-foreground: oklch(0.985 0.002 60);
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.985 0.002 60);
+  --border: oklch(0.13 0 0 / 15%);
+  --input: oklch(0.13 0 0 / 15%);
+  --ring: oklch(0.68 0.19 45);
 }
 
+/* Reference dark twins (dossier §3). Latent in this slice — nothing toggles the
+   `.dark` class yet — but defined in full so the later dark-theme slices only
+   need to wire the toggle. @custom-variant lets `dark:` utilities target the
+   class rather than the prefers-color-scheme media query the legacy tokens use. */
+@custom-variant dark (&:is(.dark *));
+
+.dark {
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.985 0.002 60);
+  --card: oklch(0.17 0 0);
+  --card-foreground: oklch(0.985 0.002 60);
+  --popover: oklch(0.17 0 0);
+  --popover-foreground: oklch(0.985 0.002 60);
+  --primary: oklch(0.985 0.002 60);
+  --primary-foreground: oklch(0.13 0 0);
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.985 0.002 60);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.7 0 0);
+  --accent: oklch(0.72 0.19 45);
+  --accent-foreground: oklch(0.13 0 0);
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: oklch(0.13 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.72 0.19 45);
+}
+
+/* Legacy warm-editorial dark variant (prefers-color-scheme). Retained so the
+   ship-current app's automatic dark response is unchanged while the reference
+   `.dark` class stays latent. Only the canvas/ink/stone/verdict tokens the
+   existing components still read are flipped here. */
 @media (prefers-color-scheme: dark) {
   :root {
     --canvas: #1c1a17;
     --ink: #f5efe4;
-    --accent: #e0915c;
     --stone: #a8a093;
-    --card: #26231f;
-    --border: #35302a;
     --positive: #7fb894;
     --positive-bg: #223028;
     --constructive: #8fb0cf;
     --constructive-bg: #202a33;
+
+    /* Keep the three shared reference roles coherent under auto-dark, using
+       their dossier §3 dark oklch values (same as the latent .dark block). */
+    --card: oklch(0.17 0 0);
+    --border: oklch(1 0 0 / 12%);
+    --accent: oklch(0.72 0.19 45);
   }
 }
 
@@ -58,6 +121,34 @@
   --color-constructive: var(--constructive);
   --color-constructive-bg: var(--constructive-bg);
 
+  /* Reference oklch palette → Tailwind color utilities (dossier §3). Mapped
+     *by reference* so `bg-background`, `text-foreground`, `border-border`,
+     `bg-card`, `bg-accent`, `text-muted-foreground`, `ring`, etc. all resolve
+     to the tokens above. accent/card/border already map to the shared vars. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  /* Radius scale derived from the reference --radius base. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
   /* Reference face stacks (dossier §3). Fontsource registers the variable faces
      under a "… Variable" family name, so that name is listed first to make the
      local woff2 win; the reference's own family name and system fallbacks follow,
@@ -72,15 +163,26 @@
   html {
     color-scheme: light dark;
   }
+  /* Reference base layer (dossier §3): every element defaults to the border
+     token, so hairlines need no per-element color; text selection paints in
+     the accent. Body background/foreground read the reference tokens, which
+     are perceptually the legacy canvas/ink they replace. */
+  * {
+    border-color: var(--border);
+  }
   body {
     margin: 0;
-    background-color: var(--canvas);
-    color: var(--ink);
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: var(--font-sans);
     /* Inter stylistic sets the reference enables (dossier §3): ss01 and the
        cv11 single-storey a. */
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
   /* Uniform form controls, styled once at the element level so the existing

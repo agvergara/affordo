@@ -55,3 +55,27 @@ woff2 into the build exactly like the pre-existing Fraunces import. The `--font-
 list the Fontsource "… Variable" family name first (so the local file wins), then the
 reference's own family name and system fallbacks. Body text now sets Inter with the
 reference's `font-feature-settings: "ss01", "cv11"`.
+
+## Amendment (issue #44): reference oklch token layer
+
+The parity rebuild (#39) migrates onto a shadcn/new-york **oklch semantic token
+set** (`--background`/`--foreground`/`--card`/`--muted`/`--accent`/`--border`/… with
+light `:root` and latent `.dark` twins). Issue #44 lands that palette *additively*:
+
+- The reference tokens and their `@theme inline` `--color-*` aliases now back the
+  standard utilities (`bg-background`, `text-foreground`, `border-border`, `bg-card`,
+  `bg-accent`, `text-muted-foreground`, `ring`, …).
+- The legacy warm-editorial tokens (`--canvas`/`--ink`/`--stone` and the verdict
+  tones) **stay defined** so components that still read `bg-canvas`/`text-ink`/`stone`
+  keep resolving; the three shared roles (`--accent`/`--card`/`--border`) take their
+  reference oklch values. Accent (terracotta → orange) and card (white → white) read
+  essentially unchanged; **`--border` intentionally shifts** — opaque warm cream
+  (`#e7decf`) → translucent near-black (`oklch(0.13 0 0 / 15%)`), the reference's
+  fainter, cooler hairline — on every existing `border-border`/form edge. That is an
+  intended step toward parity, not an accidental regression.
+- `.dark` is fully defined but **latent** — no toggle applies the class in this slice;
+  the auto `prefers-color-scheme` block is retained for the legacy tokens. A theme
+  toggle is a later slice.
+
+This coexistence is deliberate and temporary: once every component references the
+reference names, the legacy aliases can be removed.
