@@ -1,7 +1,7 @@
 import {
   createContext,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -14,10 +14,14 @@ import { loadTheme, saveTheme, type Theme } from "./theme-store";
  * stored value, so a reload restores the last choice.
  *
  * Unlike `AffordoProvider`, whose hydration is deferred to after mount to keep
- * first paint deterministic, the theme is read synchronously at construction:
- * the `.dark` class is a document side effect, not rendered content, and paints
- * before React commits — deferring it would flash the light theme on a dark
- * reload. This slice carries no toggle UI and no system-preference logic; those
+ * first paint deterministic, the theme is read synchronously (`useState(loadTheme)`)
+ * and applied to the root in a `useLayoutEffect`, which React flushes
+ * synchronously BEFORE the browser paints. Applying it in a plain `useEffect`
+ * would run after paint and flash the light theme on a dark reload; a layout
+ * effect lands the `.dark` class in the same frame as first paint, so no flash
+ * occurs. (`index.html` ships no `.dark` class, so the pre-React initial markup
+ * is light — the layout effect is what closes that gap before the pixel hits the
+ * screen.) This slice carries no toggle UI and no system-preference logic; those
  * are #72/#73.
  */
 export interface ThemeContextValue {
@@ -35,11 +39,13 @@ function applyTheme(theme: Theme): void {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(loadTheme);
 
-  // Keep the root class in sync with the current theme. Running on the initial
-  // theme applies the stored preference; running on every change repaints via
-  // the token swap. StrictMode's double-invoke is harmless — the class is set
-  // to a definite state, not toggled relative to a prior one.
-  useEffect(() => {
+  // Keep the root class in sync with the current theme, in a LAYOUT effect so it
+  // lands before the browser paints — a plain effect would run post-paint and
+  // flash light on a dark reload. Running on the initial theme applies the stored
+  // preference; running on every change repaints via the token swap. StrictMode's
+  // double-invoke is harmless — the class is set to a definite state, not toggled
+  // relative to a prior one.
+  useLayoutEffect(() => {
     applyTheme(theme);
   }, [theme]);
 

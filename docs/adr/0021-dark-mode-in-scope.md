@@ -40,9 +40,14 @@ this reversal is landed alongside it, as the issue requires.
 - `src/state/ThemeProvider.tsx` / `useTheme` — mirrors the `AffordoProvider` pattern,
   mounted outermost in `src/ui/Router.tsx`. It initializes from the stored value and
   keeps the `dark` class on `document.documentElement` in sync. The theme is read
-  **synchronously** at construction (not deferred to a post-mount effect like Affordo's
-  hydration), because the class is a paint-time document side effect — deferring it would
-  flash the light theme on a dark reload.
+  **synchronously** at construction (`useState(loadTheme)`, not deferred to a post-mount
+  effect like Affordo's hydration) and applied in a **`useLayoutEffect`**, which React
+  flushes synchronously *before* the browser paints. A plain `useEffect` runs after
+  paint and would flash the light theme on a dark reload; the layout effect lands the
+  `.dark` class in the same frame as first paint. (This closes the FOUC within React's
+  mount; a fully paint-blocking guarantee across the pre-React initial HTML would need an
+  inline `index.html` script, which this slice does not add — the app renders a mono
+  loading line, not themed content, before React mounts.)
 
 **Explicitly deferred (later slices):**
 
