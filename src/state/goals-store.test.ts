@@ -49,4 +49,32 @@ describe("goals persistence", () => {
       { id: "a", name: "MacBook", price: 2499, note: "", createdAt: 1 },
     ]);
   });
+
+  // Domain-range validation (issue #81): a price is the right *type* yet out of
+  // domain when negative — a hostile or corrupt localStorage record that never
+  // passed through the goal-entry input layer. The store drops such rows so a
+  // negative price cannot drive verdict computation (see docs/adr/0019).
+  it("drops a goal row with a negative price", () => {
+    window.localStorage.setItem(
+      "affordo.goals",
+      JSON.stringify({
+        schemaVersion: 1,
+        goals: [
+          { id: "a", name: "MacBook", price: 2499, note: "", createdAt: 1 },
+          { id: "b", name: "Rebate", price: -500, note: "", createdAt: 2 },
+        ],
+      }),
+    );
+    expect(loadGoals()).toEqual([
+      { id: "a", name: "MacBook", price: 2499, note: "", createdAt: 1 },
+    ]);
+  });
+
+  it("keeps a free goal priced at exactly zero", () => {
+    const goals: Goal[] = [
+      { id: "a", name: "Freebie", price: 0, note: "", createdAt: 1 },
+    ];
+    saveGoals(goals);
+    expect(loadGoals()).toEqual(goals);
+  });
 });
