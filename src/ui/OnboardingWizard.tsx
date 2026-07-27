@@ -1,29 +1,74 @@
 import { useState } from "react";
 import { AppHeader } from "./AppHeader";
+import { useAffordo } from "../state/AffordoProvider";
+import { defaultProfile, type Profile } from "../state/profile-store";
 
 /**
- * The onboarding wizard chrome (docs/affordo-context.md §5/§16). This slice
- * builds the persistent shell only — the four steps render as empty
- * placeholders; their inputs, gating, and the finish-then-persist behaviour
- * land in later slices.
- *
- * A single component with local `step` state `0..3`. The header sits above with
- * `showTimeValue={false}` (the wizard has no profile to price yet). The chrome
- * carries the eyebrow, the current step heading, the `NN / 04` counter, a
- * four-segment progress bar filling up to the current step, and a footer with a
- * Back control (disabled on step 0) and the primary control whose label follows
- * the Start / Continue / Finish setup rule. Class strings reproduce the
- * reference verbatim.
+ * How the wizard leaves for the next screen. Mirrors `Router`'s `Navigate`
+ * (`(to: string) => void`): the client-only SPA (ADR 0004/0009) has no history
+ * router, so a redirect is a real location change; tests inject a spy instead.
  */
+export type Navigate = (to: string) => void;
+
+const defaultNavigate: Navigate = (to) => window.location.replace(to);
+
+/**
+ * The onboarding wizard (docs/affordo-context.md §15/§16). The shell chrome
+ * (#51) plus this slice's draft plumbing and finish action (#53). The four
+ * steps still render as empty placeholders — their inputs and gating land in
+ * later slices (#55–57); this slice owns only the local draft Profile and the
+ * finish-then-persist behaviour.
+ *
+ * The draft is seeded once, at mount, from the profile the provider holds. To
+ * keep that seed from capturing the pre-hydration default (the provider renders
+ * `defaultProfile` until its post-mount effect reads storage, §8), the body is
+ * gated on `hydrated` and keyed on it, so it mounts — and seeds — only once the
+ * real profile is in hand (the same pattern as SettingsScreen).
+ */
+export function OnboardingWizard({
+  navigate = defaultNavigate,
+}: {
+  navigate?: Navigate;
+} = {}) {
+  const { profile, hydrated } = useAffordo();
+  if (!hydrated) return null;
+  return <WizardBody key="hydrated" profile={profile} navigate={navigate} />;
+}
 
 /** The four step headings, indexed by `step`. */
 const steps = ["Welcome", "Income", "Expenses", "Rules"] as const;
 
-export function OnboardingWizard() {
+function WizardBody({
+  profile,
+  navigate,
+}: {
+  profile: Profile;
+  navigate: Navigate;
+}) {
+  const { setProfile } = useAffordo();
   const [step, setStep] = useState(0);
+
+  // The draft is a full Profile edited in place across steps, seeded from the
+  // stored profile when the user has one (salary > 0) else from defaults (§15).
+  // Local state only — nothing is persisted until finish. Per-step field edits
+  // (`update`) land in later slices; the steps stay empty placeholders here.
+  const [draft] = useState<Profile>(
+    profile.salary > 0 ? profile : defaultProfile,
+  );
 
   const isFirst = step === 0;
   const isLast = step === steps.length - 1;
+
+  // Advance: on the last step, persist the draft and leave for /goals (§15);
+  // otherwise step forward. Nothing is written or navigated before finish.
+  const next = () => {
+    if (isLast) {
+      setProfile(draft);
+      navigate("/goals");
+    } else {
+      setStep((s) => Math.min(steps.length - 1, s + 1));
+    }
+  };
 
   // Verbatim label rule (§16): Start on step 0, Finish setup on the last step,
   // Continue otherwise — always suffixed with " →".
@@ -74,7 +119,7 @@ export function OnboardingWizard() {
           </button>
           <button
             type="button"
-            onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+            onClick={next}
             className="rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
           >
             {primaryLabel}

@@ -1,21 +1,33 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { AffordoProvider } from "../state/AffordoProvider";
+import {
+  defaultProfile,
+  loadProfile,
+  saveProfile,
+} from "../state/profile-store";
 
 beforeEach(() => window.localStorage.clear());
 
 /** Mount the wizard inside a real provider (AppHeader reads it). */
-function renderWizard() {
+function renderWizard(navigate: (to: string) => void = vi.fn()) {
   act(() => {
     render(
       <AffordoProvider>
-        <OnboardingWizard />
+        <OnboardingWizard navigate={navigate} />
       </AffordoProvider>,
     );
   });
+}
+
+/** Walk from step 0 to the last step, clicking through the primary control. */
+async function reachLastStep(user: ReturnType<typeof userEvent.setup>) {
+  await advance(user, "Start →"); // → step 1
+  await advance(user, "Continue →"); // → step 2
+  await advance(user, "Continue →"); // → step 3
 }
 
 /** Click the primary (forward) control by its arrow-suffixed label. */
@@ -87,6 +99,71 @@ describe("OnboardingWizard — Back control", () => {
     await user.click(back); // → step 0
     expect(screen.getByText("01 / 04")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start →" })).toBeInTheDocument();
+  });
+});
+
+describe("OnboardingWizard — finish action", () => {
+  it("persists the draft and navigates to /goals from the last step", async () => {
+    const user = userEvent.setup();
+    saveProfile({ ...defaultProfile, salary: 2400 });
+    const navigate = vi.fn();
+    renderWizard(navigate);
+
+    // Wipe storage AFTER the provider hydrated: only a real write on finish can
+    // put the profile back, so this proves the wizard persists (not the seed).
+    window.localStorage.clear();
+
+    await reachLastStep(user);
+    await advance(user, "Finish setup →");
+
+    // The draft (seeded from the stored profile) is written through the context.
+    expect(loadProfile().salary).toBe(2400);
+    // …and the user lands on the goals dashboard.
+    expect(navigate).toHaveBeenCalledWith("/goals");
+  });
+
+  it("seeds the draft from an existing stored profile", async () => {
+    const user = userEvent.setup();
+    saveProfile({ ...defaultProfile, salary: 1800, threshold: 25 });
+    renderWizard();
+
+    window.localStorage.clear(); // discard the seed source; finish must re-write
+
+    await reachLastStep(user);
+    await advance(user, "Finish setup →");
+
+    // Finish re-persists exactly the stored profile, untouched by defaults.
+    const saved = loadProfile();
+    expect(saved.salary).toBe(1800);
+    expect(saved.threshold).toBe(25);
+  });
+
+  it("seeds the draft from defaults when no profile is stored", async () => {
+    const user = userEvent.setup();
+    // No saveProfile call: storage is empty (cleared in beforeEach).
+    renderWizard();
+
+    await reachLastStep(user);
+    await advance(user, "Finish setup →");
+
+    // With nothing stored, finish persists the default profile — and the write
+    // is real: the raw record is present after finishing.
+    expect(window.localStorage.getItem("affordo.profile")).not.toBeNull();
+    expect(loadProfile()).toEqual(defaultProfile);
+  });
+
+  it("does not persist or navigate while advancing through earlier steps", async () => {
+    const user = userEvent.setup();
+    const navigate = vi.fn();
+    renderWizard(navigate);
+
+    await advance(user, "Start →"); // → step 1
+    await advance(user, "Continue →"); // → step 2
+    await advance(user, "Continue →"); // → step 3 (not yet finished)
+
+    // Storage untouched (empty → loadProfile returns a fresh default) and no nav.
+    expect(window.localStorage.getItem("affordo.profile")).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
   });
 });
 

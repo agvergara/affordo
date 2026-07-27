@@ -1,19 +1,36 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
+import { saveGoals, type Goal } from "../state/goals-store";
 
 beforeEach(() => window.localStorage.clear());
 
+/** A minimal reference Goal, overridable per test. */
+function makeGoal(overrides?: Partial<Goal>): Goal {
+  return {
+    id: crypto.randomUUID(),
+    name: "MacBook",
+    price: 1500,
+    note: "",
+    createdAt: 0,
+    ...overrides,
+  };
+}
+
 /**
- * Render the dashboard inside a real provider hydrated to a given profile.
- * `act` flushes the provider's post-mount hydration effect so the snapshot
- * reads the persisted profile rather than the empty default.
+ * Render the dashboard inside a real provider hydrated to a given profile and
+ * goal list. `act` flushes the provider's post-mount hydration effect so the
+ * dashboard reads the persisted state rather than the empty defaults.
  */
-function renderDashboard(profile?: Partial<typeof defaultProfile>) {
+function renderDashboard(
+  profile?: Partial<typeof defaultProfile>,
+  goals: Goal[] = [],
+) {
   saveProfile({ ...defaultProfile, salary: 2000, ...profile });
+  saveGoals(goals);
   act(() => {
     render(
       <AffordoProvider>
@@ -80,5 +97,85 @@ describe("GoalsDashboard snapshot", () => {
     expect(screen.getByTestId("snapshot-surplus")).toHaveTextContent(
       "$1,650.00",
     );
+  });
+});
+
+describe("GoalsDashboard saved-goals divider", () => {
+  it("shows the live goal count in the divider", () => {
+    renderDashboard(undefined, [makeGoal(), makeGoal(), makeGoal()]);
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 3",
+    );
+  });
+
+  it("counts zero goals in the divider", () => {
+    renderDashboard(undefined, []);
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 0",
+    );
+  });
+});
+
+describe("GoalsDashboard empty state", () => {
+  it("shows the reference empty copy when there are no goals", () => {
+    renderDashboard(undefined, []);
+    const empty = screen.getByTestId("goals-empty");
+    expect(empty).toHaveTextContent("No decisions to reckon with yet.");
+    expect(empty).toHaveTextContent(
+      "Add your first goal to see what it costs in hours of your life.",
+    );
+  });
+
+  it("hides the empty state once a goal exists", () => {
+    renderDashboard(undefined, [makeGoal()]);
+    expect(screen.queryByTestId("goals-empty")).not.toBeInTheDocument();
+  });
+});
+
+describe("GoalsDashboard list container", () => {
+  it("renders one item per goal", () => {
+    renderDashboard(undefined, [
+      makeGoal({ name: "MacBook" }),
+      makeGoal({ name: "Down payment" }),
+    ]);
+    const list = screen.getByTestId("goals-list");
+    expect(within(list).getAllByTestId("goal-item")).toHaveLength(2);
+    expect(list).toHaveTextContent("MacBook");
+    expect(list).toHaveTextContent("Down payment");
+  });
+
+  it("renders no list container when there are no goals", () => {
+    renderDashboard(undefined, []);
+    expect(screen.queryByTestId("goals-list")).not.toBeInTheDocument();
+  });
+
+  it("lets an over-long goal name truncate instead of blowing out the row", () => {
+    renderDashboard(undefined, [
+      makeGoal({
+        name: "A very long goal name that keeps going and going and going",
+      }),
+    ]);
+    const name = screen.getByText(
+      "A very long goal name that keeps going and going and going",
+    );
+    // A flex child needs min-w-0 for `truncate` (overflow:hidden) to clamp;
+    // without it the intrinsic width refuses to shrink and the name overflows.
+    expect(name).toHaveClass("min-w-0", "truncate");
+  });
+});
+
+describe("GoalsDashboard Add goal button", () => {
+  it("is present with no goals", () => {
+    renderDashboard(undefined, []);
+    expect(
+      screen.getByRole("button", { name: "Add goal" }),
+    ).toBeInTheDocument();
+  });
+
+  it("is present with goals", () => {
+    renderDashboard(undefined, [makeGoal()]);
+    expect(
+      screen.getByRole("button", { name: "Add goal" }),
+    ).toBeInTheDocument();
   });
 });
