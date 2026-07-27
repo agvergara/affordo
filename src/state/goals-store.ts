@@ -20,8 +20,12 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 /**
- * A stored Goal is usable only if its whole shape survived — a partial record
- * would render NaN/undefined copy, so we drop it (ADR 0011 defensive load).
+ * A stored Goal is usable only if its whole shape survived AND its `price` is
+ * within domain — non-negative (issue #81). A negative price is the right type
+ * but domain-invalid: a hostile or corrupt localStorage record that never
+ * passed through the goal-entry input layer, and would drive nonsense verdict
+ * math. Zero is kept (a legitimately free item). Such rows are dropped (ADR
+ * 0011 defensive load, ADR 0019 store range validation).
  */
 function isGoal(value: unknown): value is Goal {
   if (typeof value !== "object" || value === null) return false;
@@ -30,6 +34,7 @@ function isGoal(value: unknown): value is Goal {
     typeof g.id === "string" &&
     typeof g.name === "string" &&
     isFiniteNumber(g.price) &&
+    g.price >= 0 &&
     typeof g.note === "string" &&
     isFiniteNumber(g.createdAt)
   );
