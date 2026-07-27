@@ -149,3 +149,19 @@ describe("GoalsDashboard list container", () => {
     expect(screen.queryByTestId("goals-list")).not.toBeInTheDocument();
   });
 });
+
+describe("GoalsDashboard Add goal button", () => {
+  it("is present with no goals", () => {
+    renderDashboard(undefined, []);
+    expect(
+      screen.getByRole("button", { name: "Add goal" }),
+    ).toBeInTheDocument();
+  });
+
+  it("is present with goals", () => {
+    renderDashboard(undefined, [makeGoal()]);
+    expect(
+      screen.getByRole("button", { name: "Add goal" }),
+    ).toBeInTheDocument();
+  });
+});

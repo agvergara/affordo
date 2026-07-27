@@ -74,11 +74,20 @@ export function GoalsDashboard() {
           </div>
         </section>
 
-        <div
-          data-testid="saved-goals-divider"
-          className="mt-12 flex items-center gap-3 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-        >
-          Saved goals · {goals.length}
+        <div className="mt-12 flex items-center justify-between gap-4">
+          <div
+            data-testid="saved-goals-divider"
+            className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+          >
+            Saved goals · {goals.length}
+          </div>
+          {/* Inert until the Add/Edit dialog lands (slice #64). */}
+          <button
+            type="button"
+            className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
+          >
+            Add goal
+          </button>
         </div>
 
         {goals.length === 0 && (
