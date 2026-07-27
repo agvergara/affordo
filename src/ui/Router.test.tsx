@@ -74,7 +74,7 @@ describe("Router — per-route guards", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/onboarding"));
   });
 
-  it("renders /goals when a profile is present", async () => {
+  it("renders the goals dashboard when a profile is present", async () => {
     seedProfile();
     navigateTo("/goals");
     const navigate = vi.fn();
@@ -83,6 +83,9 @@ describe("Router — per-route guards", () => {
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: /goals/i })).toBeInTheDocument(),
     );
+    // The real dashboard mounts here (not the placeholder): its profile
+    // snapshot is present.
+    expect(screen.getByTestId("snapshot")).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
   });
 

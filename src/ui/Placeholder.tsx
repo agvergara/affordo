@@ -24,15 +24,6 @@ export function OnboardingScreen() {
   );
 }
 
-export function GoalsScreen() {
-  return (
-    <Placeholder
-      title="Goals"
-      body="The goals dashboard lands in a later slice."
-    />
-  );
-}
-
 export function SettingsScreen() {
   return (
     <Placeholder

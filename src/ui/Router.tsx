@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { GoalsScreen, NotFoundScreen, OnboardingScreen } from "./Placeholder";
+import { NotFoundScreen, OnboardingScreen } from "./Placeholder";
+import { GoalsDashboard } from "./GoalsDashboard";
 import { SettingsScreen } from "./SettingsScreen";
 import { ToastProvider } from "./Toast";
 import { AffordoProvider, useAffordo } from "../state/AffordoProvider";
@@ -104,7 +105,7 @@ export function Router({
   } else if (path === "/goals") {
     screen = (
       <Guard navigate={navigate} whileHydrating={<Loading />}>
-        <GoalsScreen />
+        <GoalsDashboard />
       </Guard>
     );
   } else if (path === "/settings") {
