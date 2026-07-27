@@ -16,9 +16,12 @@ test("loads without any request to an external origin", async ({
   });
 
   await page.goto("/");
-  // Prove the app actually rendered (not a blank page that trivially makes no calls).
+  // Since #48, / is the redirect gate: a profile-less visitor lands on
+  // /onboarding. Prove the app actually rendered (not a blank page that
+  // trivially makes no calls) by waiting for that redirect to complete.
+  await page.waitForURL("**/onboarding");
   await expect(
-    page.getByRole("heading", { name: "Affordo", level: 1 }),
+    page.getByRole("heading", { name: /onboarding/i }),
   ).toBeVisible();
   // Give any late-loading asset (e.g. a font) a beat to fire a request.
   await page.waitForLoadState("networkidle");
