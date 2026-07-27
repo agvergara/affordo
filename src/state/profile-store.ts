@@ -40,24 +40,49 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+/** A finite number strictly greater than zero. */
+function isPositive(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0;
+}
+
+/** A finite number at or above zero. */
+function isNonNegative(value: unknown): value is number {
+  return isFiniteNumber(value) && value >= 0;
+}
+
+/** A finite number within an inclusive `[min, max]` range. */
+function isInRange(value: unknown, min: number, max: number): value is number {
+  return isFiniteNumber(value) && value >= min && value <= max;
+}
+
 /**
- * A stored Profile is usable only if every field is present and the right type.
- * A partial or foreign-schema record would render NaN copy downstream, so we
- * reject it whole and fall back to defaults (ADR 0011 defensive load).
+ * A stored Profile is usable only if every field is present, the right type,
+ * AND within its domain range (issue #81). The type check alone would let a
+ * hostile or corrupt localStorage record through — a negative `salary`,
+ * `paymentsPerYear: 0`, a `threshold` outside the onboarding slider's 1–50 —
+ * and feed nonsense (NaN/Infinity, negative disposable income) into verdict
+ * computation. The onboarding input layer is the *primary* enforcement point
+ * (dossier §8 `canContinue`); the store is the trust boundary against a value
+ * that never passed through it, so it rejects such records whole and falls back
+ * to defaults (ADR 0011 defensive load, ADR 0019 store range validation).
+ *
+ * Ranges: `salary`/`hoursPerWeek`/`hoursPerDay`/`paymentsPerYear` must be > 0
+ * (`canContinue`, and the divisors behind hourlyRate/daysOfWork); `expenses`/
+ * `savings`/`monthlyContribution` must be ≥ 0; `threshold` is the slider's 1–50.
  */
 function isProfile(value: unknown): value is Profile {
   if (typeof value !== "object" || value === null) return false;
   const p = value as Record<string, unknown>;
   return (
     CURRENCIES.includes(p.currency as Currency) &&
-    isFiniteNumber(p.salary) &&
-    isFiniteNumber(p.hoursPerWeek) &&
-    isFiniteNumber(p.hoursPerDay) &&
-    isFiniteNumber(p.paymentsPerYear) &&
-    isFiniteNumber(p.expenses) &&
-    isFiniteNumber(p.threshold) &&
-    isFiniteNumber(p.savings) &&
-    isFiniteNumber(p.monthlyContribution)
+    isPositive(p.salary) &&
+    isPositive(p.hoursPerWeek) &&
+    isPositive(p.hoursPerDay) &&
+    isPositive(p.paymentsPerYear) &&
+    isNonNegative(p.expenses) &&
+    isInRange(p.threshold, 1, 50) &&
+    isNonNegative(p.savings) &&
+    isNonNegative(p.monthlyContribution)
   );
 }
 
