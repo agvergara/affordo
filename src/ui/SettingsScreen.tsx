@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppHeader } from "./AppHeader";
 import { useAffordo } from "../state/AffordoProvider";
+import { useToast } from "./Toast";
 import type { Profile } from "../state/profile-store";
 import type { Currency } from "../engine/reference-types";
 
@@ -21,11 +22,12 @@ const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
 ];
 
 /**
- * The settings scaffold (dossier §2/§7, issue #66). Renders the `<AppHeader />`
- * plus the editable profile fields, seeded from the current profile into a
- * LOCAL draft. Editing mutates only the draft — nothing is persisted here.
- * Save/Reset land in later slices (#68/#69), so this screen never calls
- * `setProfile`; the stored profile is untouched by any edit.
+ * The settings screen (dossier §2/§7). Renders the `<AppHeader />` plus the
+ * editable profile fields, seeded from the current profile into a LOCAL draft.
+ * Editing mutates only the draft; nothing is persisted until the user presses
+ * Save (issue #68), which writes the draft back through `setProfile` and
+ * confirms with a success toast (dossier §2/§6). Reset lands in a later slice
+ * (#69), so this screen still never clears the profile.
  *
  * The draft is seeded once, at mount, from the profile the provider holds. To
  * keep that seed from capturing the pre-hydration default (the provider renders
@@ -42,12 +44,29 @@ export function SettingsScreen() {
 }
 
 function SettingsForm({ profile }: { profile: Profile }) {
+  const { setProfile } = useAffordo();
+  const { toast } = useToast();
   // Seed the draft once from the hydrated profile. This screen owns the draft;
-  // the provider's profile is read-only until a later Save slice writes it back.
+  // the provider's profile is written only when the user presses Save.
   const [draft, setDraft] = useState<Profile>(profile);
 
   const set = <K extends keyof Profile>(key: K, value: Profile[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
+
+  // Save persists the whole draft in one write, then confirms. The toast copy
+  // is the reference's `t("save")` = "Save" (dossier §6).
+  const save = () => {
+    setProfile(draft);
+    toast("Save");
+  };
+
+  // A positive salary is what makes a profile guard-valid (`hasProfile`,
+  // dossier §14). The `/settings` guard ejects to `/onboarding` the instant it
+  // goes false, so persisting a zero-salary draft would break §14's "settings
+  // save → stays (toast only)". Rather than special-case the guard, express the
+  // constraint the way the reference does everywhere else — by disabling the
+  // primary action until the draft is valid (dossier §7, goal dialog).
+  const canSave = draft.salary > 0;
 
   return (
     <>
@@ -153,6 +172,17 @@ function SettingsForm({ profile }: { profile: Profile }) {
               hint="Money you consistently set aside on top of expenses."
             />
           </div>
+        </div>
+
+        <div className="mt-12 flex justify-end border-t border-border pt-6">
+          <button
+            type="button"
+            onClick={save}
+            disabled={!canSave}
+            className="rounded-md bg-foreground px-6 py-3 font-mono text-[11px] uppercase tracking-widest text-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Save
+          </button>
         </div>
       </main>
     </>
