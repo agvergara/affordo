@@ -45,22 +45,28 @@ function IndexGate({ navigate }: { navigate: Navigate }) {
 }
 
 /**
- * The profile guard on `/goals` and `/settings` (dossier §14): while hydrating,
- * the loading line; with no profile, a redirect to `/onboarding`; otherwise the
- * screen. A profile-less visitor can never reach a screen that assumes income.
+ * The profile guard on `/goals` and `/settings` (dossier §14): with no profile,
+ * a redirect to `/onboarding`; otherwise the screen. While hydrating each route
+ * renders its own placeholder — `/goals` shows the loading line, `/settings`
+ * renders nothing (`whileHydrating`), matching §14's per-route gating. Once
+ * hydrated but profile-less, the loading line holds for the frame before the
+ * redirect fires, so a screen assuming income never paints.
  */
 function Guard({
   navigate,
+  whileHydrating,
   children,
 }: {
   navigate: Navigate;
+  whileHydrating: JSX.Element | null;
   children: JSX.Element;
 }) {
   const { hydrated, hasProfile } = useAffordo();
   useEffect(() => {
     if (hydrated && !hasProfile) navigate("/onboarding");
   }, [hydrated, hasProfile, navigate]);
-  if (!hydrated || !hasProfile) return <Loading />;
+  if (!hydrated) return whileHydrating;
+  if (!hasProfile) return <Loading />;
   return children;
 }
 
@@ -101,13 +107,14 @@ export function Router({
     screen = <IndexGate navigate={navigate} />;
   } else if (path === "/goals") {
     screen = (
-      <Guard navigate={navigate}>
+      <Guard navigate={navigate} whileHydrating={<Loading />}>
         <GoalsScreen />
       </Guard>
     );
   } else if (path === "/settings") {
+    // §14: /settings renders nothing while hydrating (no loading line).
     screen = (
-      <Guard navigate={navigate}>
+      <Guard navigate={navigate} whileHydrating={null}>
         <SettingsScreen />
       </Guard>
     );
