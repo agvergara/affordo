@@ -112,7 +112,7 @@ export function GoalsDashboard() {
                 data-testid="goal-item"
                 className="flex items-baseline justify-between gap-4 border border-border bg-card p-4"
               >
-                <span className="truncate font-display text-2xl uppercase tracking-tight">
+                <span className="min-w-0 truncate font-display text-2xl uppercase tracking-tight">
                   {goal.name}
                 </span>
                 <span className="font-mono text-sm text-muted-foreground">
