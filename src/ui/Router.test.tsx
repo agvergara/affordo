@@ -144,7 +144,7 @@ describe("Router — unguarded routes", () => {
     render(<Router routes={{ "/onboarding": () => <Boom /> }} navigate={vi.fn()} />);
 
     expect(
-      screen.getByRole("heading", { name: /something went wrong/i }),
+      screen.getByRole("heading", { name: "Something broke" }),
     ).toBeInTheDocument();
     vi.restoreAllMocks();
   });
