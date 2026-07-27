@@ -84,7 +84,7 @@ describe("Router", () => {
     render(<Router routes={{ "/": () => <Boom /> }} />);
 
     expect(
-      screen.getByRole("heading", { name: /something went wrong/i }),
+      screen.getByRole("heading", { name: "Something broke" }),
     ).toBeInTheDocument();
     vi.restoreAllMocks();
   });

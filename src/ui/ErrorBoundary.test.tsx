@@ -19,7 +19,7 @@ describe("ErrorBoundary", () => {
     expect(screen.getByText("all good")).toBeInTheDocument();
   });
 
-  it("renders a recovery screen when a child throws", () => {
+  it("renders the reference recovery screen when a child throws", () => {
     // React logs the caught error; silence it so the run stays readable.
     vi.spyOn(console, "error").mockImplementation(() => {});
     render(
@@ -28,7 +28,17 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>,
     );
     expect(
-      screen.getByRole("heading", { name: /something went wrong/i }),
+      screen.getByRole("heading", { name: "Something broke", level: 1 }),
     ).toBeInTheDocument();
+    expect(screen.getByText("The audit could not load.")).toBeInTheDocument();
+
+    // Try again is an in-page control; Go home links back to /.
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute(
+      "href",
+      "/",
+    );
   });
 });
