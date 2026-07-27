@@ -78,13 +78,11 @@ function Guard({
  * The toast provider wraps that boundary, so any screen — and the recovery
  * screen itself — can raise a toast (docs/affordo-context.md §9).
  *
- * `/` and the guarded routes are resolved directly (they need `navigate`);
- * `routes` holds only the unguarded screens, and a caller may override any path
- * through it (used in tests to stub a screen).
+ * `/`, `/onboarding`, and the guarded routes are resolved directly (they need
+ * `navigate`); `routes` is the override seam, empty by default — a caller may
+ * inject any path through it (used in tests to stub a screen).
  */
-export const ROUTES: RouteTable = {
-  "/onboarding": () => <OnboardingWizard />,
-};
+export const ROUTES: RouteTable = {};
 
 /** Drop a trailing slash so `/goals/` matches `/goals`, but keep root `/`. */
 function normalize(pathname: string): string {
@@ -101,6 +99,10 @@ export function Router({
   let screen: JSX.Element;
   if (supplied) {
     screen = supplied();
+  } else if (path === "/onboarding") {
+    // Thread navigate through so the wizard's finish action can leave for
+    // /goals via the same SPA redirect the gate uses (dossier §15).
+    screen = <OnboardingWizard navigate={navigate} />;
   } else if (path === "/") {
     screen = <IndexGate navigate={navigate} />;
   } else if (path === "/goals") {
