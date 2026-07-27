@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
@@ -129,5 +129,23 @@ describe("GoalsDashboard empty state", () => {
   it("hides the empty state once a goal exists", () => {
     renderDashboard(undefined, [makeGoal()]);
     expect(screen.queryByTestId("goals-empty")).not.toBeInTheDocument();
+  });
+});
+
+describe("GoalsDashboard list container", () => {
+  it("renders one item per goal", () => {
+    renderDashboard(undefined, [
+      makeGoal({ name: "MacBook" }),
+      makeGoal({ name: "Down payment" }),
+    ]);
+    const list = screen.getByTestId("goals-list");
+    expect(within(list).getAllByTestId("goal-item")).toHaveLength(2);
+    expect(list).toHaveTextContent("MacBook");
+    expect(list).toHaveTextContent("Down payment");
+  });
+
+  it("renders no list container when there are no goals", () => {
+    renderDashboard(undefined, []);
+    expect(screen.queryByTestId("goals-list")).not.toBeInTheDocument();
   });
 });
