@@ -6,6 +6,7 @@ import { GoalsDashboard } from "./GoalsDashboard";
 import { SettingsScreen } from "./SettingsScreen";
 import { ToastProvider } from "./Toast";
 import { AffordoProvider, useAffordo } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 
 export type RouteTable = Record<string, () => JSX.Element>;
 
@@ -76,7 +77,9 @@ function Guard({
  * `hydrated`/`hasProfile`. The whole routed tree sits inside the root error
  * boundary, so a render error on any route falls back to the recovery screen.
  * The toast provider wraps that boundary, so any screen — and the recovery
- * screen itself — can raise a toast (docs/affordo-context.md §9).
+ * screen itself — can raise a toast (docs/affordo-context.md §9). The theme
+ * layer (`ThemeProvider`) sits outermost so the persisted `.dark` class is
+ * applied to the document root on every route (ADR 0021).
  *
  * `/`, `/onboarding`, and the guarded routes are resolved directly (they need
  * `navigate`); `routes` is the override seam, empty by default — a caller may
@@ -123,10 +126,12 @@ export function Router({
   }
 
   return (
-    <ToastProvider>
-      <AffordoProvider>
-        <ErrorBoundary>{screen}</ErrorBoundary>
-      </AffordoProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AffordoProvider>
+          <ErrorBoundary>{screen}</ErrorBoundary>
+        </AffordoProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
