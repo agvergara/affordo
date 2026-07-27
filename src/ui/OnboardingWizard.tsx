@@ -68,7 +68,7 @@ export function OnboardingWizard() {
             type="button"
             disabled={isFirst}
             onClick={() => setStep((s) => Math.max(0, s - 1))}
-            className="font-mono text-[11px] font-bold uppercase tracking-widest"
+            className="border-0 bg-transparent p-0 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
             {"← Back"}
           </button>
