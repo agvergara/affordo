@@ -105,13 +105,14 @@ describe("Router — per-route guards", () => {
 });
 
 describe("Router — unguarded routes", () => {
-  it("renders the onboarding placeholder at /onboarding without a profile", () => {
+  it("renders the onboarding wizard at /onboarding without a profile", () => {
     navigateTo("/onboarding");
     render(<Router navigate={vi.fn()} />);
 
-    expect(
-      screen.getByRole("heading", { name: /onboarding/i }),
-    ).toBeInTheDocument();
+    // The wizard chrome opens on step 0 (Welcome, 01 / 04); no guard applies.
+    expect(screen.getByText("Set up your reckoning")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Welcome" })).toBeInTheDocument();
+    expect(screen.getByText("01 / 04")).toBeInTheDocument();
     expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
   });
 

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { NotFoundScreen, OnboardingScreen } from "./Placeholder";
+import { NotFoundScreen } from "./Placeholder";
+import { OnboardingWizard } from "./OnboardingWizard";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { SettingsScreen } from "./SettingsScreen";
 import { ToastProvider } from "./Toast";
@@ -82,7 +83,7 @@ function Guard({
  * through it (used in tests to stub a screen).
  */
 export const ROUTES: RouteTable = {
-  "/onboarding": () => <OnboardingScreen />,
+  "/onboarding": () => <OnboardingWizard />,
 };
 
 /** Drop a trailing slash so `/goals/` matches `/goals`, but keep root `/`. */

@@ -21,7 +21,7 @@ test("loads without any request to an external origin", async ({
   // trivially makes no calls) by waiting for that redirect to complete.
   await page.waitForURL("**/onboarding");
   await expect(
-    page.getByRole("heading", { name: /onboarding/i }),
+    page.getByRole("heading", { name: "Welcome" }),
   ).toBeVisible();
   // Give any late-loading asset (e.g. a font) a beat to fire a request.
   await page.waitForLoadState("networkidle");

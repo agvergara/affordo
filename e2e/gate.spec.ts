@@ -10,8 +10,9 @@ test("/ redirects a profile-less visitor to /onboarding", async ({ page }) => {
 
   // The gate leaves / for /onboarding when there is no profile.
   await page.waitForURL("**/onboarding");
+  // The wizard chrome opens on step 0 (Welcome heading, dossier §5/§16).
   await expect(
-    page.getByRole("heading", { name: /onboarding/i }),
+    page.getByRole("heading", { name: "Welcome" }),
   ).toBeVisible();
 });
 
@@ -21,8 +22,9 @@ test("/goals redirects to /onboarding when there is no profile", async ({
   await page.goto("/goals");
 
   await page.waitForURL("**/onboarding");
+  // The wizard chrome opens on step 0 (Welcome heading, dossier §5/§16).
   await expect(
-    page.getByRole("heading", { name: /onboarding/i }),
+    page.getByRole("heading", { name: "Welcome" }),
   ).toBeVisible();
 });
 
@@ -32,8 +34,9 @@ test("/settings redirects to /onboarding when there is no profile", async ({
   await page.goto("/settings");
 
   await page.waitForURL("**/onboarding");
+  // The wizard chrome opens on step 0 (Welcome heading, dossier §5/§16).
   await expect(
-    page.getByRole("heading", { name: /onboarding/i }),
+    page.getByRole("heading", { name: "Welcome" }),
   ).toBeVisible();
 });
 
