@@ -20,7 +20,7 @@ import { formatMoney } from "./localeFormat";
  * always a real profile (`salary > 0`).
  */
 export function GoalsDashboard() {
-  const { profile } = useAffordo();
+  const { profile, goals } = useAffordo();
 
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
   const surplus =
@@ -73,6 +73,13 @@ export function GoalsDashboard() {
             </p>
           </div>
         </section>
+
+        <div
+          data-testid="saved-goals-divider"
+          className="mt-12 flex items-center gap-3 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+        >
+          Saved goals · {goals.length}
+        </div>
       </main>
     </div>
   );

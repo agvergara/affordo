@@ -4,16 +4,33 @@ import { act, render, screen } from "@testing-library/react";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
+import { saveGoals, type Goal } from "../state/goals-store";
 
 beforeEach(() => window.localStorage.clear());
 
+/** A minimal reference Goal, overridable per test. */
+function makeGoal(overrides?: Partial<Goal>): Goal {
+  return {
+    id: crypto.randomUUID(),
+    name: "MacBook",
+    price: 1500,
+    note: "",
+    createdAt: 0,
+    ...overrides,
+  };
+}
+
 /**
- * Render the dashboard inside a real provider hydrated to a given profile.
- * `act` flushes the provider's post-mount hydration effect so the snapshot
- * reads the persisted profile rather than the empty default.
+ * Render the dashboard inside a real provider hydrated to a given profile and
+ * goal list. `act` flushes the provider's post-mount hydration effect so the
+ * dashboard reads the persisted state rather than the empty defaults.
  */
-function renderDashboard(profile?: Partial<typeof defaultProfile>) {
+function renderDashboard(
+  profile?: Partial<typeof defaultProfile>,
+  goals: Goal[] = [],
+) {
   saveProfile({ ...defaultProfile, salary: 2000, ...profile });
+  saveGoals(goals);
   act(() => {
     render(
       <AffordoProvider>
@@ -79,6 +96,22 @@ describe("GoalsDashboard snapshot", () => {
     );
     expect(screen.getByTestId("snapshot-surplus")).toHaveTextContent(
       "$1,650.00",
+    );
+  });
+});
+
+describe("GoalsDashboard saved-goals divider", () => {
+  it("shows the live goal count in the divider", () => {
+    renderDashboard(undefined, [makeGoal(), makeGoal(), makeGoal()]);
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 3",
+    );
+  });
+
+  it("counts zero goals in the divider", () => {
+    renderDashboard(undefined, []);
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 0",
     );
   });
 });
