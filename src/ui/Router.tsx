@@ -1,11 +1,7 @@
 import { useEffect } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
-import {
-  GoalsScreen,
-  NotFoundScreen,
-  OnboardingScreen,
-  SettingsScreen,
-} from "./Placeholder";
+import { GoalsScreen, NotFoundScreen, OnboardingScreen } from "./Placeholder";
+import { SettingsScreen } from "./SettingsScreen";
 import { ToastProvider } from "./Toast";
 import { AffordoProvider, useAffordo } from "../state/AffordoProvider";
 
