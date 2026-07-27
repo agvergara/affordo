@@ -3,9 +3,9 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import {
   GoalsScreen,
   NotFoundScreen,
-  OnboardingScreen,
   SettingsScreen,
 } from "./Placeholder";
+import { OnboardingWizard } from "./OnboardingWizard";
 import { ToastProvider } from "./Toast";
 import { AffordoProvider, useAffordo } from "../state/AffordoProvider";
 
@@ -85,7 +85,7 @@ function Guard({
  * through it (used in tests to stub a screen).
  */
 export const ROUTES: RouteTable = {
-  "/onboarding": () => <OnboardingScreen />,
+  "/onboarding": () => <OnboardingWizard />,
 };
 
 /** Drop a trailing slash so `/goals/` matches `/goals`, but keep root `/`. */

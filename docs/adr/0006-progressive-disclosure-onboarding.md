@@ -1,5 +1,7 @@
 # Progressive disclosure: time-to-first-answer over completeness
 
+**Status:** Superseded by [ADR 0020](0020-upfront-onboarding-wizard.md).
+
 Affordo's input flow is staged, not a single upfront form. Inputs are revealed
 only as the next answer requires them, mirroring the three questions the app
 answers:
