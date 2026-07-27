@@ -20,7 +20,7 @@ import { formatMoney } from "./localeFormat";
  * always a real profile (`salary > 0`).
  */
 export function GoalsDashboard() {
-  const { profile } = useAffordo();
+  const { profile, goals } = useAffordo();
 
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
   const surplus =
@@ -73,6 +73,55 @@ export function GoalsDashboard() {
             </p>
           </div>
         </section>
+
+        <div className="mt-12 flex items-center justify-between gap-4">
+          <div
+            data-testid="saved-goals-divider"
+            className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+          >
+            Saved goals · {goals.length}
+          </div>
+          {/* Inert until the Add/Edit dialog lands (slice #64). */}
+          <button
+            type="button"
+            className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
+          >
+            Add goal
+          </button>
+        </div>
+
+        {goals.length === 0 && (
+          <div
+            data-testid="goals-empty"
+            className="mt-6 border border-dashed border-border p-10 text-center"
+          >
+            <p className="font-display text-2xl uppercase tracking-tight">
+              No decisions to reckon with yet.
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Add your first goal to see what it costs in hours of your life.
+            </p>
+          </div>
+        )}
+
+        {goals.length > 0 && (
+          <ul data-testid="goals-list" className="mt-6 space-y-4">
+            {goals.map((goal) => (
+              <li
+                key={goal.id}
+                data-testid="goal-item"
+                className="flex items-baseline justify-between gap-4 border border-border bg-card p-4"
+              >
+                <span className="min-w-0 truncate font-display text-2xl uppercase tracking-tight">
+                  {goal.name}
+                </span>
+                <span className="font-mono text-sm text-muted-foreground">
+                  {formatMoney(goal.price, profile.currency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
     </div>
   );
