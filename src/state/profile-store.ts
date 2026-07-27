@@ -40,24 +40,53 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+/** A finite number strictly greater than zero. */
+function isPositive(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0;
+}
+
+/** A finite number at or above zero. */
+function isNonNegative(value: unknown): value is number {
+  return isFiniteNumber(value) && value >= 0;
+}
+
+/** A finite number within an inclusive `[min, max]` range. */
+function isInRange(value: unknown, min: number, max: number): value is number {
+  return isFiniteNumber(value) && value >= min && value <= max;
+}
+
 /**
- * A stored Profile is usable only if every field is present and the right type.
- * A partial or foreign-schema record would render NaN copy downstream, so we
- * reject it whole and fall back to defaults (ADR 0011 defensive load).
+ * A stored Profile is usable only if every field is present, the right type,
+ * AND within its domain range (issue #81). The type check alone would let a
+ * hostile or corrupt localStorage record through — a `paymentsPerYear: 0`, a
+ * negative `salary`, a `threshold` far outside its scale — and feed nonsense
+ * (Infinity from a zero divisor, negative disposable income) into verdict
+ * computation. The store is the trust boundary against a value that never
+ * passed through the onboarding input layer, so it rejects such records whole
+ * and falls back to defaults (ADR 0011 defensive load, ADR 0019).
+ *
+ * The ranges are the dossier's on-load `ProfileSchema` (§7, "validation on
+ * load, not on input"), NOT the stricter onboarding `canContinue` / slider
+ * bounds — those govern the input layer, a different boundary:
+ * - `salary`, `expenses`, `savings`, `monthlyContribution`: nonnegative (`>= 0`).
+ *   A persisted `salary: 0` (the pre-onboarding state) is valid and preserved.
+ * - `hoursPerWeek`, `hoursPerDay`, `paymentsPerYear`: positive (`> 0`) — the
+ *   divisors behind hourlyRate / daysOfWork.
+ * - `threshold`: `0..100` inclusive (a percentage scale).
  */
 function isProfile(value: unknown): value is Profile {
   if (typeof value !== "object" || value === null) return false;
   const p = value as Record<string, unknown>;
   return (
     CURRENCIES.includes(p.currency as Currency) &&
-    isFiniteNumber(p.salary) &&
-    isFiniteNumber(p.hoursPerWeek) &&
-    isFiniteNumber(p.hoursPerDay) &&
-    isFiniteNumber(p.paymentsPerYear) &&
-    isFiniteNumber(p.expenses) &&
-    isFiniteNumber(p.threshold) &&
-    isFiniteNumber(p.savings) &&
-    isFiniteNumber(p.monthlyContribution)
+    isNonNegative(p.salary) &&
+    isPositive(p.hoursPerWeek) &&
+    isPositive(p.hoursPerDay) &&
+    isPositive(p.paymentsPerYear) &&
+    isNonNegative(p.expenses) &&
+    isInRange(p.threshold, 0, 100) &&
+    isNonNegative(p.savings) &&
+    isNonNegative(p.monthlyContribution)
   );
 }
 
