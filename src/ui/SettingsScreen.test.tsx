@@ -4,6 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsScreen } from "./SettingsScreen";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ToastProvider } from "./Toast";
 import {
   defaultProfile,
   loadProfile,
@@ -16,16 +17,20 @@ beforeEach(() => window.localStorage.clear());
 /**
  * Render SettingsScreen inside a real provider seeded from a persisted profile,
  * so the settings draft hydrates from the same profile the app holds. `act`
- * flushes the provider's post-mount hydration effect.
+ * flushes the provider's post-mount hydration effect. A `ToastProvider` wraps it
+ * too, matching the app root (Router mounts one) so Save's success toast can be
+ * raised and asserted.
  */
 function renderSettings(profile: Partial<Profile> = {}) {
   const seeded: Profile = { ...defaultProfile, salary: 1300, ...profile };
   saveProfile(seeded);
   act(() => {
     render(
-      <AffordoProvider>
-        <SettingsScreen />
-      </AffordoProvider>,
+      <ToastProvider>
+        <AffordoProvider>
+          <SettingsScreen />
+        </AffordoProvider>
+      </ToastProvider>,
     );
   });
   return seeded;
@@ -149,7 +154,7 @@ describe("SettingsScreen — editing updates the local draft without persisting"
     expect(screen.getByText(/significance threshold — 30%/i)).toBeInTheDocument();
   });
 
-  it("does not persist edits to localStorage (Save lands in a later slice)", async () => {
+  it("does not persist edits to localStorage until Save is pressed", async () => {
     const user = userEvent.setup();
     const seeded = renderSettings({ salary: 2500 });
     const salary = screen.getByLabelText("Net monthly salary");
@@ -159,5 +164,45 @@ describe("SettingsScreen — editing updates the local draft without persisting"
 
     // The stored profile is untouched — editing only mutates the local draft.
     expect(loadProfile().salary).toBe(seeded.salary);
+  });
+});
+
+describe("SettingsScreen — Save persists the draft and confirms with a toast", () => {
+  it("persists an edited field to the profile store when Save is pressed", async () => {
+    const user = userEvent.setup();
+    renderSettings({ salary: 2500 });
+    const salary = screen.getByLabelText("Net monthly salary");
+
+    await user.clear(salary);
+    await user.type(salary, "3100");
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    // The edited draft is now the stored profile.
+    expect(loadProfile().salary).toBe(3100);
+  });
+
+  it("raises a success toast on Save", async () => {
+    const user = userEvent.setup();
+    renderSettings({ salary: 2500 });
+
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    // The reference confirms the save with a toast reading "Save" (dossier §6).
+    expect(await screen.findByRole("status")).toHaveTextContent("Save");
+  });
+
+  it("persists every edited field together — not just the last one touched", async () => {
+    const user = userEvent.setup();
+    renderSettings({ salary: 2500, currency: "EUR" });
+
+    await user.selectOptions(screen.getByLabelText("Currency"), "USD");
+    const salary = screen.getByLabelText("Net monthly salary");
+    await user.clear(salary);
+    await user.type(salary, "4000");
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    const stored = loadProfile();
+    expect(stored.currency).toBe("USD");
+    expect(stored.salary).toBe(4000);
   });
 });
