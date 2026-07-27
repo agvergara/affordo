@@ -148,6 +148,20 @@ describe("GoalsDashboard list container", () => {
     renderDashboard(undefined, []);
     expect(screen.queryByTestId("goals-list")).not.toBeInTheDocument();
   });
+
+  it("lets an over-long goal name truncate instead of blowing out the row", () => {
+    renderDashboard(undefined, [
+      makeGoal({
+        name: "A very long goal name that keeps going and going and going",
+      }),
+    ]);
+    const name = screen.getByText(
+      "A very long goal name that keeps going and going and going",
+    );
+    // A flex child needs min-w-0 for `truncate` (overflow:hidden) to clamp;
+    // without it the intrinsic width refuses to shrink and the name overflows.
+    expect(name).toHaveClass("min-w-0", "truncate");
+  });
 });
 
 describe("GoalsDashboard Add goal button", () => {
