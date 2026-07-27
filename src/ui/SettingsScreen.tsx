@@ -60,6 +60,14 @@ function SettingsForm({ profile }: { profile: Profile }) {
     toast("Save");
   };
 
+  // A positive salary is what makes a profile guard-valid (`hasProfile`,
+  // dossier §14). The `/settings` guard ejects to `/onboarding` the instant it
+  // goes false, so persisting a zero-salary draft would break §14's "settings
+  // save → stays (toast only)". Rather than special-case the guard, express the
+  // constraint the way the reference does everywhere else — by disabling the
+  // primary action until the draft is valid (dossier §7, goal dialog).
+  const canSave = draft.salary > 0;
+
   return (
     <>
       <AppHeader />
@@ -170,7 +178,8 @@ function SettingsForm({ profile }: { profile: Profile }) {
           <button
             type="button"
             onClick={save}
-            className="rounded-md bg-foreground px-6 py-3 font-mono text-[11px] uppercase tracking-widest text-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            disabled={!canSave}
+            className="rounded-md bg-foreground px-6 py-3 font-mono text-[11px] uppercase tracking-widest text-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
           >
             Save
           </button>

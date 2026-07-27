@@ -191,6 +191,24 @@ describe("SettingsScreen — Save persists the draft and confirms with a toast",
     expect(await screen.findByRole("status")).toHaveTextContent("Save");
   });
 
+  it("disables Save while the draft has no positive salary, so a save can never eject the guard", async () => {
+    const user = userEvent.setup();
+    // Seed a valid profile, then clear salary to 0 in the draft.
+    renderSettings({ salary: 2500 });
+    await user.clear(screen.getByLabelText("Net monthly salary"));
+
+    // With salary at 0 the profile would be guard-invalid (hasProfile false),
+    // so Save is disabled — the dossier's "save → stays" can't be violated,
+    // matching the reference idiom of expressing validation by disabling the
+    // primary action (dossier §7).
+    expect(screen.getByRole("button", { name: /save/i })).toBeDisabled();
+  });
+
+  it("enables Save once the draft has a positive salary", () => {
+    renderSettings({ salary: 2500 });
+    expect(screen.getByRole("button", { name: /save/i })).toBeEnabled();
+  });
+
   it("persists every edited field together — not just the last one touched", async () => {
     const user = userEvent.setup();
     renderSettings({ salary: 2500, currency: "EUR" });
