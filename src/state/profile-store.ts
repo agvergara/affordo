@@ -58,29 +58,33 @@ function isInRange(value: unknown, min: number, max: number): value is number {
 /**
  * A stored Profile is usable only if every field is present, the right type,
  * AND within its domain range (issue #81). The type check alone would let a
- * hostile or corrupt localStorage record through — a negative `salary`,
- * `paymentsPerYear: 0`, a `threshold` outside the onboarding slider's 1–50 —
- * and feed nonsense (NaN/Infinity, negative disposable income) into verdict
- * computation. The onboarding input layer is the *primary* enforcement point
- * (dossier §8 `canContinue`); the store is the trust boundary against a value
- * that never passed through it, so it rejects such records whole and falls back
- * to defaults (ADR 0011 defensive load, ADR 0019 store range validation).
+ * hostile or corrupt localStorage record through — a `paymentsPerYear: 0`, a
+ * negative `salary`, a `threshold` far outside its scale — and feed nonsense
+ * (Infinity from a zero divisor, negative disposable income) into verdict
+ * computation. The store is the trust boundary against a value that never
+ * passed through the onboarding input layer, so it rejects such records whole
+ * and falls back to defaults (ADR 0011 defensive load, ADR 0019).
  *
- * Ranges: `salary`/`hoursPerWeek`/`hoursPerDay`/`paymentsPerYear` must be > 0
- * (`canContinue`, and the divisors behind hourlyRate/daysOfWork); `expenses`/
- * `savings`/`monthlyContribution` must be ≥ 0; `threshold` is the slider's 1–50.
+ * The ranges are the dossier's on-load `ProfileSchema` (§7, "validation on
+ * load, not on input"), NOT the stricter onboarding `canContinue` / slider
+ * bounds — those govern the input layer, a different boundary:
+ * - `salary`, `expenses`, `savings`, `monthlyContribution`: nonnegative (`>= 0`).
+ *   A persisted `salary: 0` (the pre-onboarding state) is valid and preserved.
+ * - `hoursPerWeek`, `hoursPerDay`, `paymentsPerYear`: positive (`> 0`) — the
+ *   divisors behind hourlyRate / daysOfWork.
+ * - `threshold`: `0..100` inclusive (a percentage scale).
  */
 function isProfile(value: unknown): value is Profile {
   if (typeof value !== "object" || value === null) return false;
   const p = value as Record<string, unknown>;
   return (
     CURRENCIES.includes(p.currency as Currency) &&
-    isPositive(p.salary) &&
+    isNonNegative(p.salary) &&
     isPositive(p.hoursPerWeek) &&
     isPositive(p.hoursPerDay) &&
     isPositive(p.paymentsPerYear) &&
     isNonNegative(p.expenses) &&
-    isInRange(p.threshold, 1, 50) &&
+    isInRange(p.threshold, 0, 100) &&
     isNonNegative(p.savings) &&
     isNonNegative(p.monthlyContribution)
   );

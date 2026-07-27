@@ -72,8 +72,9 @@ describe("profile persistence", () => {
   // Domain-range validation (issue #81): a stored value can be the right *type*
   // yet out of the field's valid domain — a hostile or corrupt localStorage
   // record. The store is the trust boundary against a value that never passed
-  // through the onboarding input layer, so it rejects such records whole and
-  // degrades to defaults (see docs/adr/0019, dossier §8 `canContinue`).
+  // through the onboarding input layer. The ranges are the dossier's on-load
+  // `ProfileSchema` (§7, "validation on load, not on input"), NOT the stricter
+  // input-layer `canContinue` / slider bounds (see docs/adr/0019).
   describe("domain-range validation", () => {
     function storeProfile(overrides: Record<string, unknown>): void {
       window.localStorage.setItem(
@@ -85,55 +86,62 @@ describe("profile persistence", () => {
       );
     }
 
-    it("rejects a non-positive salary", () => {
+    it("rejects a negative salary", () => {
       storeProfile({ salary: -3200 });
-      expect(loadProfile()).toEqual(defaultProfile);
-      storeProfile({ salary: 0 });
       expect(loadProfile()).toEqual(defaultProfile);
     });
 
+    it("accepts a persisted salary of exactly 0 (the pre-onboarding state)", () => {
+      // The on-load schema is nonnegative, not `> 0`. A `salary: 0` profile is
+      // the legitimate pre-onboarding record and must survive a round-trip; the
+      // `> 0` guard belongs to the input layer's `canContinue`, not the store.
+      const zeroSalary = { ...defaultProfile, threshold: 25 };
+      storeProfile(zeroSalary);
+      expect(loadProfile()).toEqual(zeroSalary);
+    });
+
     it("rejects a non-positive hoursPerWeek", () => {
-      storeProfile({ salary: 3200, hoursPerWeek: 0 });
+      storeProfile({ hoursPerWeek: 0 });
       expect(loadProfile()).toEqual(defaultProfile);
     });
 
     it("rejects a non-positive hoursPerDay", () => {
-      storeProfile({ salary: 3200, hoursPerDay: -1 });
+      storeProfile({ hoursPerDay: -1 });
       expect(loadProfile()).toEqual(defaultProfile);
     });
 
     it("rejects a non-positive paymentsPerYear", () => {
-      storeProfile({ salary: 3200, paymentsPerYear: 0 });
+      storeProfile({ paymentsPerYear: 0 });
       expect(loadProfile()).toEqual(defaultProfile);
     });
 
     it("rejects negative expenses, savings, or monthlyContribution", () => {
-      storeProfile({ salary: 3200, expenses: -100 });
+      storeProfile({ expenses: -100 });
       expect(loadProfile()).toEqual(defaultProfile);
-      storeProfile({ salary: 3200, savings: -1 });
+      storeProfile({ savings: -1 });
       expect(loadProfile()).toEqual(defaultProfile);
-      storeProfile({ salary: 3200, monthlyContribution: -50 });
+      storeProfile({ monthlyContribution: -50 });
       expect(loadProfile()).toEqual(defaultProfile);
     });
 
-    it("rejects a threshold outside the 1–50 range", () => {
-      storeProfile({ salary: 3200, threshold: 0 });
+    it("rejects a threshold outside the 0–100 percentage scale", () => {
+      storeProfile({ threshold: -1 });
       expect(loadProfile()).toEqual(defaultProfile);
-      storeProfile({ salary: 3200, threshold: 51 });
+      storeProfile({ threshold: 101 });
       expect(loadProfile()).toEqual(defaultProfile);
     });
 
     it("accepts an in-domain profile whose fields sit at the range edges", () => {
       const edge = {
         ...defaultProfile,
-        salary: 1,
+        salary: 0,
         hoursPerWeek: 1,
         hoursPerDay: 1,
         paymentsPerYear: 1,
         expenses: 0,
         savings: 0,
         monthlyContribution: 0,
-        threshold: 50,
+        threshold: 100,
       };
       storeProfile(edge);
       expect(loadProfile()).toEqual(edge);
