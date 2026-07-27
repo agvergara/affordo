@@ -80,6 +80,20 @@ export function GoalsDashboard() {
         >
           Saved goals · {goals.length}
         </div>
+
+        {goals.length === 0 && (
+          <div
+            data-testid="goals-empty"
+            className="mt-6 border border-dashed border-border p-10 text-center"
+          >
+            <p className="font-display text-2xl uppercase tracking-tight">
+              No decisions to reckon with yet.
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Add your first goal to see what it costs in hours of your life.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

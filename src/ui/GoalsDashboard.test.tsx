@@ -115,3 +115,19 @@ describe("GoalsDashboard saved-goals divider", () => {
     );
   });
 });
+
+describe("GoalsDashboard empty state", () => {
+  it("shows the reference empty copy when there are no goals", () => {
+    renderDashboard(undefined, []);
+    const empty = screen.getByTestId("goals-empty");
+    expect(empty).toHaveTextContent("No decisions to reckon with yet.");
+    expect(empty).toHaveTextContent(
+      "Add your first goal to see what it costs in hours of your life.",
+    );
+  });
+
+  it("hides the empty state once a goal exists", () => {
+    renderDashboard(undefined, [makeGoal()]);
+    expect(screen.queryByTestId("goals-empty")).not.toBeInTheDocument();
+  });
+});
