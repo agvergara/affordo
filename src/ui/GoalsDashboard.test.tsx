@@ -1,0 +1,84 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { GoalsDashboard } from "./GoalsDashboard";
+import { AffordoProvider } from "../state/AffordoProvider";
+import { defaultProfile, saveProfile } from "../state/profile-store";
+
+beforeEach(() => window.localStorage.clear());
+
+/**
+ * Render the dashboard inside a real provider hydrated to a given profile.
+ * `act` flushes the provider's post-mount hydration effect so the snapshot
+ * reads the persisted profile rather than the empty default.
+ */
+function renderDashboard(profile?: Partial<typeof defaultProfile>) {
+  saveProfile({ ...defaultProfile, salary: 2000, ...profile });
+  act(() => {
+    render(
+      <AffordoProvider>
+        <GoalsDashboard />
+      </AffordoProvider>,
+    );
+  });
+}
+
+describe("GoalsDashboard heading", () => {
+  it("renders the Goals title and the Affordo eyebrow", () => {
+    renderDashboard();
+    const title = screen.getByRole("heading", { name: /goals/i });
+    expect(title).toBeInTheDocument();
+    // The eyebrow sits above the big title, distinct from the header wordmark
+    // (which is a link). It's the non-link `Affordo` in the page body.
+    const eyebrows = screen
+      .getAllByText("Affordo")
+      .filter((el) => el.tagName !== "A");
+    expect(eyebrows).toHaveLength(1);
+  });
+});
+
+describe("GoalsDashboard snapshot", () => {
+  it("shows Time value per hour derived from the profile", () => {
+    // 2000/mo × 12 payments ÷ (52 × 40h) = 11.538…/hour → de-DE EUR formatting.
+    renderDashboard({ salary: 2000, currency: "EUR" });
+    const cell = screen.getByTestId("snapshot-time-value");
+    expect(cell).toHaveTextContent("Time value");
+    expect(cell).toHaveTextContent("11,54 €");
+    expect(cell).toHaveTextContent("/ hour");
+  });
+
+  it("shows Monthly surplus = salary − expenses + contribution", () => {
+    // 2000 − 500 + 150 = 1650 → de-DE EUR formatting.
+    renderDashboard({
+      salary: 2000,
+      expenses: 500,
+      monthlyContribution: 150,
+      currency: "EUR",
+    });
+    const cell = screen.getByTestId("snapshot-surplus");
+    expect(cell).toHaveTextContent("Monthly surplus");
+    expect(cell).toHaveTextContent("1.650,00 €");
+  });
+
+  it("shows the significance threshold as a percentage", () => {
+    renderDashboard({ threshold: 15 });
+    const cell = screen.getByTestId("snapshot-threshold");
+    expect(cell).toHaveTextContent("15%");
+  });
+
+  it("formats the snapshot figures in the profile currency", () => {
+    // Same inputs, USD → en-US formatting.
+    renderDashboard({
+      salary: 2000,
+      expenses: 500,
+      monthlyContribution: 150,
+      currency: "USD",
+    });
+    expect(screen.getByTestId("snapshot-time-value")).toHaveTextContent(
+      "$11.54",
+    );
+    expect(screen.getByTestId("snapshot-surplus")).toHaveTextContent(
+      "$1,650.00",
+    );
+  });
+});
