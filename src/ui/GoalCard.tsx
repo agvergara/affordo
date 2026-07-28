@@ -23,6 +23,14 @@ export function GoalCard({ goal }: { goal: Goal }) {
           <h2 className="mt-1 truncate font-display text-3xl uppercase tracking-tight sm:text-4xl">
             {goal.name}
           </h2>
+          {goal.note && (
+            <p
+              data-testid="goal-note"
+              className="mt-1 text-sm text-muted-foreground"
+            >
+              {goal.note}
+            </p>
+          )}
         </div>
       </div>
     </article>

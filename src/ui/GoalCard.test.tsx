@@ -53,4 +53,15 @@ describe("GoalCard header", () => {
       screen.getByRole("heading", { name: "Down payment" }),
     ).toBeInTheDocument();
   });
+
+  it("shows the note when the goal has one", () => {
+    renderCard(makeGoal({ note: "16 inch, refurbished" }));
+    expect(screen.getByText("16 inch, refurbished")).toBeInTheDocument();
+    expect(screen.getByTestId("goal-note")).toBeInTheDocument();
+  });
+
+  it("shows no note line when the goal has none", () => {
+    renderCard(makeGoal({ note: "" }));
+    expect(screen.queryByTestId("goal-note")).not.toBeInTheDocument();
+  });
 });
