@@ -1,17 +1,23 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import { AppHeader } from "./AppHeader";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
 
 beforeEach(() => window.localStorage.clear());
+// ThemeProvider writes `.dark` onto the shared document root; strip it between
+// tests so a dark case can't leak into the next one's starting theme.
+afterEach(() => document.documentElement.classList.remove("dark"));
 
 /**
- * Render AppHeader inside a real provider. When `profile` is given it is
+ * Render AppHeader inside real providers. When `profile` is given it is
  * persisted first, so the provider hydrates to a real profile after mount;
  * `act` flushes that post-mount effect. With no profile the provider stays on
- * the empty default (salary 0 → hasProfile false).
+ * the empty default (salary 0 → hasProfile false). `ThemeProvider` wraps it
+ * because the header's theme toggle reads the live theme; it starts from
+ * whatever `theme-store` holds, so a test seeds dark with `saveTheme("dark")`.
  */
 function renderHeader(
   props: Parameters<typeof AppHeader>[0] = {},
@@ -20,9 +26,11 @@ function renderHeader(
   if (profile) saveProfile({ ...defaultProfile, ...profile });
   act(() => {
     render(
-      <AffordoProvider>
-        <AppHeader {...props} />
-      </AffordoProvider>,
+      <ThemeProvider>
+        <AffordoProvider>
+          <AppHeader {...props} />
+        </AffordoProvider>
+      </ThemeProvider>,
     );
   });
 }
@@ -78,6 +86,15 @@ describe("AppHeader time-value chip", () => {
     // A profile with salary but zero contracted hours → hourly rate 0.
     renderHeader({}, { salary: 2000, hoursPerWeek: 0 });
     expect(screen.queryByTestId("time-value")).toBeNull();
+  });
+});
+
+describe("AppHeader theme toggle", () => {
+  it("offers a control to switch to the dark theme while light is active", () => {
+    renderHeader();
+    expect(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
   });
 });
 

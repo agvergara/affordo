@@ -1,5 +1,6 @@
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
+import { useTheme } from "../state/ThemeProvider";
 import { formatMoney } from "./localeFormat";
 
 export interface AppHeaderProps {
@@ -51,8 +52,29 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
               Settings
             </a>
           )}
+          <ThemeToggle />
         </div>
       </div>
     </nav>
+  );
+}
+
+/**
+ * The theme toggle (#72). The reference ships no such control — dossier §10
+ * records dark mode as "latent/unreachable via UI" — so there is no verbatim
+ * class string to reproduce here; ADR 0021 puts dark mode in scope and defers
+ * this UI to its own slice. It borrows the Settings link's muted-to-foreground
+ * treatment so it reads as part of the same header group.
+ */
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      aria-label="Switch to dark theme"
+      className="text-muted-foreground hover:text-foreground"
+    />
   );
 }

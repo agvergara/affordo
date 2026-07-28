@@ -4,6 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsScreen } from "./SettingsScreen";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import { ToastProvider } from "./Toast";
 import {
   defaultProfile,
@@ -26,11 +27,13 @@ function renderSettings(profile: Partial<Profile> = {}) {
   saveProfile(seeded);
   act(() => {
     render(
-      <ToastProvider>
-        <AffordoProvider>
-          <SettingsScreen />
-        </AffordoProvider>
-      </ToastProvider>,
+      <ThemeProvider>
+        <ToastProvider>
+          <AffordoProvider>
+            <SettingsScreen />
+          </AffordoProvider>
+        </ToastProvider>
+      </ThemeProvider>,
     );
   });
   return seeded;
