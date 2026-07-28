@@ -70,3 +70,55 @@ describe("Add goal dialog — fields", () => {
     );
   });
 });
+
+describe("Add goal dialog — Save gating", () => {
+  it("disables Save on an empty form", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("keeps Save disabled with a name but no price", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("keeps Save disabled with a price but no name", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Price"), "1500");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("keeps Save disabled when the price is not above zero", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "0");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("treats a whitespace-only name as empty", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "   ");
+    await user.type(screen.getByLabelText("Price"), "1500");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("enables Save once there is a name and a positive price", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+});

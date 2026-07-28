@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export interface GoalDialogProps {
   open: boolean;
 }
@@ -18,7 +20,16 @@ const FIELD =
  * eyebrow the reference renders as `DialogDescription`.
  */
 export function GoalDialog({ open }: GoalDialogProps) {
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [note, setNote] = useState("");
+
   if (!open) return null;
+
+  // The reference's own validity rule, kept verbatim (dossier §5): a trimmed
+  // non-empty name and a price that `parseFloat`s above zero. The naive parse is
+  // deliberate — it is what the reference does.
+  const valid = name.trim().length > 0 && parseFloat(price) > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -48,6 +59,8 @@ export function GoalDialog({ open }: GoalDialogProps) {
               maxLength={80}
               autoFocus
               placeholder="MacBook Pro"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className={FIELD}
             />
           </div>
@@ -61,6 +74,8 @@ export function GoalDialog({ open }: GoalDialogProps) {
               type="number"
               inputMode="decimal"
               placeholder="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
               className={FIELD}
             />
           </div>
@@ -73,8 +88,26 @@ export function GoalDialog({ open }: GoalDialogProps) {
               id="g-note"
               maxLength={200}
               rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
               className={FIELD}
             />
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              className="px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest hover:text-accent"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!valid}
+              className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Save
+            </button>
           </div>
         </form>
       </div>
