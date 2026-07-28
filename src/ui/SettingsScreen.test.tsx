@@ -44,7 +44,14 @@ function renderSettings(
     render(
       <ToastProvider>
         <AffordoProvider>
-          <SettingsScreen {...props} />
+          {/*
+            Both seams are stubbed by default, so a test that doesn't care about
+            them can never fall through to the real `window.confirm` /
+            `window.location.replace` — the latter makes jsdom log
+            "Not implemented: navigation" and would leave a real navigation
+            attempt in the suite. An explicit prop still wins via the spread.
+          */}
+          <SettingsScreen navigate={vi.fn()} confirm={() => false} {...props} />
         </AffordoProvider>
       </ToastProvider>,
     );
