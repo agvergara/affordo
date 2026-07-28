@@ -173,6 +173,36 @@ describe("GoalCard threshold meter fill", () => {
     renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
     expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "50%" });
   });
+
+  it("fills the whole track at exactly twice the threshold", () => {
+    // 400 of a 2000 salary is 20% — double the 10% threshold.
+    renderCard(makeGoal({ price: 400 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "100%" });
+  });
+
+  it("caps the fill at a full track beyond twice the threshold", () => {
+    // 1000 of 2000 is 50% — 2.5× the scale, which would overflow uncapped.
+    renderCard(makeGoal({ price: 1000 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "100%" });
+  });
+
+  it("tracks a different threshold's scale", () => {
+    // With a 25% threshold the track is full at 50%; 500 of 2000 is 25%, the
+    // midpoint — proof the fill follows the threshold rather than a fixed scale.
+    renderCard(makeGoal({ price: 500 }), { salary: 2000, threshold: 25 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "50%" });
+  });
+
+  // Motion is the acceptance criterion here (#61, user story 69) and jsdom
+  // exposes it only through the utility class, so this reuses the same narrow
+  // exception as the colour assertions above. The utility itself — 0.7s,
+  // scaleX 0→1, origin left — is proven in src/styles/theme.test.ts (#45).
+  it("animates the fill in with the reference scale-in-x motion", () => {
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveClass(
+      "animate-scale-in-x",
+    );
+  });
 });
 
 describe("GoalCard work figure", () => {
