@@ -26,8 +26,9 @@ function renderHeader(
   profile?: Partial<typeof defaultProfile>,
 ) {
   if (profile) saveProfile({ ...defaultProfile, ...profile });
+  let result!: ReturnType<typeof render>;
   act(() => {
-    render(
+    result = render(
       <ThemeProvider>
         <AffordoProvider>
           <AppHeader {...props} />
@@ -35,6 +36,7 @@ function renderHeader(
       </ThemeProvider>,
     );
   });
+  return result;
 }
 
 describe("AppHeader brand", () => {
@@ -160,6 +162,39 @@ describe("AppHeader theme toggle", () => {
       screen.getByRole("button", { name: "Switch to dark theme" }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("theme-icon-sun")).toBeInTheDocument();
+  });
+
+  it("persists the chosen theme across a reload", async () => {
+    const user = userEvent.setup();
+    const first = renderHeader();
+
+    await user.click(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    );
+    first.unmount();
+
+    // A fresh mount is a reload: nothing survives but what was written to
+    // storage, so coming up dark proves the choice was persisted, not held in
+    // memory. (The root class is reset so it can't be what carries the state.)
+    document.documentElement.classList.remove("dark");
+    renderHeader();
+
+    expect(
+      screen.getByRole("button", { name: "Switch to light theme" }),
+    ).toBeInTheDocument();
+  });
+
+  it("stays available during onboarding, where the rest of the header hides", () => {
+    // The wizard mounts the header with showTimeValue={false} and before any
+    // profile exists, so the chip and the Settings link both drop out. Theming
+    // is not profile-derived, so the toggle survives that stripped-down header.
+    renderHeader({ showTimeValue: false });
+
+    expect(screen.queryByTestId("time-value")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
   });
 });
 

@@ -75,7 +75,7 @@ function ThemeToggle() {
       type="button"
       onClick={() => setTheme(next)}
       aria-label={`Switch to ${next} theme`}
-      className="text-muted-foreground hover:text-foreground"
+      className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {theme === "dark" ? <MoonIcon /> : <SunIcon />}
     </button>
