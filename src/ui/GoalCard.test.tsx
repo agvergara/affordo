@@ -133,6 +133,13 @@ describe("GoalCard threshold meter caption", () => {
   });
 });
 
+describe("GoalCard threshold caption", () => {
+  it("names the profile's significance threshold beside the percentage", () => {
+    renderCard(makeGoal({ price: 500 }), { threshold: 15 });
+    expect(screen.getByText("Significance threshold: 15%")).toBeInTheDocument();
+  });
+});
+
 describe("GoalCard work figure", () => {
   it("counts the price in days of work once it costs a full work day", () => {
     // $480 ÷ $12/hour = 40 hours = 5 eight-hour days.
