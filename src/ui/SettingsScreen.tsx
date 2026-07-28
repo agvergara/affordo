@@ -174,7 +174,13 @@ function SettingsForm({ profile }: { profile: Profile }) {
           </div>
         </div>
 
-        <div className="mt-12 flex justify-end border-t border-border pt-6">
+        <div className="mt-12 flex items-center justify-between border-t border-border pt-6">
+          <button
+            type="button"
+            className="font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Reset everything
+          </button>
           <button
             type="button"
             onClick={save}

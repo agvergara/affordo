@@ -36,6 +36,15 @@ function renderSettings(profile: Partial<Profile> = {}) {
   return seeded;
 }
 
+describe("SettingsScreen — Reset everything", () => {
+  it("renders the Reset everything action", () => {
+    renderSettings();
+    expect(
+      screen.getByRole("button", { name: "Reset everything" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("SettingsScreen — chrome", () => {
   it("renders the app header and the Settings title", () => {
     renderSettings();
