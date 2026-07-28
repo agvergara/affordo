@@ -97,6 +97,26 @@ describe("SettingsScreen — Reset everything", () => {
     expect(loadProfile()).toEqual(defaultProfile);
     expect(loadGoals()).toEqual([]);
   });
+
+  it("returns the user to onboarding when the user confirms", async () => {
+    const user = userEvent.setup();
+    const navigate = vi.fn();
+    renderSettings({ salary: 2500 }, { confirm: () => true, navigate });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(navigate).toHaveBeenCalledWith("/onboarding");
+  });
+
+  it("stays on settings when the user cancels", async () => {
+    const user = userEvent.setup();
+    const navigate = vi.fn();
+    renderSettings({ salary: 2500 }, { confirm: () => false, navigate });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
 });
 
 describe("SettingsScreen — chrome", () => {

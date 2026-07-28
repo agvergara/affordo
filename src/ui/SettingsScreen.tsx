@@ -25,6 +25,16 @@ export type Confirm = (message: string) => boolean;
 
 const defaultConfirm: Confirm = (message) => window.confirm(message);
 
+/**
+ * How settings leaves for onboarding after a reset. Mirrors `Router`'s
+ * `Navigate` (`(to: string) => void`): the client-only SPA (ADR 0004/0009/0018)
+ * has no history router, so a redirect is a real location change; tests inject
+ * a spy instead.
+ */
+export type Navigate = (to: string) => void;
+
+const defaultNavigate: Navigate = (to) => window.location.replace(to);
+
 /** The reference's `t("resetConfirm")` (dossier §6, Settings). */
 const RESET_CONFIRM = "This will erase your profile and all goals. Continue?";
 
@@ -52,20 +62,31 @@ const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
  */
 export function SettingsScreen({
   confirm = defaultConfirm,
+  navigate = defaultNavigate,
 }: {
   confirm?: Confirm;
+  navigate?: Navigate;
 } = {}) {
   const { profile, hydrated } = useAffordo();
   if (!hydrated) return null;
-  return <SettingsForm key="hydrated" profile={profile} confirm={confirm} />;
+  return (
+    <SettingsForm
+      key="hydrated"
+      profile={profile}
+      confirm={confirm}
+      navigate={navigate}
+    />
+  );
 }
 
 function SettingsForm({
   profile,
   confirm,
+  navigate,
 }: {
   profile: Profile;
   confirm: Confirm;
+  navigate: Navigate;
 }) {
   const { setProfile, clearProfile, clearGoals } = useAffordo();
   const { toast } = useToast();
@@ -97,6 +118,7 @@ function SettingsForm({
     if (!confirm(RESET_CONFIRM)) return;
     clearProfile();
     clearGoals();
+    navigate("/onboarding");
   };
 
   return (
