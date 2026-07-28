@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { SettingsScreen } from "./SettingsScreen";
+import { SettingsScreen, type Confirm, type Navigate } from "./SettingsScreen";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { ToastProvider } from "./Toast";
 import {
@@ -36,7 +36,7 @@ function aGoal(): Goal {
  */
 function renderSettings(
   profile: Partial<Profile> = {},
-  props: { navigate?: (to: string) => void; confirm?: (m: string) => boolean } = {},
+  props: { navigate?: Navigate; confirm?: Confirm } = {},
 ) {
   const seeded: Profile = { ...defaultProfile, salary: 1300, ...profile };
   saveProfile(seeded);

@@ -49,8 +49,9 @@ const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
  * editable profile fields, seeded from the current profile into a LOCAL draft.
  * Editing mutates only the draft; nothing is persisted until the user presses
  * Save (issue #68), which writes the draft back through `setProfile` and
- * confirms with a success toast (dossier §2/§6). Reset lands in a later slice
- * (#69), so this screen still never clears the profile.
+ * confirms with a success toast (dossier §2/§6). "Reset everything" (#69) is
+ * the one action that discards rather than edits: it confirms first, and only
+ * then clears the profile and every goal and returns to `/onboarding`.
  *
  * The draft is seeded once, at mount, from the profile the provider holds. To
  * keep that seed from capturing the pre-hydration default (the provider renders
