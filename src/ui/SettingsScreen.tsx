@@ -15,6 +15,19 @@ function num(v: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+/**
+ * How Reset everything asks the user to confirm. The reference calls
+ * `window.confirm(t("resetConfirm"))` (dossier §2/§14), so that is the default;
+ * tests inject a stub instead, which keeps a real blocking dialog out of the
+ * suite. Mirrors the `navigate` seam the wizard already uses.
+ */
+export type Confirm = (message: string) => boolean;
+
+const defaultConfirm: Confirm = (message) => window.confirm(message);
+
+/** The reference's `t("resetConfirm")` (dossier §6, Settings). */
+const RESET_CONFIRM = "This will erase your profile and all goals. Continue?";
+
 const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
   { value: "EUR", label: "EUR — €" },
   { value: "GBP", label: "GBP — £" },
@@ -37,13 +50,23 @@ const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
  * `/settings` while hydrating (§14); this makes the seed correct even when the
  * screen is mounted directly.
  */
-export function SettingsScreen() {
+export function SettingsScreen({
+  confirm = defaultConfirm,
+}: {
+  confirm?: Confirm;
+} = {}) {
   const { profile, hydrated } = useAffordo();
   if (!hydrated) return null;
-  return <SettingsForm key="hydrated" profile={profile} />;
+  return <SettingsForm key="hydrated" profile={profile} confirm={confirm} />;
 }
 
-function SettingsForm({ profile }: { profile: Profile }) {
+function SettingsForm({
+  profile,
+  confirm,
+}: {
+  profile: Profile;
+  confirm: Confirm;
+}) {
   const { setProfile } = useAffordo();
   const { toast } = useToast();
   // Seed the draft once from the hydrated profile. This screen owns the draft;
@@ -67,6 +90,12 @@ function SettingsForm({ profile }: { profile: Profile }) {
   // constraint the way the reference does everywhere else — by disabling the
   // primary action until the draft is valid (dossier §7, goal dialog).
   const canSave = draft.salary > 0;
+
+  // Reset everything: confirm first, and do nothing at all if the user declines
+  // (dossier §2/§14).
+  const reset = () => {
+    if (!confirm(RESET_CONFIRM)) return;
+  };
 
   return (
     <>
@@ -177,6 +206,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
         <div className="mt-12 flex items-center justify-between border-t border-border pt-6">
           <button
             type="button"
+            onClick={reset}
             className="font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Reset everything

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsScreen } from "./SettingsScreen";
@@ -21,14 +21,17 @@ beforeEach(() => window.localStorage.clear());
  * too, matching the app root (Router mounts one) so Save's success toast can be
  * raised and asserted.
  */
-function renderSettings(profile: Partial<Profile> = {}) {
+function renderSettings(
+  profile: Partial<Profile> = {},
+  props: { navigate?: (to: string) => void; confirm?: (m: string) => boolean } = {},
+) {
   const seeded: Profile = { ...defaultProfile, salary: 1300, ...profile };
   saveProfile(seeded);
   act(() => {
     render(
       <ToastProvider>
         <AffordoProvider>
-          <SettingsScreen />
+          <SettingsScreen {...props} />
         </AffordoProvider>
       </ToastProvider>,
     );
@@ -42,6 +45,20 @@ describe("SettingsScreen — Reset everything", () => {
     expect(
       screen.getByRole("button", { name: "Reset everything" }),
     ).toBeInTheDocument();
+  });
+
+  it("asks for confirmation with the reference copy before erasing anything", async () => {
+    const user = userEvent.setup();
+    // The seam stands in for `window.confirm`, so the suite never blocks on a
+    // real dialog. Cancelling keeps this cycle to the prompt alone.
+    const confirm = vi.fn(() => false);
+    renderSettings({}, { confirm });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(confirm).toHaveBeenCalledWith(
+      "This will erase your profile and all goals. Continue?",
+    );
   });
 });
 
