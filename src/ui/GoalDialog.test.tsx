@@ -51,4 +51,22 @@ describe("Add goal dialog — fields", () => {
     expect(screen.getByLabelText("Price")).toHaveAttribute("placeholder", "0");
     expect(screen.getByLabelText("Note (optional)")).toBeInTheDocument();
   });
+
+  it("focuses Name when the dialog opens, so the user can type straight away", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    expect(screen.getByLabelText("Name")).toHaveFocus();
+  });
+
+  it("caps Name at 80 characters and Note at 200", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    expect(screen.getByLabelText("Name")).toHaveAttribute("maxLength", "80");
+    expect(screen.getByLabelText("Note (optional)")).toHaveAttribute(
+      "maxLength",
+      "200",
+    );
+  });
 });

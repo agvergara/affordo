@@ -43,7 +43,13 @@ export function GoalDialog({ open }: GoalDialogProps) {
             <label htmlFor="g-name" className={LABEL}>
               Name
             </label>
-            <input id="g-name" placeholder="MacBook Pro" className={FIELD} />
+            <input
+              id="g-name"
+              maxLength={80}
+              autoFocus
+              placeholder="MacBook Pro"
+              className={FIELD}
+            />
           </div>
 
           <div className="space-y-2">
@@ -63,7 +69,12 @@ export function GoalDialog({ open }: GoalDialogProps) {
             <label htmlFor="g-note" className={LABEL}>
               Note (optional)
             </label>
-            <textarea id="g-note" rows={2} className={FIELD} />
+            <textarea
+              id="g-note"
+              maxLength={200}
+              rows={2}
+              className={FIELD}
+            />
           </div>
         </form>
       </div>
