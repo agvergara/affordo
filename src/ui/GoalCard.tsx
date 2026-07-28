@@ -60,6 +60,15 @@ export function GoalCard({ goal }: { goal: Goal }) {
           {workLabel}
         </span>
       </div>
+
+      <div className="mt-6">
+        <div className="mb-2 flex justify-between font-mono text-[10px] uppercase tracking-wider">
+          <span className="text-muted-foreground">
+            {formatNumber(verdict.pctOfMonthlyIncome, profile.currency, 1)}% of
+            monthly income
+          </span>
+        </div>
+      </div>
     </article>
   );
 }

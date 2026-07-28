@@ -113,6 +113,14 @@ describe("GoalCard price", () => {
  */
 const TWELVE_AN_HOUR = { salary: 2080, currency: "USD" } as const;
 
+describe("GoalCard threshold meter caption", () => {
+  it("states the price as a percentage of monthly income", () => {
+    // 500 of a 2000 salary is a quarter of a month's income.
+    renderCard(makeGoal({ price: 500 }), { salary: 2000 });
+    expect(screen.getByText("25% of monthly income")).toBeInTheDocument();
+  });
+});
+
 describe("GoalCard work figure", () => {
   it("counts the price in days of work once it costs a full work day", () => {
     // $480 ÷ $12/hour = 40 hours = 5 eight-hour days.
