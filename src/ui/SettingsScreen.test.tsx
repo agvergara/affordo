@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { SettingsScreen } from "./SettingsScreen";
+import { SettingsScreen, type Confirm, type Navigate } from "./SettingsScreen";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { ThemeProvider } from "../state/ThemeProvider";
 import { ToastProvider } from "./Toast";
@@ -13,7 +13,20 @@ import {
   type Profile,
 } from "../state/profile-store";
 
+import { loadGoals, saveGoals, type Goal } from "../state/goals-store";
+
 beforeEach(() => window.localStorage.clear());
+
+/** A saved goal, so a reset has goals to erase as well as a profile. */
+function aGoal(): Goal {
+  return {
+    id: "g1",
+    name: "MacBook Pro",
+    price: 2400,
+    note: "",
+    createdAt: 1_700_000_000_000,
+  };
+}
 
 /**
  * Render SettingsScreen inside a real provider seeded from a persisted profile,
@@ -22,7 +35,10 @@ beforeEach(() => window.localStorage.clear());
  * too, matching the app root (Router mounts one) so Save's success toast can be
  * raised and asserted.
  */
-function renderSettings(profile: Partial<Profile> = {}) {
+function renderSettings(
+  profile: Partial<Profile> = {},
+  props: { navigate?: Navigate; confirm?: Confirm } = {},
+) {
   const seeded: Profile = { ...defaultProfile, salary: 1300, ...profile };
   saveProfile(seeded);
   act(() => {
@@ -30,7 +46,14 @@ function renderSettings(profile: Partial<Profile> = {}) {
       <ThemeProvider>
         <ToastProvider>
           <AffordoProvider>
-            <SettingsScreen />
+            {/*
+              Both seams are stubbed by default, so a test that doesn't care about
+              them can never fall through to the real `window.confirm` /
+              `window.location.replace` — the latter makes jsdom log
+              "Not implemented: navigation" and would leave a real navigation
+              attempt in the suite. An explicit prop still wins via the spread.
+            */}
+            <SettingsScreen navigate={vi.fn()} confirm={() => false} {...props} />
           </AffordoProvider>
         </ToastProvider>
       </ThemeProvider>,
@@ -38,6 +61,73 @@ function renderSettings(profile: Partial<Profile> = {}) {
   });
   return seeded;
 }
+
+describe("SettingsScreen — Reset everything", () => {
+  it("renders the Reset everything action", () => {
+    renderSettings();
+    expect(
+      screen.getByRole("button", { name: "Reset everything" }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for confirmation with the reference copy before erasing anything", async () => {
+    const user = userEvent.setup();
+    // The seam stands in for `window.confirm`, so the suite never blocks on a
+    // real dialog. Cancelling keeps this cycle to the prompt alone.
+    const confirm = vi.fn(() => false);
+    renderSettings({}, { confirm });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(confirm).toHaveBeenCalledWith(
+      "This will erase your profile and all goals. Continue?",
+    );
+  });
+
+  it("erases nothing when the user cancels the confirmation", async () => {
+    const user = userEvent.setup();
+    saveGoals([aGoal()]);
+    const seeded = renderSettings({ salary: 2500 }, { confirm: () => false });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(loadProfile().salary).toBe(seeded.salary);
+    expect(loadGoals()).toHaveLength(1);
+  });
+
+  it("clears the profile and every goal when the user confirms", async () => {
+    const user = userEvent.setup();
+    saveGoals([aGoal()]);
+    renderSettings({ salary: 2500 }, { confirm: () => true });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    // A cleared profile is the default one — salary back to 0, which is what
+    // makes `hasProfile` false and sends the user back to onboarding.
+    expect(loadProfile()).toEqual(defaultProfile);
+    expect(loadGoals()).toEqual([]);
+  });
+
+  it("returns the user to onboarding when the user confirms", async () => {
+    const user = userEvent.setup();
+    const navigate = vi.fn();
+    renderSettings({ salary: 2500 }, { confirm: () => true, navigate });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(navigate).toHaveBeenCalledWith("/onboarding");
+  });
+
+  it("stays on settings when the user cancels", async () => {
+    const user = userEvent.setup();
+    const navigate = vi.fn();
+    renderSettings({ salary: 2500 }, { confirm: () => false, navigate });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+});
 
 describe("SettingsScreen — chrome", () => {
   it("renders the app header and the Settings title", () => {

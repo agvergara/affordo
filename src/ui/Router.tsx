@@ -116,9 +116,11 @@ export function Router({
     );
   } else if (path === "/settings") {
     // §14: /settings renders nothing while hydrating (no loading line).
+    // Thread navigate through so a confirmed "Reset everything" leaves for
+    // /onboarding via the same SPA redirect the gate uses (dossier §14).
     screen = (
       <Guard navigate={navigate} whileHydrating={null}>
-        <SettingsScreen />
+        <SettingsScreen navigate={navigate} />
       </Guard>
     );
   } else {

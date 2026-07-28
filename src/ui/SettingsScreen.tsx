@@ -15,6 +15,29 @@ function num(v: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+/**
+ * How Reset everything asks the user to confirm. The reference calls
+ * `window.confirm(t("resetConfirm"))` (dossier §2/§14), so that is the default;
+ * tests inject a stub instead, which keeps a real blocking dialog out of the
+ * suite. Mirrors the `navigate` seam the wizard already uses.
+ */
+export type Confirm = (message: string) => boolean;
+
+const defaultConfirm: Confirm = (message) => window.confirm(message);
+
+/**
+ * How settings leaves for onboarding after a reset. Mirrors `Router`'s
+ * `Navigate` (`(to: string) => void`): the client-only SPA (ADR 0004/0009/0018)
+ * has no history router, so a redirect is a real location change; tests inject
+ * a spy instead.
+ */
+export type Navigate = (to: string) => void;
+
+const defaultNavigate: Navigate = (to) => window.location.replace(to);
+
+/** The reference's `t("resetConfirm")` (dossier §6, Settings). */
+const RESET_CONFIRM = "This will erase your profile and all goals. Continue?";
+
 const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
   { value: "EUR", label: "EUR — €" },
   { value: "GBP", label: "GBP — £" },
@@ -26,8 +49,9 @@ const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
  * editable profile fields, seeded from the current profile into a LOCAL draft.
  * Editing mutates only the draft; nothing is persisted until the user presses
  * Save (issue #68), which writes the draft back through `setProfile` and
- * confirms with a success toast (dossier §2/§6). Reset lands in a later slice
- * (#69), so this screen still never clears the profile.
+ * confirms with a success toast (dossier §2/§6). "Reset everything" (#69) is
+ * the one action that discards rather than edits: it confirms first, and only
+ * then clears the profile and every goal and returns to `/onboarding`.
  *
  * The draft is seeded once, at mount, from the profile the provider holds. To
  * keep that seed from capturing the pre-hydration default (the provider renders
@@ -37,14 +61,35 @@ const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
  * `/settings` while hydrating (§14); this makes the seed correct even when the
  * screen is mounted directly.
  */
-export function SettingsScreen() {
+export function SettingsScreen({
+  confirm = defaultConfirm,
+  navigate = defaultNavigate,
+}: {
+  confirm?: Confirm;
+  navigate?: Navigate;
+} = {}) {
   const { profile, hydrated } = useAffordo();
   if (!hydrated) return null;
-  return <SettingsForm key="hydrated" profile={profile} />;
+  return (
+    <SettingsForm
+      key="hydrated"
+      profile={profile}
+      confirm={confirm}
+      navigate={navigate}
+    />
+  );
 }
 
-function SettingsForm({ profile }: { profile: Profile }) {
-  const { setProfile } = useAffordo();
+function SettingsForm({
+  profile,
+  confirm,
+  navigate,
+}: {
+  profile: Profile;
+  confirm: Confirm;
+  navigate: Navigate;
+}) {
+  const { setProfile, clearProfile, clearGoals } = useAffordo();
   const { toast } = useToast();
   // Seed the draft once from the hydrated profile. This screen owns the draft;
   // the provider's profile is written only when the user presses Save.
@@ -67,6 +112,15 @@ function SettingsForm({ profile }: { profile: Profile }) {
   // constraint the way the reference does everywhere else — by disabling the
   // primary action until the draft is valid (dossier §7, goal dialog).
   const canSave = draft.salary > 0;
+
+  // Reset everything: confirm first, and do nothing at all if the user declines
+  // (dossier §2/§14).
+  const reset = () => {
+    if (!confirm(RESET_CONFIRM)) return;
+    clearProfile();
+    clearGoals();
+    navigate("/onboarding");
+  };
 
   return (
     <>
@@ -174,7 +228,20 @@ function SettingsForm({ profile }: { profile: Profile }) {
           </div>
         </div>
 
-        <div className="mt-12 flex justify-end border-t border-border pt-6">
+        <div className="mt-12 flex items-center justify-between border-t border-border pt-6">
+          <button
+            type="button"
+            onClick={reset}
+            // `border-0 bg-transparent p-0` neutralises the global `button`
+            // base rule (src/styles/theme.css), which otherwise paints every
+            // bare button as a bordered, --card-filled, 10px-radius pill with
+            // an accent hover border. The reference's destructive ghost has
+            // none of that (dossier §9), so it has to be escaped explicitly —
+            // the same way the wizard's ghost "← Back" does.
+            className="border-0 bg-transparent p-0 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Reset everything
+          </button>
           <button
             type="button"
             onClick={save}

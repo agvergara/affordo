@@ -102,6 +102,54 @@ describe("Router — per-route guards", () => {
     );
     expect(navigate).not.toHaveBeenCalled();
   });
+
+  it("routes a confirmed settings reset back to /onboarding", async () => {
+    seedProfile();
+    navigateTo("/settings");
+    const navigate = vi.fn();
+    // The screen's default confirm is `window.confirm`; stub the global so the
+    // route wiring is exercised end-to-end without a blocking dialog.
+    const confirm = vi
+      .spyOn(window, "confirm")
+      .mockImplementation(() => true);
+    // A screen that fell back to its own default navigate would really replace
+    // the document here; this stub is what tells the two apart. jsdom forbids
+    // spying on `location.replace`, so swap the whole object — the Router only
+    // reads `pathname` off it.
+    const replace = vi.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { pathname: "/settings", replace },
+    });
+    const restoreLocation = () =>
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: realLocation,
+      });
+    const user = userEvent.setup();
+
+    try {
+      render(<Router navigate={navigate} />);
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Reset everything" }),
+        ).toBeInTheDocument(),
+      );
+      await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+      // The route passes its own navigate down, so the reset lands on onboarding
+      // through the injected seam — never by really re-loading the document.
+      expect(navigate).toHaveBeenCalledWith("/onboarding");
+      expect(replace).not.toHaveBeenCalled();
+    } finally {
+      // Restore even on failure, so a red assertion here can't leak a stubbed
+      // location into every later test in this file.
+      confirm.mockRestore();
+      restoreLocation();
+    }
+  });
 });
 
 describe("Router — unguarded routes", () => {
