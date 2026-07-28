@@ -20,9 +20,9 @@ function focusableWithin(panel: HTMLElement | null): HTMLElement[] {
   );
 }
 
-/** The reference's mono uppercase field label (dossier §5). */
+/** The dossier's "Label (form)" typography token (§4, line 297). */
 const LABEL =
-  "font-mono text-[11px] uppercase tracking-widest text-muted-foreground";
+  "font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
 
 /**
  * The dialog's fields are shadcn `Input`/`Textarea` primitives in the reference,
@@ -82,10 +82,13 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
       const active = document.activeElement;
       const inside = panel.current?.contains(active) ?? false;
       // Wrap at whichever end the user is walking off.
+      // Focus can sit outside the panel — clicking the title or any other
+      // non-focusable part of the dialog drops it to the body — so both
+      // directions have to pull it back, not just Shift+Tab.
       if (event.shiftKey && (active === first || !inside)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && active === last) {
+      } else if (!event.shiftKey && (active === last || !inside)) {
         event.preventDefault();
         first.focus();
       }
@@ -118,7 +121,15 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    // Radix closes on a press outside the content; the reference does not
+    // override that, so pressing the overlay dismisses (dossier §9).
+    <div
+      data-testid="goal-dialog-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onOpenChange(false);
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+    >
       <div
         ref={panel}
         role="dialog"
@@ -196,14 +207,14 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest hover:text-accent"
+              className="px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!valid}
-              className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save
             </button>

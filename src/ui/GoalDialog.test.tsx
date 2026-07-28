@@ -280,6 +280,45 @@ describe("Add goal dialog — focus", () => {
 
     expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
   });
+
+  it("pulls focus back inside when Tab is pressed from outside the panel", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    // Clicking the dialog's own title — not a focusable element — drops focus to
+    // the body. A plain Tab from there must land back inside the dialog, not on
+    // the page behind it.
+    await user.click(screen.getByRole("heading", { name: "Add goal" }));
+    await user.tab();
+
+    expect(screen.getByRole("dialog")).toContainElement(
+      document.activeElement as HTMLElement,
+    );
+  });
+});
+
+describe("Add goal dialog — overlay", () => {
+  it("closes when the overlay behind the panel is clicked", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+
+    await user.click(screen.getByTestId("goal-dialog-overlay"));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 0",
+    );
+  });
+
+  it("stays open when the click lands inside the panel", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    await user.click(screen.getByRole("heading", { name: "Add goal" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
 });
 
 describe("Add goal dialog — reopening", () => {
