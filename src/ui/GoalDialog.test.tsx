@@ -1,20 +1,40 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
+import { saveGoals, type Goal } from "../state/goals-store";
 
 beforeEach(() => window.localStorage.clear());
+
+/** A minimal already-saved Goal, for tests that need existing goals. */
+function makeGoal(overrides?: Partial<Goal>): Goal {
+  return {
+    id: crypto.randomUUID(),
+    name: "Down payment",
+    price: 5000,
+    note: "",
+    createdAt: 0,
+    ...overrides,
+  };
+}
 
 /**
  * Render the dashboard inside a real provider with a usable profile. The dialog
  * is only reachable through the dashboard's Add goal button, so every test here
  * drives it the way a user does — no direct mounting of `GoalDialog`.
  */
-function renderDashboard() {
+function renderDashboard(goals: Goal[] = []) {
   saveProfile({ ...defaultProfile, salary: 2000 });
+  saveGoals(goals);
   act(() => {
     render(
       <AffordoProvider>
@@ -133,5 +153,69 @@ describe("Add goal dialog — saving", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByTestId("goals-list")).toHaveTextContent("MacBook Pro");
+  });
+
+  it("submits on Enter from a field, without reaching for Save", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500{Enter}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("MacBook Pro");
+  });
+
+  it("prepends the new goal so the most recent sits on top", async () => {
+    const user = renderDashboard([makeGoal({ name: "Down payment" })]);
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const items = within(screen.getByTestId("goals-list")).getAllByRole(
+      "listitem",
+    );
+    expect(items[0]).toHaveTextContent("MacBook Pro");
+    expect(items[1]).toHaveTextContent("Down payment");
+  });
+
+  it("keeps the saved goal after the dashboard is reloaded", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    cleanup();
+    act(() => {
+      render(
+        <AffordoProvider>
+          <GoalsDashboard />
+        </AffordoProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("MacBook Pro");
+  });
+
+  it("trims surrounding whitespace from the saved name", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "   MacBook Pro   ");
+    await user.type(screen.getByLabelText("Price"), "1500");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByText("MacBook Pro")).toBeInTheDocument();
+  });
+
+  it("saves the price the user typed", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500.50");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // Default profile currency is EUR → de-DE formatting.
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("1.500,50 €");
   });
 });
