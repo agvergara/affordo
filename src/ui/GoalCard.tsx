@@ -20,6 +20,9 @@ export function GoalCard({ goal }: { goal: Goal }) {
           <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             {new Date(goal.createdAt).toLocaleDateString("en-US")}
           </p>
+          <h2 className="mt-1 truncate font-display text-3xl uppercase tracking-tight sm:text-4xl">
+            {goal.name}
+          </h2>
         </div>
       </div>
     </article>

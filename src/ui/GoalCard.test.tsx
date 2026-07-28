@@ -46,4 +46,11 @@ describe("GoalCard header", () => {
     renderCard(makeGoal({ createdAt: JAN_15_2024 }));
     expect(screen.getByText("1/15/2024")).toBeInTheDocument();
   });
+
+  it("names the goal as the card's heading", () => {
+    renderCard(makeGoal({ name: "Down payment" }));
+    expect(
+      screen.getByRole("heading", { name: "Down payment" }),
+    ).toBeInTheDocument();
+  });
 });
