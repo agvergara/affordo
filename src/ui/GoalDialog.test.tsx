@@ -122,3 +122,16 @@ describe("Add goal dialog — Save gating", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 });
+
+describe("Add goal dialog — saving", () => {
+  it("adds the goal to the dashboard and closes the dialog", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("MacBook Pro");
+  });
+});

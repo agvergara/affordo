@@ -22,7 +22,7 @@ import { formatMoney } from "./localeFormat";
  * always a real profile (`salary > 0`).
  */
 export function GoalsDashboard() {
-  const { profile, goals } = useAffordo();
+  const { profile, goals, setGoals } = useAffordo();
   const [adding, setAdding] = useState(false);
 
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
@@ -127,7 +127,12 @@ export function GoalsDashboard() {
         )}
       </main>
 
-      <GoalDialog open={adding} />
+      {/* New goals are prepended, so the most recent sits on top (dossier §8). */}
+      <GoalDialog
+        open={adding}
+        onOpenChange={setAdding}
+        onSave={(goal) => setGoals([goal, ...goals])}
+      />
     </div>
   );
 }
