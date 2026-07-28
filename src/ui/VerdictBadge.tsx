@@ -13,9 +13,19 @@ const LABELS: Record<ReferenceVerdictKind, string> = {
   cannot: "Cannot",
 };
 
+/** Reference colours per kind (§5): green afford, black stretch, accent cut, red cannot. */
+const STYLES: Record<ReferenceVerdictKind, string> = {
+  afford: "bg-emerald-600 text-white",
+  stretch: "bg-foreground text-background",
+  cutToAfford: "bg-accent text-accent-foreground",
+  cannot: "bg-destructive text-destructive-foreground",
+};
+
 export function VerdictBadge({ kind }: { kind: ReferenceVerdictKind }) {
   return (
-    <span className="inline-flex items-center px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest">
+    <span
+      className={`inline-flex items-center px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest ${STYLES[kind]}`}
+    >
       {LABELS[kind]}
     </span>
   );
