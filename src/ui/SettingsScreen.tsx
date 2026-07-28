@@ -232,7 +232,13 @@ function SettingsForm({
           <button
             type="button"
             onClick={reset}
-            className="font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            // `border-0 bg-transparent p-0` neutralises the global `button`
+            // base rule (src/styles/theme.css), which otherwise paints every
+            // bare button as a bordered, --card-filled, 10px-radius pill with
+            // an accent hover border. The reference's destructive ghost has
+            // none of that (dossier §9), so it has to be escaped explicitly —
+            // the same way the wizard's ghost "← Back" does.
+            className="border-0 bg-transparent p-0 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Reset everything
           </button>
