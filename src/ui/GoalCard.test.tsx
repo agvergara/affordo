@@ -119,6 +119,18 @@ describe("GoalCard threshold meter caption", () => {
     renderCard(makeGoal({ price: 500 }), { salary: 2000 });
     expect(screen.getByText("25% of monthly income")).toBeInTheDocument();
   });
+
+  it("rounds the percentage to one decimal in the profile's locale", () => {
+    // 250 of 2000 is 12.5%, written with a decimal comma under de-DE (EUR).
+    renderCard(makeGoal({ price: 250 }), { salary: 2000, currency: "EUR" });
+    expect(screen.getByText("12,5% of monthly income")).toBeInTheDocument();
+  });
+
+  it("shows an em dash rather than NaN when there is no income to measure against", () => {
+    // salary 0 makes pctOfMonthlyIncome Infinity (dossier §8).
+    renderCard(makeGoal({ price: 500 }), { salary: 0 });
+    expect(screen.getByText("—% of monthly income")).toBeInTheDocument();
+  });
 });
 
 describe("GoalCard work figure", () => {
