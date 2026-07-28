@@ -1,30 +1,42 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AppHeader } from "./AppHeader";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
+import { saveTheme } from "../state/theme-store";
 
 beforeEach(() => window.localStorage.clear());
+// ThemeProvider writes `.dark` onto the shared document root; strip it between
+// tests so a dark case can't leak into the next one's starting theme.
+afterEach(() => document.documentElement.classList.remove("dark"));
 
 /**
- * Render AppHeader inside a real provider. When `profile` is given it is
+ * Render AppHeader inside real providers. When `profile` is given it is
  * persisted first, so the provider hydrates to a real profile after mount;
  * `act` flushes that post-mount effect. With no profile the provider stays on
- * the empty default (salary 0 → hasProfile false).
+ * the empty default (salary 0 → hasProfile false). `ThemeProvider` wraps it
+ * because the header's theme toggle reads the live theme; it starts from
+ * whatever `theme-store` holds, so a test seeds dark with `saveTheme("dark")`.
  */
 function renderHeader(
   props: Parameters<typeof AppHeader>[0] = {},
   profile?: Partial<typeof defaultProfile>,
 ) {
   if (profile) saveProfile({ ...defaultProfile, ...profile });
+  let result!: ReturnType<typeof render>;
   act(() => {
-    render(
-      <AffordoProvider>
-        <AppHeader {...props} />
-      </AffordoProvider>,
+    result = render(
+      <ThemeProvider>
+        <AffordoProvider>
+          <AppHeader {...props} />
+        </AffordoProvider>
+      </ThemeProvider>,
     );
   });
+  return result;
 }
 
 describe("AppHeader brand", () => {
@@ -78,6 +90,111 @@ describe("AppHeader time-value chip", () => {
     // A profile with salary but zero contracted hours → hourly rate 0.
     renderHeader({}, { salary: 2000, hoursPerWeek: 0 });
     expect(screen.queryByTestId("time-value")).toBeNull();
+  });
+});
+
+describe("AppHeader theme toggle", () => {
+  it("offers a control to switch to the dark theme while light is active", () => {
+    renderHeader();
+    expect(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers a control to switch back to light while dark is active", () => {
+    saveTheme("dark");
+    renderHeader();
+    expect(
+      screen.getByRole("button", { name: "Switch to light theme" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the sun icon while the light theme is active", () => {
+    renderHeader();
+    expect(screen.getByTestId("theme-icon-sun")).toBeInTheDocument();
+    expect(screen.queryByTestId("theme-icon-moon")).toBeNull();
+  });
+
+  it("shows the moon icon while the dark theme is active", () => {
+    saveTheme("dark");
+    renderHeader();
+    expect(screen.getByTestId("theme-icon-moon")).toBeInTheDocument();
+    expect(screen.queryByTestId("theme-icon-sun")).toBeNull();
+  });
+
+  it("keeps the icon out of the accessible name", () => {
+    // The icon is decorative: the aria-label alone names the control, so a
+    // screen reader announces the action once, not the glyph beside it.
+    renderHeader();
+    expect(screen.getByTestId("theme-icon-sun")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("switches the theme immediately when pressed", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    );
+
+    // The control now offers the return trip, and wears the dark theme's glyph.
+    expect(
+      screen.getByRole("button", { name: "Switch to light theme" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("theme-icon-moon")).toBeInTheDocument();
+  });
+
+  it("switches back when pressed again", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Switch to light theme" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("theme-icon-sun")).toBeInTheDocument();
+  });
+
+  it("persists the chosen theme across a reload", async () => {
+    const user = userEvent.setup();
+    const first = renderHeader();
+
+    await user.click(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    );
+    first.unmount();
+
+    // A fresh mount is a reload: nothing survives but what was written to
+    // storage, so coming up dark proves the choice was persisted, not held in
+    // memory. (The root class is reset so it can't be what carries the state.)
+    document.documentElement.classList.remove("dark");
+    renderHeader();
+
+    expect(
+      screen.getByRole("button", { name: "Switch to light theme" }),
+    ).toBeInTheDocument();
+  });
+
+  it("stays available during onboarding, where the rest of the header hides", () => {
+    // The wizard mounts the header with showTimeValue={false} and before any
+    // profile exists, so the chip and the Settings link both drop out. Theming
+    // is not profile-derived, so the toggle survives that stripped-down header.
+    renderHeader({ showTimeValue: false });
+
+    expect(screen.queryByTestId("time-value")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
   });
 });
 

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
 import { saveGoals, type Goal } from "../state/goals-store";
 
@@ -33,9 +34,11 @@ function renderDashboard(
   saveGoals(goals);
   act(() => {
     render(
-      <AffordoProvider>
-        <GoalsDashboard />
-      </AffordoProvider>,
+      <ThemeProvider>
+        <AffordoProvider>
+          <GoalsDashboard />
+        </AffordoProvider>
+      </ThemeProvider>,
     );
   });
 }
