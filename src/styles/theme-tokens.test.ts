@@ -126,7 +126,13 @@ describe("reference oklch color tokens (dossier §3)", () => {
   // the near-black --background: the settings fields went invisible. The
   // class-based theme has to flip them too, or choosing dark breaks any
   // component still reading them.
-  describe("legacy tokens follow the .dark class, not just the OS", () => {
+  // Scope note: this harness can only observe the `:root` and `.dark` blocks —
+  // `mountTokenRules()`'s regex requires the selector at column 0, so the
+  // `@media (prefers-color-scheme: dark)` block's indented `:root` is excluded
+  // and nothing here says anything about OS-driven dark. That gap is real and
+  // tracked: the media block still overrides an explicit light choice on a
+  // dark-set OS.
+  describe("legacy tokens flip when the .dark class is applied", () => {
     it("flips the ink the base layer paints input text with", () => {
       expect(tokenValue(null, "--ink")).toBe("#1c1a17");
       expect(tokenValue("dark", "--ink")).toBe("#f5efe4");

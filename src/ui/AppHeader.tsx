@@ -71,6 +71,10 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
  * layer, which would otherwise render this as a pill in a header of bare text
  * links. Every other button in the app neutralizes the same rule the same way
  * (the wizard's `← Back` is the closest analogue).
+ *
+ * Zeroing that padding also zeroes the hit area down to the icon's own 16x16,
+ * so the box is restored explicitly: `h-8 w-8` centring the glyph gives a 32px
+ * target (WCAG 2.5.8 asks 24x24) without changing the icon's rendered size.
  */
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -81,7 +85,7 @@ function ThemeToggle() {
       type="button"
       onClick={() => setTheme(next)}
       aria-label={`Switch to ${next} theme`}
-      className="border-0 bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="inline-flex h-8 w-8 items-center justify-center border-0 bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {theme === "dark" ? <MoonIcon /> : <SunIcon />}
     </button>
