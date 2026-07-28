@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
 import { saveGoals, type Goal } from "../state/goals-store";
 
@@ -33,9 +34,11 @@ function renderDashboard(
   saveGoals(goals);
   act(() => {
     render(
-      <AffordoProvider>
-        <GoalsDashboard />
-      </AffordoProvider>,
+      <ThemeProvider>
+        <AffordoProvider>
+          <GoalsDashboard />
+        </AffordoProvider>
+      </ThemeProvider>,
     );
   });
 }
@@ -155,12 +158,31 @@ describe("GoalsDashboard list container", () => {
         name: "A very long goal name that keeps going and going and going",
       }),
     ]);
-    const name = screen.getByText(
-      "A very long goal name that keeps going and going and going",
-    );
-    // A flex child needs min-w-0 for `truncate` (overflow:hidden) to clamp;
+    const name = screen.getByRole("heading", {
+      name: "A very long goal name that keeps going and going and going",
+    });
+    // A grid/flex child needs min-w-0 for `truncate` (overflow:hidden) to clamp;
     // without it the intrinsic width refuses to shrink and the name overflows.
-    expect(name).toHaveClass("min-w-0", "truncate");
+    // On the card the name is the truncating h2 and min-w-0 sits on the column
+    // that holds it (docs/affordo-context.md §5).
+    expect(name).toHaveClass("truncate");
+    expect(name.parentElement).toHaveClass("min-w-0");
+  });
+});
+
+describe("GoalsDashboard goal cards", () => {
+  it("renders each saved goal as a full card", () => {
+    // Local noon, so the date reads the same in every timezone.
+    const createdAt = new Date(2024, 0, 15, 12).getTime();
+    renderDashboard({ salary: 2000, currency: "EUR", savings: 5000 }, [
+      makeGoal({ name: "MacBook", price: 1500, createdAt }),
+    ]);
+    const item = screen.getByTestId("goal-item");
+    expect(item).toHaveTextContent("1/15/2024");
+    expect(item).toHaveTextContent("MacBook");
+    expect(item).toHaveTextContent("1.500,00 €");
+    // 5000 savings already cover the 1500 price.
+    expect(item).toHaveTextContent("Afford");
   });
 });
 

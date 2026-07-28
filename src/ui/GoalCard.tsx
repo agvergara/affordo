@@ -1,0 +1,65 @@
+import { useMemo } from "react";
+import { evaluateReference } from "../engine";
+import { useAffordo } from "../state/AffordoProvider";
+import type { Goal } from "../state/goals-store";
+import { formatMoney, formatNumber } from "./localeFormat";
+import { VerdictBadge } from "./VerdictBadge";
+
+/**
+ * A saved Goal weighed against the profile (docs/affordo-context.md §5).
+ *
+ * This slice builds the card's core (#60): the creation date, the goal name and
+ * its optional note, the verdict badge, the price, and what the price costs in
+ * days — or hours — of work. The threshold meter (#61), the stat block and
+ * per-verdict explainers (#62), and the Edit/Remove actions land in later
+ * slices, so the props stay `{ goal }` until those callbacks are needed.
+ *
+ * The date is `toLocaleDateString("en-US")` regardless of the profile currency —
+ * a reference quirk reproduced deliberately (dossier §13).
+ */
+export function GoalCard({ goal }: { goal: Goal }) {
+  const { profile } = useAffordo();
+  const verdict = useMemo(
+    () => evaluateReference(profile, goal),
+    [profile, goal],
+  );
+
+  // Days once the price costs a full work day, hours below that (dossier §8).
+  const showDays = verdict.daysOfWork >= 1;
+  const workLabel = showDays
+    ? `${formatNumber(verdict.daysOfWork, profile.currency)} days of work`
+    : `${formatNumber(verdict.hoursOfWork, profile.currency)} hours of work`;
+
+  return (
+    <article className="border border-border bg-card p-6 sm:p-8">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {new Date(goal.createdAt).toLocaleDateString("en-US")}
+          </p>
+          <h2 className="mt-1 truncate font-display text-3xl uppercase tracking-tight sm:text-4xl">
+            {goal.name}
+          </h2>
+          {goal.note && (
+            <p
+              data-testid="goal-note"
+              className="mt-1 text-sm text-muted-foreground"
+            >
+              {goal.note}
+            </p>
+          )}
+        </div>
+        <VerdictBadge kind={verdict.kind} />
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        <span className="font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl">
+          {formatMoney(goal.price, profile.currency)}
+        </span>
+        <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          {workLabel}
+        </span>
+      </div>
+    </article>
+  );
+}

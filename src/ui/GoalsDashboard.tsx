@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import { AppHeader } from "./AppHeader";
+import { GoalCard } from "./GoalCard";
+import { GoalDialog } from "./GoalDialog";
 import { formatMoney } from "./localeFormat";
 
 /**
@@ -20,7 +23,8 @@ import { formatMoney } from "./localeFormat";
  * always a real profile (`salary > 0`).
  */
 export function GoalsDashboard() {
-  const { profile, goals } = useAffordo();
+  const { profile, goals, setGoals } = useAffordo();
+  const [adding, setAdding] = useState(false);
 
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
   const surplus =
@@ -81,9 +85,9 @@ export function GoalsDashboard() {
           >
             Saved goals · {goals.length}
           </div>
-          {/* Inert until the Add/Edit dialog lands (slice #64). */}
           <button
             type="button"
+            onClick={() => setAdding(true)}
             className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
           >
             Add goal
@@ -107,22 +111,20 @@ export function GoalsDashboard() {
         {goals.length > 0 && (
           <ul data-testid="goals-list" className="mt-6 space-y-4">
             {goals.map((goal) => (
-              <li
-                key={goal.id}
-                data-testid="goal-item"
-                className="flex items-baseline justify-between gap-4 border border-border bg-card p-4"
-              >
-                <span className="min-w-0 truncate font-display text-2xl uppercase tracking-tight">
-                  {goal.name}
-                </span>
-                <span className="font-mono text-sm text-muted-foreground">
-                  {formatMoney(goal.price, profile.currency)}
-                </span>
+              <li key={goal.id} data-testid="goal-item">
+                <GoalCard goal={goal} />
               </li>
             ))}
           </ul>
         )}
       </main>
+
+      {/* New goals are prepended, so the most recent sits on top (dossier §8). */}
+      <GoalDialog
+        open={adding}
+        onOpenChange={setAdding}
+        onSave={(goal) => setGoals([goal, ...goals])}
+      />
     </div>
   );
 }

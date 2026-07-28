@@ -85,6 +85,22 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.72 0.19 45);
+
+  /* The legacy warm-editorial tokens, flipped to the same dark values the
+     prefers-color-scheme block below uses. These are not decoration: the base
+     layer paints input/select text with --ink and labels with --stone, so a
+     class-based dark theme that left them at their light values would put dark
+     ink on the near-black --background and make every settings field
+     unreadable. Until the remaining components migrate to the reference token
+     names (ADR 0021's accepted coexistence), the class has to flip both sets
+     or choosing dark breaks whatever still reads the legacy ones. */
+  --canvas: #1c1a17;
+  --ink: #f5efe4;
+  --stone: #a8a093;
+  --positive: #7fb894;
+  --positive-bg: #223028;
+  --constructive: #8fb0cf;
+  --constructive-bg: #202a33;
 }
 
 /* Legacy warm-editorial dark variant (prefers-color-scheme). Retained so the

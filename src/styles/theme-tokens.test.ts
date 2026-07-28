@@ -118,6 +118,38 @@ describe("reference oklch color tokens (dossier §3)", () => {
       /\*\s*\{\s*border-color:\s*var\(--border\);\s*\}/,
     );
   });
+
+  // The base layer paints inputs, selects, buttons and labels with the LEGACY
+  // warm-editorial tokens (--ink on inputs, --stone on labels), not the
+  // reference oklch ones. Those legacy tokens were flipped only by the
+  // prefers-color-scheme block, so a user-chosen dark theme left dark ink on
+  // the near-black --background: the settings fields went invisible. The
+  // class-based theme has to flip them too, or choosing dark breaks any
+  // component still reading them.
+  // Scope note: this harness can only observe the `:root` and `.dark` blocks —
+  // `mountTokenRules()`'s regex requires the selector at column 0, so the
+  // `@media (prefers-color-scheme: dark)` block's indented `:root` is excluded
+  // and nothing here says anything about OS-driven dark. That gap is real and
+  // tracked: the media block still overrides an explicit light choice on a
+  // dark-set OS.
+  describe("legacy tokens flip when the .dark class is applied", () => {
+    it("flips the ink the base layer paints input text with", () => {
+      expect(tokenValue(null, "--ink")).toBe("#1c1a17");
+      expect(tokenValue("dark", "--ink")).toBe("#f5efe4");
+    });
+
+    it("flips the canvas and the muted stone the labels use", () => {
+      expect(tokenValue("dark", "--canvas")).toBe("#1c1a17");
+      expect(tokenValue("dark", "--stone")).toBe("#a8a093");
+    });
+
+    it("flips the verdict tokens so their text stays legible on dark", () => {
+      expect(tokenValue("dark", "--positive")).toBe("#7fb894");
+      expect(tokenValue("dark", "--positive-bg")).toBe("#223028");
+      expect(tokenValue("dark", "--constructive")).toBe("#8fb0cf");
+      expect(tokenValue("dark", "--constructive-bg")).toBe("#202a33");
+    });
+  });
 });
 
 // The `@layer base` block contains nested `{}` rules, so no single regex can
