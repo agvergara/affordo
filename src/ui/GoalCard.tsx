@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
+import { formatMoney } from "./localeFormat";
 import { VerdictBadge } from "./VerdictBadge";
 
 /**
@@ -43,6 +44,12 @@ export function GoalCard({ goal }: { goal: Goal }) {
           )}
         </div>
         <VerdictBadge kind={verdict.kind} />
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        <span className="font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl">
+          {formatMoney(goal.price, profile.currency)}
+        </span>
       </div>
     </article>
   );

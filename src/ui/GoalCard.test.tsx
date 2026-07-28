@@ -90,3 +90,15 @@ describe("GoalCard verdict badge", () => {
     expect(screen.getByText("Cannot")).toBeInTheDocument();
   });
 });
+
+describe("GoalCard price", () => {
+  it("shows the price in the profile currency", () => {
+    renderCard(makeGoal({ price: 1500 }), { currency: "EUR" });
+    expect(screen.getByText("1.500,00 €")).toBeInTheDocument();
+  });
+
+  it("follows the profile to another currency's locale", () => {
+    renderCard(makeGoal({ price: 1500 }), { currency: "USD" });
+    expect(screen.getByText("$1,500.00")).toBeInTheDocument();
+  });
+});
