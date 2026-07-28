@@ -67,7 +67,7 @@ function SettingsForm({
   profile: Profile;
   confirm: Confirm;
 }) {
-  const { setProfile } = useAffordo();
+  const { setProfile, clearProfile, clearGoals } = useAffordo();
   const { toast } = useToast();
   // Seed the draft once from the hydrated profile. This screen owns the draft;
   // the provider's profile is written only when the user presses Save.
@@ -95,6 +95,8 @@ function SettingsForm({
   // (dossier §2/§14).
   const reset = () => {
     if (!confirm(RESET_CONFIRM)) return;
+    clearProfile();
+    clearGoals();
   };
 
   return (

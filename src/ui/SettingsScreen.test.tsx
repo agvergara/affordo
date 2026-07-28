@@ -84,6 +84,19 @@ describe("SettingsScreen — Reset everything", () => {
     expect(loadProfile().salary).toBe(seeded.salary);
     expect(loadGoals()).toHaveLength(1);
   });
+
+  it("clears the profile and every goal when the user confirms", async () => {
+    const user = userEvent.setup();
+    saveGoals([aGoal()]);
+    renderSettings({ salary: 2500 }, { confirm: () => true });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    // A cleared profile is the default one — salary back to 0, which is what
+    // makes `hasProfile` false and sends the user back to onboarding.
+    expect(loadProfile()).toEqual(defaultProfile);
+    expect(loadGoals()).toEqual([]);
+  });
 });
 
 describe("SettingsScreen — chrome", () => {
