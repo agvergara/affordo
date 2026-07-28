@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
-import { formatMoney } from "./localeFormat";
+import { formatMoney, formatNumber } from "./localeFormat";
 import { VerdictBadge } from "./VerdictBadge";
 
 /**
@@ -23,6 +23,12 @@ export function GoalCard({ goal }: { goal: Goal }) {
     () => evaluateReference(profile, goal),
     [profile, goal],
   );
+
+  // Days once the price costs a full work day, hours below that (dossier §8).
+  const showDays = verdict.daysOfWork >= 1;
+  const workLabel = showDays
+    ? `${formatNumber(verdict.daysOfWork, profile.currency)} days of work`
+    : `${formatNumber(verdict.hoursOfWork, profile.currency)} hours of work`;
 
   return (
     <article className="border border-border bg-card p-6 sm:p-8">
@@ -49,6 +55,9 @@ export function GoalCard({ goal }: { goal: Goal }) {
       <div className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-2">
         <span className="font-display text-5xl uppercase leading-none tracking-tight sm:text-6xl">
           {formatMoney(goal.price, profile.currency)}
+        </span>
+        <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          {workLabel}
         </span>
       </div>
     </article>

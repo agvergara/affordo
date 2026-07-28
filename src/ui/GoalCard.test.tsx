@@ -102,3 +102,29 @@ describe("GoalCard price", () => {
     expect(screen.getByText("$1,500.00")).toBeInTheDocument();
   });
 });
+
+/**
+ * A profile whose Time value is exactly $12/hour over an 8-hour day
+ * (2080 × 12 ÷ (52 × 40)), so a price converts to whole hours and days.
+ */
+const TWELVE_AN_HOUR = { salary: 2080, currency: "USD" } as const;
+
+describe("GoalCard work figure", () => {
+  it("counts the price in days of work once it costs a full work day", () => {
+    // $480 ÷ $12/hour = 40 hours = 5 eight-hour days.
+    renderCard(makeGoal({ price: 480 }), TWELVE_AN_HOUR);
+    expect(screen.getByText("5 days of work")).toBeInTheDocument();
+  });
+
+  it("counts the price in hours of work when it costs less than a day", () => {
+    // $60 ÷ $12/hour = 5 hours — 0.625 of a work day, so hours it is.
+    renderCard(makeGoal({ price: 60 }), TWELVE_AN_HOUR);
+    expect(screen.getByText("5 hours of work")).toBeInTheDocument();
+  });
+
+  it("switches to days at exactly one work day", () => {
+    // $96 ÷ $12/hour = 8 hours = 1 day exactly, the >= 1 boundary.
+    renderCard(makeGoal({ price: 96 }), TWELVE_AN_HOUR);
+    expect(screen.getByText("1 days of work")).toBeInTheDocument();
+  });
+});
