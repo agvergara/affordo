@@ -205,6 +205,35 @@ describe("GoalCard threshold meter fill", () => {
   });
 });
 
+/**
+ * The midpoint marker is hard-coded to `left: 50%` in the reference — it does
+ * NOT move with the threshold. The dossier flags this as one of the "mistakes
+ * that are requirements" (§13 open question 5, PRD §Formatting quirks), so it is
+ * reproduced deliberately and pinned here against a well-meaning future fix.
+ */
+describe("GoalCard threshold meter midpoint marker", () => {
+  it("sits at the midpoint of the track", () => {
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-marker")).toHaveStyle({ left: "50%" });
+  });
+
+  it("stays at the midpoint under a different threshold", () => {
+    // A 40% threshold puts this 10% purchase at 12.5% of the track, yet the
+    // marker does not follow the threshold — it is fixed, by design.
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 40 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "12.5%" });
+    expect(screen.getByTestId("threshold-marker")).toHaveStyle({ left: "50%" });
+  });
+
+  it("hides the marker from assistive technology", () => {
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-marker")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+});
+
 describe("GoalCard work figure", () => {
   it("counts the price in days of work once it costs a full work day", () => {
     // $480 ÷ $12/hour = 40 hours = 5 eight-hour days.
