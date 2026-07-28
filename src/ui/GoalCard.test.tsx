@@ -138,6 +138,32 @@ describe("GoalCard threshold caption", () => {
     renderCard(makeGoal({ price: 500 }), { threshold: 15 });
     expect(screen.getByText("Significance threshold: 15%")).toBeInTheDocument();
   });
+
+  // The caption's colour IS the behaviour — significance "visually flagged"
+  // (#61, user story 39). jsdom exposes a colour only through the utility class
+  // that sets it, so this follows the one exception VerdictBadge established
+  // rather than inventing a second kind.
+  //
+  // NOTE: the accent lands on the THRESHOLD caption, not the percent caption.
+  // The dossier's literal extraction (§5) is
+  // `className={v.aboveThreshold ? "text-accent" : "text-muted-foreground"}` on
+  // the right-hand span, while the percent span is permanently muted. #61's AC
+  // and PRD story 39 read the other way round; the dossier wins on exact values.
+  it("accents the threshold caption when the purchase is above threshold", () => {
+    // 300 of a 2000 salary is 15%, past the 10% threshold.
+    renderCard(makeGoal({ price: 300 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByText("Significance threshold: 10%")).toHaveClass(
+      "text-accent",
+    );
+  });
+
+  it("leaves the threshold caption muted at exactly the threshold", () => {
+    // 200 of 2000 is exactly 10% — `aboveThreshold` is strictly greater-than.
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByText("Significance threshold: 10%")).toHaveClass(
+      "text-muted-foreground",
+    );
+  });
 });
 
 describe("GoalCard work figure", () => {

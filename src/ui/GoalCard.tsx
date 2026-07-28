@@ -67,7 +67,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
             {formatNumber(verdict.pctOfMonthlyIncome, profile.currency, 1)}% of
             monthly income
           </span>
-          <span className="text-muted-foreground">
+          <span
+            className={
+              verdict.aboveThreshold ? "text-accent" : "text-muted-foreground"
+            }
+          >
             Significance threshold: {profile.threshold}%
           </span>
         </div>
