@@ -12,7 +12,20 @@ import {
   type Profile,
 } from "../state/profile-store";
 
+import { loadGoals, saveGoals, type Goal } from "../state/goals-store";
+
 beforeEach(() => window.localStorage.clear());
+
+/** A saved goal, so a reset has goals to erase as well as a profile. */
+function aGoal(): Goal {
+  return {
+    id: "g1",
+    name: "MacBook Pro",
+    price: 2400,
+    note: "",
+    createdAt: 1_700_000_000_000,
+  };
+}
 
 /**
  * Render SettingsScreen inside a real provider seeded from a persisted profile,
@@ -59,6 +72,17 @@ describe("SettingsScreen — Reset everything", () => {
     expect(confirm).toHaveBeenCalledWith(
       "This will erase your profile and all goals. Continue?",
     );
+  });
+
+  it("erases nothing when the user cancels the confirmation", async () => {
+    const user = userEvent.setup();
+    saveGoals([aGoal()]);
+    const seeded = renderSettings({ salary: 2500 }, { confirm: () => false });
+
+    await user.click(screen.getByRole("button", { name: "Reset everything" }));
+
+    expect(loadProfile().salary).toBe(seeded.salary);
+    expect(loadGoals()).toHaveLength(1);
   });
 });
 
