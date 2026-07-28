@@ -1,4 +1,8 @@
+import { useMemo } from "react";
+import { evaluateReference } from "../engine";
+import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
+import { VerdictBadge } from "./VerdictBadge";
 
 /**
  * A saved Goal weighed against the profile (docs/affordo-context.md §5).
@@ -13,6 +17,12 @@ import type { Goal } from "../state/goals-store";
  * a reference quirk reproduced deliberately (dossier §13).
  */
 export function GoalCard({ goal }: { goal: Goal }) {
+  const { profile } = useAffordo();
+  const verdict = useMemo(
+    () => evaluateReference(profile, goal),
+    [profile, goal],
+  );
+
   return (
     <article className="border border-border bg-card p-6 sm:p-8">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
@@ -32,6 +42,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
             </p>
           )}
         </div>
+        <VerdictBadge kind={verdict.kind} />
       </div>
     </article>
   );

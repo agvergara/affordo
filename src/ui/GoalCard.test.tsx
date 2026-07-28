@@ -65,3 +65,28 @@ describe("GoalCard header", () => {
     expect(screen.queryByTestId("goal-note")).not.toBeInTheDocument();
   });
 });
+
+describe("GoalCard verdict badge", () => {
+  it("reads Afford when savings already cover the price", () => {
+    renderCard(makeGoal({ price: 1500 }), { savings: 2000 });
+    expect(screen.getByText("Afford")).toBeInTheDocument();
+  });
+
+  it("reads Stretch when the surplus reaches the price within a year", () => {
+    // 1500 to find, 1000/mo surplus (2000 − 1000) → 1.5 months.
+    renderCard(makeGoal({ price: 1500 }), { savings: 0, expenses: 1000 });
+    expect(screen.getByText("Stretch")).toBeInTheDocument();
+  });
+
+  it("reads Cut to afford when only trimming expenses reaches it in a year", () => {
+    // 30000 over 12 months needs 2500/mo; surplus is 1000, and the 1500
+    // shortfall is inside half of the 4000 expenses.
+    renderCard(makeGoal({ price: 30000 }), { savings: 0, expenses: 4000, salary: 5000 });
+    expect(screen.getByText("Cut to afford")).toBeInTheDocument();
+  });
+
+  it("reads Cannot when even a half-expenses cut misses the year", () => {
+    renderCard(makeGoal({ price: 500000 }), { savings: 0, expenses: 1000 });
+    expect(screen.getByText("Cannot")).toBeInTheDocument();
+  });
+});
