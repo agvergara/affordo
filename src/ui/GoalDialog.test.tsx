@@ -38,3 +38,17 @@ describe("Add goal dialog — opening", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("Add goal dialog — fields", () => {
+  it("offers Name, Price and an optional Note, with the reference placeholders", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    expect(screen.getByLabelText("Name")).toHaveAttribute(
+      "placeholder",
+      "MacBook Pro",
+    );
+    expect(screen.getByLabelText("Price")).toHaveAttribute("placeholder", "0");
+    expect(screen.getByLabelText("Note (optional)")).toBeInTheDocument();
+  });
+});
