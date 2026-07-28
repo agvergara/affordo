@@ -105,6 +105,29 @@ describe("AppHeader theme toggle", () => {
       screen.getByRole("button", { name: "Switch to light theme" }),
     ).toBeInTheDocument();
   });
+
+  it("shows the sun icon while the light theme is active", () => {
+    renderHeader();
+    expect(screen.getByTestId("theme-icon-sun")).toBeInTheDocument();
+    expect(screen.queryByTestId("theme-icon-moon")).toBeNull();
+  });
+
+  it("shows the moon icon while the dark theme is active", () => {
+    saveTheme("dark");
+    renderHeader();
+    expect(screen.getByTestId("theme-icon-moon")).toBeInTheDocument();
+    expect(screen.queryByTestId("theme-icon-sun")).toBeNull();
+  });
+
+  it("keeps the icon out of the accessible name", () => {
+    // The icon is decorative: the aria-label alone names the control, so a
+    // screen reader announces the action once, not the glyph beside it.
+    renderHeader();
+    expect(screen.getByTestId("theme-icon-sun")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
 });
 
 describe("AppHeader chrome", () => {
