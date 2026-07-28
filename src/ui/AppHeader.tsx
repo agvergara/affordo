@@ -65,6 +65,12 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
  * class string to reproduce here; ADR 0021 puts dark mode in scope and defers
  * this UI to its own slice. It borrows the Settings link's muted-to-foreground
  * treatment so it reads as part of the same header group.
+ *
+ * `border-0 bg-transparent p-0` is load-bearing, not tidying: theme.css gives
+ * every bare `<button>` a bordered, `--card`-filled, rounded pill in the base
+ * layer, which would otherwise render this as a pill in a header of bare text
+ * links. Every other button in the app neutralizes the same rule the same way
+ * (the wizard's `← Back` is the closest analogue).
  */
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -75,7 +81,7 @@ function ThemeToggle() {
       type="button"
       onClick={() => setTheme(next)}
       aria-label={`Switch to ${next} theme`}
-      className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="border-0 bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {theme === "dark" ? <MoonIcon /> : <SunIcon />}
     </button>
