@@ -81,7 +81,11 @@ describe("GoalCard verdict badge", () => {
   it("reads Cut to afford when only trimming expenses reaches it in a year", () => {
     // 30000 over 12 months needs 2500/mo; surplus is 1000, and the 1500
     // shortfall is inside half of the 4000 expenses.
-    renderCard(makeGoal({ price: 30000 }), { savings: 0, expenses: 4000, salary: 5000 });
+    renderCard(makeGoal({ price: 30000 }), {
+      savings: 0,
+      expenses: 4000,
+      salary: 5000,
+    });
     expect(screen.getByText("Cut to afford")).toBeInTheDocument();
   });
 
