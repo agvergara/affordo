@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AppHeader } from "./AppHeader";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { ThemeProvider } from "../state/ThemeProvider";
@@ -127,6 +128,38 @@ describe("AppHeader theme toggle", () => {
       "aria-hidden",
       "true",
     );
+  });
+
+  it("switches the theme immediately when pressed", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    );
+
+    // The control now offers the return trip, and wears the dark theme's glyph.
+    expect(
+      screen.getByRole("button", { name: "Switch to light theme" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("theme-icon-moon")).toBeInTheDocument();
+  });
+
+  it("switches back when pressed again", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Switch to light theme" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("theme-icon-sun")).toBeInTheDocument();
   });
 });
 

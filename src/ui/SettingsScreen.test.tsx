@@ -111,7 +111,9 @@ describe("SettingsScreen — fields seeded from the profile", () => {
       selector: "input[type=range]",
     }) as HTMLInputElement;
     expect(slider.value).toBe("25");
-    expect(screen.getByText(/significance threshold — 25%/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/significance threshold — 25%/i),
+    ).toBeInTheDocument();
   });
 });
 
@@ -154,7 +156,9 @@ describe("SettingsScreen — editing updates the local draft without persisting"
       el.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    expect(screen.getByText(/significance threshold — 30%/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/significance threshold — 30%/i),
+    ).toBeInTheDocument();
   });
 
   it("does not persist edits to localStorage until Save is pressed", async () => {

@@ -37,7 +37,10 @@ async function reachLastStep(user: ReturnType<typeof userEvent.setup>) {
 }
 
 /** Click the primary (forward) control by its arrow-suffixed label. */
-async function advance(user: ReturnType<typeof userEvent.setup>, label: string) {
+async function advance(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+) {
   await user.click(screen.getByRole("button", { name: label }));
 }
 
