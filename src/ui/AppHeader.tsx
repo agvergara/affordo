@@ -1,5 +1,6 @@
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
+import { useTheme } from "../state/ThemeProvider";
 import { formatMoney } from "./localeFormat";
 
 export interface AppHeaderProps {
@@ -51,8 +52,86 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
               Settings
             </a>
           )}
+          <ThemeToggle />
         </div>
       </div>
     </nav>
+  );
+}
+
+/**
+ * The theme toggle (#72). The reference ships no such control — dossier §10
+ * records dark mode as "latent/unreachable via UI" — so there is no verbatim
+ * class string to reproduce here; ADR 0021 puts dark mode in scope and defers
+ * this UI to its own slice. It borrows the Settings link's muted-to-foreground
+ * treatment so it reads as part of the same header group.
+ *
+ * `border-0 bg-transparent p-0` is load-bearing, not tidying: theme.css gives
+ * every bare `<button>` a bordered, `--card`-filled, rounded pill in the base
+ * layer, which would otherwise render this as a pill in a header of bare text
+ * links. Every other button in the app neutralizes the same rule the same way
+ * (the wizard's `← Back` is the closest analogue).
+ *
+ * Zeroing that padding also zeroes the hit area down to the icon's own 16x16,
+ * so the box is restored explicitly: `h-8 w-8` centring the glyph gives a 32px
+ * target (WCAG 2.5.8 asks 24x24) without changing the icon's rendered size.
+ */
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const next = theme === "dark" ? "light" : "dark";
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(next)}
+      aria-label={`Switch to ${next} theme`}
+      className="inline-flex h-8 w-8 items-center justify-center border-0 bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {theme === "dark" ? <MoonIcon /> : <SunIcon />}
+    </button>
+  );
+}
+
+/**
+ * Shared geometry for the two glyphs, matching `lucide-react`'s defaults — the
+ * icon set the reference draws from (dossier §5) but which this port does not
+ * depend on, so the two icons it needs are inlined rather than pulling in the
+ * library. `currentColor` lets the button's text colour drive the stroke, so
+ * the icon inherits the muted/hover treatment for free.
+ */
+const iconProps = {
+  className: "h-4 w-4",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+} as const;
+
+/** Shown while the light theme is active — the icon reflects the current theme. */
+function SunIcon() {
+  return (
+    <svg {...iconProps} data-testid="theme-icon-sun">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.41 1.41" />
+      <path d="m17.66 17.66 1.41 1.41" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.34 17.66-1.41 1.41" />
+      <path d="m19.07 4.93-1.41 1.41" />
+    </svg>
+  );
+}
+
+/** Shown while the dark theme is active — the icon reflects the current theme. */
+function MoonIcon() {
+  return (
+    <svg {...iconProps} data-testid="theme-icon-moon">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
   );
 }

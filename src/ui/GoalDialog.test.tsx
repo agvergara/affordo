@@ -10,6 +10,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
 import { saveGoals, type Goal } from "../state/goals-store";
 
@@ -37,9 +38,11 @@ function renderDashboard(goals: Goal[] = []) {
   saveGoals(goals);
   act(() => {
     render(
-      <AffordoProvider>
-        <GoalsDashboard />
-      </AffordoProvider>,
+      <ThemeProvider>
+        <AffordoProvider>
+          <GoalsDashboard />
+        </AffordoProvider>
+      </ThemeProvider>,
     );
   });
   return userEvent.setup();
@@ -200,9 +203,11 @@ describe("Add goal dialog — saving", () => {
     cleanup();
     act(() => {
       render(
-        <AffordoProvider>
-          <GoalsDashboard />
-        </AffordoProvider>,
+        <ThemeProvider>
+          <AffordoProvider>
+            <GoalsDashboard />
+          </AffordoProvider>
+        </ThemeProvider>,
       );
     });
 

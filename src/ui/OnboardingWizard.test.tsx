@@ -4,6 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import {
   defaultProfile,
   loadProfile,
@@ -12,13 +13,18 @@ import {
 
 beforeEach(() => window.localStorage.clear());
 
-/** Mount the wizard inside a real provider (AppHeader reads it). */
+/**
+ * Mount the wizard inside real providers (AppHeader reads both: the profile for
+ * its chip, the theme for its toggle), matching the app root's nesting.
+ */
 function renderWizard(navigate: (to: string) => void = vi.fn()) {
   act(() => {
     render(
-      <AffordoProvider>
-        <OnboardingWizard navigate={navigate} />
-      </AffordoProvider>,
+      <ThemeProvider>
+        <AffordoProvider>
+          <OnboardingWizard navigate={navigate} />
+        </AffordoProvider>
+      </ThemeProvider>,
     );
   });
 }
@@ -31,7 +37,10 @@ async function reachLastStep(user: ReturnType<typeof userEvent.setup>) {
 }
 
 /** Click the primary (forward) control by its arrow-suffixed label. */
-async function advance(user: ReturnType<typeof userEvent.setup>, label: string) {
+async function advance(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+) {
   await user.click(screen.getByRole("button", { name: label }));
 }
 

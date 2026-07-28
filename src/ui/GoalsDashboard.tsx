@@ -2,6 +2,7 @@ import { useState } from "react";
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import { AppHeader } from "./AppHeader";
+import { GoalCard } from "./GoalCard";
 import { GoalDialog } from "./GoalDialog";
 import { formatMoney } from "./localeFormat";
 
@@ -110,17 +111,8 @@ export function GoalsDashboard() {
         {goals.length > 0 && (
           <ul data-testid="goals-list" className="mt-6 space-y-4">
             {goals.map((goal) => (
-              <li
-                key={goal.id}
-                data-testid="goal-item"
-                className="flex items-baseline justify-between gap-4 border border-border bg-card p-4"
-              >
-                <span className="min-w-0 truncate font-display text-2xl uppercase tracking-tight">
-                  {goal.name}
-                </span>
-                <span className="font-mono text-sm text-muted-foreground">
-                  {formatMoney(goal.price, profile.currency)}
-                </span>
+              <li key={goal.id} data-testid="goal-item">
+                <GoalCard goal={goal} />
               </li>
             ))}
           </ul>

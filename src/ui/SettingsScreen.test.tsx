@@ -4,6 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsScreen } from "./SettingsScreen";
 import { AffordoProvider } from "../state/AffordoProvider";
+import { ThemeProvider } from "../state/ThemeProvider";
 import { ToastProvider } from "./Toast";
 import {
   defaultProfile,
@@ -26,11 +27,13 @@ function renderSettings(profile: Partial<Profile> = {}) {
   saveProfile(seeded);
   act(() => {
     render(
-      <ToastProvider>
-        <AffordoProvider>
-          <SettingsScreen />
-        </AffordoProvider>
-      </ToastProvider>,
+      <ThemeProvider>
+        <ToastProvider>
+          <AffordoProvider>
+            <SettingsScreen />
+          </AffordoProvider>
+        </ToastProvider>
+      </ThemeProvider>,
     );
   });
   return seeded;
@@ -108,7 +111,9 @@ describe("SettingsScreen — fields seeded from the profile", () => {
       selector: "input[type=range]",
     }) as HTMLInputElement;
     expect(slider.value).toBe("25");
-    expect(screen.getByText(/significance threshold — 25%/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/significance threshold — 25%/i),
+    ).toBeInTheDocument();
   });
 });
 
@@ -151,7 +156,9 @@ describe("SettingsScreen — editing updates the local draft without persisting"
       el.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    expect(screen.getByText(/significance threshold — 30%/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/significance threshold — 30%/i),
+    ).toBeInTheDocument();
   });
 
   it("does not persist edits to localStorage until Save is pressed", async () => {
