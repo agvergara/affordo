@@ -219,3 +219,30 @@ describe("Add goal dialog — saving", () => {
     expect(screen.getByTestId("goals-list")).toHaveTextContent("1.500,50 €");
   });
 });
+
+describe("Add goal dialog — dismissing", () => {
+  it("closes on Cancel without saving anything", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 0",
+    );
+  });
+
+  it("closes on Escape without saving anything", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 0",
+    );
+  });
+});

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { Goal } from "../state/goals-store";
 
 export interface GoalDialogProps {
@@ -28,6 +28,17 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
+
+  // Escape dismisses the dialog, as Radix's does. Bound on the document rather
+  // than the dialog node so it fires wherever focus has wandered inside it.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onOpenChange(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onOpenChange]);
 
   if (!open) return null;
 
@@ -118,6 +129,7 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <button
               type="button"
+              onClick={() => onOpenChange(false)}
               className="px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest hover:text-accent"
             >
               Cancel
