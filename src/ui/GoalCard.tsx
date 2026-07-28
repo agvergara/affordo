@@ -24,6 +24,13 @@ export function GoalCard({ goal }: { goal: Goal }) {
     [profile, goal],
   );
 
+  // The meter is scaled so the track is full at TWICE the threshold, which puts
+  // the threshold itself on the midpoint (dossier §8).
+  const pctForBar = Math.min(
+    100,
+    (verdict.pctOfMonthlyIncome / (profile.threshold * 2)) * 100,
+  );
+
   // Days once the price costs a full work day, hours below that (dossier §8).
   const showDays = verdict.daysOfWork >= 1;
   const workLabel = showDays
@@ -74,6 +81,14 @@ export function GoalCard({ goal }: { goal: Goal }) {
           >
             Significance threshold: {profile.threshold}%
           </span>
+        </div>
+
+        <div className="relative h-2 w-full bg-black/5 ring-1 ring-black/10 dark:bg-white/5 dark:ring-white/10">
+          <div
+            data-testid="threshold-fill"
+            className="animate-scale-in-x h-full bg-foreground"
+            style={{ width: `${pctForBar}%` }}
+          />
         </div>
       </div>
     </article>

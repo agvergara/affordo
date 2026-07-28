@@ -166,6 +166,15 @@ describe("GoalCard threshold caption", () => {
   });
 });
 
+describe("GoalCard threshold meter fill", () => {
+  it("fills half the track at exactly the threshold", () => {
+    // The bar is scaled to be full at twice the threshold (dossier §8), so the
+    // threshold itself lands on the midpoint.
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "50%" });
+  });
+});
+
 describe("GoalCard work figure", () => {
   it("counts the price in days of work once it costs a full work day", () => {
     // $480 ÷ $12/hour = 40 hours = 5 eight-hour days.
