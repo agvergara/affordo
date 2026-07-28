@@ -68,12 +68,13 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
  */
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const next = theme === "dark" ? "light" : "dark";
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      aria-label="Switch to dark theme"
+      onClick={() => setTheme(next)}
+      aria-label={`Switch to ${next} theme`}
       className="text-muted-foreground hover:text-foreground"
     />
   );

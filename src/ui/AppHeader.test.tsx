@@ -5,6 +5,7 @@ import { AppHeader } from "./AppHeader";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
+import { saveTheme } from "../state/theme-store";
 
 beforeEach(() => window.localStorage.clear());
 // ThemeProvider writes `.dark` onto the shared document root; strip it between
@@ -94,6 +95,14 @@ describe("AppHeader theme toggle", () => {
     renderHeader();
     expect(
       screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers a control to switch back to light while dark is active", () => {
+    saveTheme("dark");
+    renderHeader();
+    expect(
+      screen.getByRole("button", { name: "Switch to light theme" }),
     ).toBeInTheDocument();
   });
 });
