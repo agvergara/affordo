@@ -165,6 +165,17 @@ describe("Add goal dialog — saving", () => {
     expect(screen.getByTestId("goals-list")).toHaveTextContent("MacBook Pro");
   });
 
+  it("ignores Enter while the form is still invalid", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro{Enter}");
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 0",
+    );
+  });
+
   it("prepends the new goal so the most recent sits on top", async () => {
     const user = renderDashboard([makeGoal({ name: "Down payment" })]);
     await user.click(screen.getByRole("button", { name: "Add goal" }));
@@ -244,5 +255,56 @@ describe("Add goal dialog — dismissing", () => {
     expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
       "Saved goals · 0",
     );
+  });
+
+  it("offers a Close control for screen-reader users", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("Add goal dialog — focus", () => {
+  it("keeps Tab inside the dialog rather than letting it escape to the page", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    // From the auto-focused Name field: Price, Note, Cancel — Save is disabled
+    // on an empty form and so is skipped — then back round to Close.
+    await user.tab();
+    await user.tab();
+    await user.tab();
+    await user.tab();
+
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+  });
+});
+
+describe("Add goal dialog — reopening", () => {
+  it("starts blank again after a goal was saved", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.type(screen.getByLabelText("Price"), "1500");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("");
+    expect(screen.getByLabelText("Price")).toHaveValue(null);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("discards what was typed before a cancel", async () => {
+    const user = renderDashboard();
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+    await user.type(screen.getByLabelText("Name"), "MacBook Pro");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("");
   });
 });
