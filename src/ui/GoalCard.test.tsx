@@ -260,4 +260,22 @@ describe("GoalCard stat block", () => {
     expect(screen.getByText("Time to save")).toBeInTheDocument();
     expect(screen.getByText("Monthly surplus")).toBeInTheDocument();
   });
+
+  it("shows the monthly surplus as money in the profile's locale", () => {
+    // 3.000 salary less 1.200 expenses plus a 200 contribution = 2.000 surplus.
+    renderCard(makeGoal(), {
+      currency: "EUR",
+      salary: 3000,
+      expenses: 1200,
+      monthlyContribution: 200,
+    });
+    expect(screen.getByText("2.000,00 €")).toBeInTheDocument();
+  });
+
+  it("shows a surplus eaten by expenses as a negative amount", () => {
+    // Expenses past the salary leave a deficit; the cell states it rather than
+    // clamping to zero, so the number behind the verdict stays legible.
+    renderCard(makeGoal(), { currency: "EUR", salary: 1000, expenses: 1800 });
+    expect(screen.getByText("-800,00 €")).toBeInTheDocument();
+  });
 });

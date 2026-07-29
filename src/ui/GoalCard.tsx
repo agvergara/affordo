@@ -116,6 +116,9 @@ export function GoalCard({ goal }: { goal: Goal }) {
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Monthly surplus
           </p>
+          <p className="mt-1 text-xl font-bold tracking-tight">
+            {formatMoney(verdict.monthlyDisposable, profile.currency)}
+          </p>
         </div>
       </div>
     </article>
