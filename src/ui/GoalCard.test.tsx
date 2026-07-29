@@ -269,26 +269,40 @@ describe("GoalCard stat block", () => {
       expenses: 1200,
       monthlyContribution: 200,
     });
-    expect(screen.getByText("2.000,00 €")).toBeInTheDocument();
+    expect(statValue("Monthly surplus")).toBe("2.000,00 €");
+  });
+
+  it("follows the profile to another currency's locale", () => {
+    // The same 2.000 surplus under USD — proof the cell reads the profile
+    // rather than defaulting to the de-DE the rest of these tests run under.
+    renderCard(makeGoal(), {
+      currency: "USD",
+      salary: 3000,
+      expenses: 1200,
+      monthlyContribution: 200,
+    });
+    expect(statValue("Monthly surplus")).toBe("$2,000.00");
   });
 
   it("shows a surplus eaten by expenses as a negative amount", () => {
     // Expenses past the salary leave a deficit; the cell states it rather than
     // clamping to zero, so the number behind the verdict stays legible.
     renderCard(makeGoal(), { currency: "EUR", salary: 1000, expenses: 1800 });
-    expect(screen.getByText("-800,00 €")).toBeInTheDocument();
+    expect(statValue("Monthly surplus")).toBe("-800,00 €");
   });
 });
 
 /**
- * The value a user reads under a stat cell's label. Found through the visible
- * label rather than a test id, so the assertion also proves the value is paired
- * with the right caption — which is the part of the stat block that can silently
- * go wrong.
+ * The value a user reads *under* a stat cell's label. Found through the visible
+ * label rather than a test id, and read as the element that follows it, so the
+ * assertion pins both the pairing and the order: a value rendered above its own
+ * caption fails here rather than passing on a co-parentage technicality.
  */
 function statValue(label: string): string {
-  const cell = screen.getByText(label).parentElement;
-  return (cell?.textContent ?? "").replace(label, "").trim();
+  const text = screen.getByText(label).nextElementSibling?.textContent ?? "";
+  // Collapse whitespace the way Testing Library's own matchers do — `Intl`
+  // separates a de-DE amount from its `€` with a non-breaking space.
+  return text.replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -312,6 +326,19 @@ describe("GoalCard time to save", () => {
       savings: 0,
     });
     expect(statValue("Time to save")).toBe("1,5 months");
+  });
+
+  it("writes the months in another profile's locale", () => {
+    // The identical 1.5 months under USD reads with a decimal point. This is
+    // what makes the decimal comma above evidence of the profile rather than of
+    // a hardcoded de-DE.
+    renderCard(makeGoal({ price: 1500 }), {
+      currency: "USD",
+      salary: 2000,
+      expenses: 1000,
+      savings: 0,
+    });
+    expect(statValue("Time to save")).toBe("1.5 months");
   });
 
   /**
@@ -348,11 +375,32 @@ describe("GoalCard time to save", () => {
  * story for a goal the surplus already reaches.
  */
 describe("GoalCard verdict explainer", () => {
+  /** The opening of each of the three explainers, as a user would read them. */
+  const EXPLAINERS = [
+    "Cut expenses by",
+    "Beyond a reasonable savings plan.",
+    "You already have savings for this.",
+  ] as const;
+
+  /**
+   * Asserts the card carries the named explainer and *neither of the other two*
+   * — or none at all, for `null`. Presence alone cannot see a widened guard
+   * stacking two contradictory sentences on one card, which is the whole failure
+   * this pins: a `Cannot` verdict that also claims the savings are already there.
+   */
+  function expectOnlyExplainer(
+    present: (typeof EXPLAINERS)[number] | null,
+  ): void {
+    const card = screen.getByRole("article");
+    for (const sentence of EXPLAINERS) {
+      if (sentence === present) expect(card).toHaveTextContent(sentence);
+      else expect(card).not.toHaveTextContent(sentence);
+    }
+  }
+
   it("tells an afford verdict the savings are already there", () => {
     renderCard(makeGoal({ price: 1500 }), { savings: 2000 });
-    expect(
-      screen.getByText("You already have savings for this."),
-    ).toBeInTheDocument();
+    expectOnlyExplainer("You already have savings for this.");
   });
 
   it("tells a cannot verdict the goal is beyond a savings plan", () => {
@@ -361,9 +409,7 @@ describe("GoalCard verdict explainer", () => {
       expenses: 1000,
       savings: 0,
     });
-    expect(
-      screen.getByText("Beyond a reasonable savings plan."),
-    ).toBeInTheDocument();
+    expectOnlyExplainer("Beyond a reasonable savings plan.");
   });
 
   /**
@@ -386,6 +432,16 @@ describe("GoalCard verdict explainer", () => {
     expect(screen.getByRole("article")).toHaveTextContent(
       "Cut expenses by 37,5% to reach it in 12 months.",
     );
+    expectOnlyExplainer("Cut expenses by");
+  });
+
+  it("writes the cut percentage in another profile's locale", () => {
+    // The same 37.5% under USD reads with a decimal point — the guard that makes
+    // the decimal comma above evidence of the profile, not of a hardcoded de-DE.
+    renderCard(makeGoal({ price: 30000 }), { ...CUT_TO_AFFORD, currency: "USD" });
+    expect(screen.getByRole("article")).toHaveTextContent(
+      "Cut expenses by 37.5% to reach it in 12 months.",
+    );
   });
 
   // The bolding IS the acceptance criterion (#62, PRD user story 42) — the two
@@ -399,6 +455,41 @@ describe("GoalCard verdict explainer", () => {
     expect(screen.getByText("12 months").tagName).toBe("B");
   });
 
+  /**
+   * The three explainer blocks are adjacent and near-identical, differing only
+   * in guard, copy and rail colour — so a copy-paste slip between them lands
+   * silently unless the colour is pinned. The rail is what separates "you have a
+   * lever" (accent) from "this is a dead end" (destructive) from "it's already
+   * yours" (emerald) at a glance, so it carries the verdict the same way the
+   * badge does, and it goes under the same narrow exception #94 opened for
+   * VerdictBadge. Deliberately scoped to these three paragraphs, not a licence
+   * for class assertions generally: the copy is the acceptance criterion here,
+   * and this guards the one thing the copy cannot say about itself.
+   */
+  it.each([
+    ["cutToAfford", 30000, CUT_TO_AFFORD, "37,5%", "border-accent"],
+    [
+      "cannot",
+      500000,
+      { salary: 2000, expenses: 1000, savings: 0 },
+      "Beyond a reasonable savings plan.",
+      "border-destructive",
+    ],
+    [
+      "afford",
+      1500,
+      { savings: 2000 },
+      "You already have savings for this.",
+      "border-emerald-600",
+    ],
+  ] as const)(
+    "rails the %s explainer in its verdict colour",
+    (_kind, price, profile, anchor, railClass) => {
+      renderCard(makeGoal({ price }), profile);
+      expect(screen.getByText(anchor).closest("p")).toHaveClass(railClass);
+    },
+  );
+
   it("leaves a stretch verdict unexplained", () => {
     // The reference writes no fourth sentence: for a goal the surplus already
     // reaches, the months in the stat block are the whole answer.
@@ -408,12 +499,6 @@ describe("GoalCard verdict explainer", () => {
       savings: 0,
     });
     expect(screen.getByText("Stretch")).toBeInTheDocument();
-    expect(screen.getByRole("article")).not.toHaveTextContent("Cut expenses by");
-    expect(screen.getByRole("article")).not.toHaveTextContent(
-      "Beyond a reasonable savings plan.",
-    );
-    expect(screen.getByRole("article")).not.toHaveTextContent(
-      "You already have savings for this.",
-    );
+    expectOnlyExplainer(null);
   });
 });
