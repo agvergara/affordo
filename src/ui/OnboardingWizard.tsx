@@ -105,8 +105,10 @@ function WizardBody({
           ))}
         </div>
 
-        {/* Steps render as empty placeholders in this slice. */}
-        <div key={step} className="animate-slide-up space-y-8" />
+        {/* Steps 1–3 render as empty placeholders until #55–#57 land. */}
+        <div key={step} className="animate-slide-up space-y-8">
+          {step === 0 && <WelcomeStep />}
+        </div>
 
         <div className="mt-12 flex items-center justify-between border-t border-border pt-6">
           <button
@@ -126,6 +128,33 @@ function WizardBody({
           </button>
         </div>
       </main>
+    </div>
+  );
+}
+
+/**
+ * Step 0 — Welcome (dossier §15 "Step 0"). No fields: three stacked text
+ * blocks, and the primary control is enabled because this step gates nothing.
+ *
+ * The headline and body are `<p>`, not headings. That is the reference's own
+ * structure (§11 records the onboarding headline and welcome body as
+ * paragraphs) and is reproduced rather than corrected, per PRD #39's fidelity
+ * bar — so nothing here is addressable by heading role.
+ */
+function WelcomeStep() {
+  return (
+    <div className="space-y-6">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+        Before you buy
+      </p>
+      <p className="font-display text-3xl uppercase leading-tight tracking-tight sm:text-4xl">
+        Measure any purchase in hours of your life.
+      </p>
+      <p className="max-w-prose text-base leading-relaxed text-muted-foreground">
+        Affordo turns your salary into a time budget, then weighs every goal
+        against it. Set your income once, then add a goal any time you&apos;re
+        tempted to spend.
+      </p>
     </div>
   );
 }

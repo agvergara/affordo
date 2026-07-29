@@ -199,3 +199,76 @@ describe("OnboardingWizard — progress bar", () => {
     expect(filled()).toBe(4);
   });
 });
+
+describe("OnboardingWizard — step 0 Welcome content", () => {
+  it("opens with the kicker above the headline", () => {
+    renderWizard();
+    const kicker = screen.getByText("Before you buy");
+    const headline = screen.getByText(
+      "Measure any purchase in hours of your life.",
+    );
+    const body = screen.getByText(
+      "Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.",
+    );
+    expect(kicker).toBeInTheDocument();
+    // The name promises a stacking order, so assert it rather than mere
+    // presence: §15 stacks kicker → headline → body, and presence-only
+    // assertions leave the blocks freely interchangeable.
+    //
+    // `toBe`, not `toBeTruthy`: a bitmask test also passes for containment
+    // (a nested node returns CONTAINED_BY|FOLLOWING = 20, and 20 & 4 is
+    // truthy), so only the exact sibling value pins "stacked below".
+    expect(kicker.compareDocumentPosition(headline)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(headline.compareDocumentPosition(body)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("states the premise as the headline", () => {
+    renderWizard();
+    expect(
+      screen.getByText("Measure any purchase in hours of your life."),
+    ).toBeInTheDocument();
+  });
+
+  it("explains the premise in the body copy", () => {
+    renderWizard();
+    expect(
+      screen.getByText(
+        "Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for nothing — the welcome step has no fields to fill", () => {
+    renderWizard();
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);
+    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+    expect(screen.queryAllByRole("slider")).toHaveLength(0);
+  });
+
+  it("leaves the primary control enabled, since nothing here gates it", () => {
+    renderWizard();
+    expect(screen.getByRole("button", { name: "Start →" })).toBeEnabled();
+  });
+
+  it("drops the welcome copy once the user starts", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    // All three blocks, not just the kicker: confining one and leaking the
+    // other two is a mutation the kicker-only assertion could not see.
+    expect(screen.queryByText("Before you buy")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Measure any purchase in hours of your life."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+});
