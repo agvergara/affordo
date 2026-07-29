@@ -124,14 +124,15 @@ export function GoalsDashboard() {
        * local-cache note on the left and the literal `Affordo` label — not the
        * dict's brand key — on the right (dossier §6 "Footer").
        *
-       * Copy and landmark are dossier-recorded; the class string is not. The
-       * dossier gives no teardown for this footer, so the type follows its
-       * nearest recorded role — "Caption / meta", §4, the same string the
-       * snapshot labels above use — and the extra dimming #63 asks for
-       * ("at the reference opacity") is a judgement call, not a reproduced
-       * literal. See the duel thread on PR #102.
+       * Copy and landmark are dossier-recorded; the class string is not — the
+       * dossier gives this footer no teardown. So the type follows its nearest
+       * recorded role, "Caption / meta" (§4), the same string the snapshot
+       * labels above use, and nothing is stacked on top of it: an extra
+       * `opacity-*` step would be invented rather than reproduced. Confirming
+       * the reference's real string is tracked as a follow-up (see the duel
+       * threads on PR #102).
        */}
-      <footer className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 pb-10 font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-60 sm:px-6 sm:pb-16">
+      <footer className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 pb-10 font-mono text-[10px] uppercase tracking-wider text-muted-foreground sm:px-6 sm:pb-16">
         <span>Record persistent in local-cache</span>
         <span>Affordo</span>
       </footer>

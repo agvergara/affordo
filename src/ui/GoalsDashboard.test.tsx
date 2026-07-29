@@ -235,18 +235,21 @@ describe("GoalsDashboard footer", () => {
     expect(footer).toHaveTextContent("Affordo");
   });
 
-  it("dims the footer below the page's own muted text", () => {
+  it("dims the footer with the muted token, adding no opacity of its own", () => {
     renderDashboard();
-    // The dimming *is* an acceptance criterion for this slice (#63: "at the
-    // reference opacity"), and jsdom loads no stylesheet, so the utility class
-    // that sets it is the only observable — same narrow exception the verdict
-    // badge's colour tests take (PR #94). Everything else here is text/roles.
+    // #63 asks for the footer "at the reference opacity", but the dossier
+    // records no class string for this footer at all — so the dimming it
+    // reproduces is the one the dossier *does* record for every muted mono
+    // micro-label (§4 Caption / meta): `text-muted-foreground`, with no
+    // `opacity-*` utility stacked on top. An extra step would be invented, not
+    // reproduced, and would drop 10px text to ~2:1 contrast in the default
+    // light theme. Confirming the real string is tracked as a follow-up.
     //
-    // The *step* is not dossier-recorded (see the footer comment in
-    // GoalsDashboard.tsx): this pins that the footer is dimmed beyond plain
-    // `text-muted-foreground`, and pins the chosen step so that correcting it
-    // against the reference is a deliberate edit rather than a silent drift.
-    expect(screen.getByRole("contentinfo")).toHaveClass("opacity-60");
+    // jsdom loads no stylesheet, so the class is the only observable — the
+    // narrow exception the verdict badge's colour tests take (PR #94).
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toHaveClass("text-muted-foreground");
+    expect(footer.className).not.toMatch(/\bopacity-/);
   });
 });
 
