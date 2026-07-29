@@ -41,7 +41,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
       ? "—"
       : verdict.monthsToSave !== null
         ? `${formatNumber(verdict.monthsToSave, profile.currency)} months`
-        : "";
+        : verdict.cutMonths !== null
+          ? // The trailing `*` is the reference's own, and nothing on the card
+            // explains it. Reproduced deliberately (dossier §13).
+            `${formatNumber(verdict.cutMonths, profile.currency)} months *`
+          : "∞";
 
   // Days once the price costs a full work day, hours below that (dossier §8).
   const showDays = verdict.daysOfWork >= 1;

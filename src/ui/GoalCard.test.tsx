@@ -313,4 +313,31 @@ describe("GoalCard time to save", () => {
     });
     expect(statValue("Time to save")).toBe("1,5 months");
   });
+
+  /**
+   * The trailing `*` marks a horizon that only exists if the expenses are cut —
+   * and nothing on the card explains it. The reference ships it that way, so it
+   * is reproduced verbatim rather than footnoted or dropped (dossier §13, PRD
+   * §Formatting quirks). This test pins it against a well-meaning tidy-up.
+   */
+  it("marks a cut-derived horizon with the reference's unexplained asterisk", () => {
+    // 30.000 over 12 months needs 2.500/month; the surplus is 1.000 and the
+    // 1.500 shortfall fits inside half the 4.000 expenses → cut to afford.
+    renderCard(makeGoal({ price: 30000 }), {
+      salary: 5000,
+      expenses: 4000,
+      savings: 0,
+    });
+    expect(statValue("Time to save")).toBe("12 months *");
+  });
+
+  it("shows an infinity glyph when no savings plan reaches the goal", () => {
+    // Half the 1.000 expenses still leaves 500.000 out of reach → cannot.
+    renderCard(makeGoal({ price: 500000 }), {
+      salary: 2000,
+      expenses: 1000,
+      savings: 0,
+    });
+    expect(statValue("Time to save")).toBe("∞");
+  });
 });
