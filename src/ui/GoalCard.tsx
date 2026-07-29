@@ -13,14 +13,26 @@ import { VerdictBadge } from "./VerdictBadge";
  * hours — of work. On top of that sits the threshold meter (#61): the caption
  * row, a fill bar scaled to be full at twice the threshold, and a fixed
  * midpoint marker. Below that sits the stat block (#62) — `Time to save` and
- * `Monthly surplus` — and the one explainer paragraph the verdict earns. The
- * Edit/Remove actions (#65) land in a later slice, so the props stay `{ goal }`
- * until those callbacks are needed.
+ * `Monthly surplus` — and the one explainer paragraph the verdict earns. Last
+ * comes the actions row (#65), which owns no goal state of its own: it reports
+ * the user's intent upward and lets the dashboard hold the goal list.
  *
  * The date is `toLocaleDateString("en-US")` regardless of the profile currency —
  * a reference quirk reproduced deliberately (dossier §13).
  */
-export function GoalCard({ goal }: { goal: Goal }) {
+export interface GoalCardProps {
+  goal: Goal;
+  /** The user asked to revise this goal. */
+  onEdit: () => void;
+  /** The user asked to delete this goal. */
+  onRemove: () => void;
+}
+
+/** Shared ghost-button shape for the two actions (dossier §5, §12). */
+const ACTION =
+  "inline-flex h-8 items-center justify-center rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent hover:text-accent-foreground";
+
+export function GoalCard({ goal, onEdit, onRemove }: GoalCardProps) {
   const { profile } = useAffordo();
   const verdict = useMemo(
     () => evaluateReference(profile, goal),
@@ -166,6 +178,21 @@ export function GoalCard({ goal }: { goal: Goal }) {
           You already have savings for this.
         </p>
       )}
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button type="button" onClick={onEdit} className={ACTION}>
+          Edit
+        </button>
+        {/* A destructive ghost keeps its own text colour through hover, rather
+            than inverting to the accent the way Edit does (dossier §12). */}
+        <button
+          type="button"
+          onClick={onRemove}
+          className={`${ACTION} text-destructive hover:text-destructive`}
+        >
+          Remove
+        </button>
+      </div>
     </article>
   );
 }

@@ -112,7 +112,7 @@ export function GoalsDashboard() {
           <ul data-testid="goals-list" className="mt-6 space-y-4">
             {goals.map((goal) => (
               <li key={goal.id} data-testid="goal-item">
-                <GoalCard goal={goal} />
+                <GoalCard goal={goal} onEdit={() => {}} onRemove={() => {}} />
               </li>
             ))}
           </ul>
