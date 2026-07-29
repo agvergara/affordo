@@ -211,3 +211,65 @@ describe("Editing a goal — the goal keeps its identity", () => {
     );
   });
 });
+
+describe("Removing a goal", () => {
+  it("deletes the goal from the dashboard", async () => {
+    const user = renderDashboard([makeGoal({ name: "Down payment" })]);
+
+    await user.click(within(card()).getByRole("button", { name: "Remove" }));
+
+    expect(screen.queryByTestId("goals-list")).not.toBeInTheDocument();
+    expect(screen.getByTestId("goals-empty")).toBeInTheDocument();
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 0",
+    );
+  });
+
+  it("removes only the goal whose own Remove was pressed", async () => {
+    const user = renderDashboard([
+      makeGoal({ id: "a", name: "Down payment" }),
+      makeGoal({ id: "b", name: "MacBook Pro" }),
+      makeGoal({ id: "c", name: "Sabbatical" }),
+    ]);
+
+    await user.click(within(card(1)).getByRole("button", { name: "Remove" }));
+
+    expect(loadGoals().map((g) => g.id)).toEqual(["a", "c"]);
+    expect(card(0)).toHaveTextContent("Down payment");
+    expect(card(1)).toHaveTextContent("Sabbatical");
+  });
+
+  // Two goals can share a name, a price and a date; only the id tells them
+  // apart. Removing by anything else would take both.
+  it("removes one of two identical-looking goals, not both", async () => {
+    const user = renderDashboard([
+      makeGoal({ id: "a", name: "Down payment", price: 5000 }),
+      makeGoal({ id: "b", name: "Down payment", price: 5000 }),
+    ]);
+
+    await user.click(within(card(0)).getByRole("button", { name: "Remove" }));
+
+    expect(loadGoals().map((g) => g.id)).toEqual(["b"]);
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 1",
+    );
+  });
+
+  it("keeps the goal deleted after the dashboard is reloaded", async () => {
+    const user = renderDashboard([
+      makeGoal({ id: "a", name: "Down payment" }),
+      makeGoal({ id: "b", name: "MacBook Pro" }),
+    ]);
+
+    await user.click(within(card(0)).getByRole("button", { name: "Remove" }));
+    remount();
+
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 1",
+    );
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("MacBook Pro");
+    expect(screen.getByTestId("goals-list")).not.toHaveTextContent(
+      "Down payment",
+    );
+  });
+});

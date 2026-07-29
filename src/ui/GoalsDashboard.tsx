@@ -40,6 +40,12 @@ export function GoalsDashboard() {
     setDialogOpen(true);
   };
 
+  // Removal matches on id, never on the goal's contents: two goals may share a
+  // name, a price and a date, and only the id tells them apart.
+  const removeGoal = (goal: Goal) => {
+    setGoals(goals.filter((g) => g.id !== goal.id));
+  };
+
   // A new goal is prepended so the most recent sits on top (dossier §8); an
   // edited one is swapped in where it already sits, keeping the list's order.
   // The dialog hands back the original `id`, which is what makes the match.
@@ -140,7 +146,7 @@ export function GoalsDashboard() {
                 <GoalCard
                   goal={goal}
                   onEdit={() => openEdit(goal)}
-                  onRemove={() => {}}
+                  onRemove={() => removeGoal(goal)}
                 />
               </li>
             ))}
