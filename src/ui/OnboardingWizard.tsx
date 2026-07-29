@@ -150,6 +150,11 @@ function WelcomeStep() {
       <p className="font-display text-3xl uppercase leading-tight tracking-tight sm:text-4xl">
         Measure any purchase in hours of your life.
       </p>
+      <p className="max-w-prose text-base leading-relaxed text-muted-foreground">
+        Affordo turns your salary into a time budget, then weighs every goal
+        against it. Set your income once, then add a goal any time you&apos;re
+        tempted to spend.
+      </p>
     </div>
   );
 }
