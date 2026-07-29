@@ -28,9 +28,24 @@ export interface GoalCardProps {
   onRemove: () => void;
 }
 
-/** Shared ghost-button shape for the two actions (dossier §5, §12). */
+/**
+ * Shared ghost-button shape for the two actions (dossier §5, §12). The hover
+ * TEXT colour is deliberately left off here and set per action below.
+ *
+ * The reference composes shadcn's ghost variant with each button's overrides
+ * through `cn()`, whose tailwind-merge drops a base class the override
+ * conflicts with. Remove's `hover:text-destructive` conflicts with ghost's
+ * `hover:text-accent-foreground`, so the reference never emits the latter on
+ * Remove — which is what "a destructive ghost pins its text colour" means.
+ * Affordo has no tailwind-merge (ADR 0014, React-only), so emitting both would
+ * leave the winner to Tailwind's stylesheet ordering rather than to the code.
+ * Splitting the constant reproduces the merged result directly.
+ */
 const ACTION =
-  "inline-flex h-8 items-center justify-center rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent hover:text-accent-foreground";
+  "inline-flex h-8 items-center justify-center rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent";
+
+const EDIT_ACTION = `${ACTION} hover:text-accent-foreground`;
+const REMOVE_ACTION = `${ACTION} text-destructive hover:text-destructive`;
 
 export function GoalCard({ goal, onEdit, onRemove }: GoalCardProps) {
   const { profile } = useAffordo();
@@ -181,16 +196,12 @@ export function GoalCard({ goal, onEdit, onRemove }: GoalCardProps) {
       )}
 
       <div className="mt-6 flex justify-end gap-2">
-        <button type="button" onClick={onEdit} className={ACTION}>
+        <button type="button" onClick={onEdit} className={EDIT_ACTION}>
           Edit
         </button>
         {/* A destructive ghost keeps its own text colour through hover, rather
             than inverting to the accent the way Edit does (dossier §12). */}
-        <button
-          type="button"
-          onClick={onRemove}
-          className={`${ACTION} text-destructive hover:text-destructive`}
-        >
+        <button type="button" onClick={onRemove} className={REMOVE_ACTION}>
           Remove
         </button>
       </div>

@@ -551,4 +551,25 @@ describe("GoalCard actions", () => {
       "text-destructive",
     );
   });
+
+  /**
+   * "Pins" is the whole claim of a destructive ghost: Remove must NOT also
+   * carry the accent hover text colour. With both classes emitted, which one
+   * wins at hover would be decided by Tailwind's stylesheet ordering rather
+   * than by this code — a silent flip if that ordering ever changes. Affordo
+   * has no tailwind-merge to drop the loser, so the absence is asserted here.
+   */
+  it("does not let Remove also claim the accent hover colour", () => {
+    renderCard();
+    expect(screen.getByRole("button", { name: "Remove" })).not.toHaveClass(
+      "hover:text-accent-foreground",
+    );
+    expect(screen.getByRole("button", { name: "Remove" })).toHaveClass(
+      "hover:text-destructive",
+    );
+    // Edit is the plain ghost and does invert to the accent on hover.
+    expect(screen.getByRole("button", { name: "Edit" })).toHaveClass(
+      "hover:text-accent-foreground",
+    );
+  });
 });

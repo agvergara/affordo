@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-// Adding a goal from the dashboard and having it survive a reload (dossier
-// §5/§8, issue #64). Editing and removing a goal land with issue #65.
+// Adding, editing and removing a goal from the dashboard, each surviving a
+// reload (dossier §5/§8, issues #64 and #65).
 
 /** Seed a real profile (salary > 0) before app code runs, so the /goals guard
  *  lets us in. Schema matches src/state/profile-store.ts (versioned). */
@@ -75,4 +75,108 @@ test("the newest goal is prepended to the list", async ({ page }) => {
   const names = page.getByTestId("goals-list").getByRole("listitem");
   await expect(names.first()).toContainText("MacBook Pro");
   await expect(names.last()).toContainText("Down payment");
+});
+
+/** Add `count` goals, newest last, so the list ends up newest-first. */
+async function addGoals(
+  page: import("@playwright/test").Page,
+  goals: [name: string, price: string][],
+) {
+  for (const [name, price] of goals) {
+    await page.getByRole("button", { name: "Add goal" }).click();
+    await page.getByLabel("Name").fill(name);
+    await page.getByLabel("Price").fill(price);
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
+  }
+}
+
+test("a goal edited from its card is updated in place and survives a reload", async ({
+  page,
+}) => {
+  await seedProfile(page);
+  await page.goto("/goals");
+  await addGoals(page, [["Down payment", "20000"]]);
+
+  const item = page.getByTestId("goals-list").getByRole("listitem").first();
+  const stamped = await item
+    .locator("p")
+    .first()
+    .textContent(); // the card's creation date
+
+  await item.getByRole("button", { name: "Edit" }).click();
+
+  // The dialog opens as the edit dialog, already carrying the goal's values.
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", { name: "Edit goal" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Name")).toHaveValue("Down payment");
+  await expect(page.getByLabel("Price")).toHaveValue("20000");
+
+  await page.getByLabel("Name").fill("House deposit");
+  await page.getByLabel("Price").fill("25000");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(dialog).toBeHidden();
+
+  // Updated in place: renamed, repriced, and still exactly one goal — an edit
+  // that duplicated or re-stamped the goal would read "Saved goals · 2".
+  await expect(page.getByText("Saved goals · 1")).toBeVisible();
+  await expect(page.getByText("House deposit")).toBeVisible();
+  await expect(page.getByText("Down payment")).toBeHidden();
+  await expect(page.getByTestId("goals-list")).toContainText("25.000,00 €");
+  // The creation date is the goal's, not the moment it was edited.
+  await expect(page.getByTestId("goals-list").locator("p").first()).toHaveText(
+    stamped ?? "",
+  );
+
+  await page.reload();
+  await expect(page.getByText("House deposit")).toBeVisible();
+  await expect(page.getByText("Saved goals · 1")).toBeVisible();
+});
+
+test("a goal removed from its card is deleted and stays deleted after a reload", async ({
+  page,
+}) => {
+  await seedProfile(page);
+  await page.goto("/goals");
+  await addGoals(page, [
+    ["Down payment", "20000"],
+    ["MacBook Pro", "1500"],
+  ]);
+  await expect(page.getByText("Saved goals · 2")).toBeVisible();
+
+  // Remove the newest, which sits on top — the other must be untouched.
+  const items = page.getByTestId("goals-list").getByRole("listitem");
+  await items.first().getByRole("button", { name: "Remove" }).click();
+
+  await expect(page.getByText("Saved goals · 1")).toBeVisible();
+  await expect(page.getByText("MacBook Pro")).toBeHidden();
+  await expect(page.getByText("Down payment")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText("Saved goals · 1")).toBeVisible();
+  await expect(page.getByText("MacBook Pro")).toBeHidden();
+  await expect(page.getByText("Down payment")).toBeVisible();
+});
+
+test("removing the last goal returns the dashboard to its empty state", async ({
+  page,
+}) => {
+  await seedProfile(page);
+  await page.goto("/goals");
+  await addGoals(page, [["Down payment", "20000"]]);
+
+  await page
+    .getByTestId("goals-list")
+    .getByRole("listitem")
+    .first()
+    .getByRole("button", { name: "Remove" })
+    .click();
+
+  await expect(page.getByText("Saved goals · 0")).toBeVisible();
+  await expect(page.getByTestId("goals-empty")).toBeVisible();
+  await expect(
+    page.getByText("No decisions to reckon with yet."),
+  ).toBeVisible();
 });

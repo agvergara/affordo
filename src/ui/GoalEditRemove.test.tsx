@@ -148,6 +148,50 @@ describe("Editing a goal — saving updates it in place", () => {
       "Saved goals · 1",
     );
   });
+
+  // Every field the user did not touch has to come back out unchanged. Editing
+  // one field must not blank the others just because they were not retyped.
+  it("keeps a note the user never touched", async () => {
+    const user = renderDashboard([
+      makeGoal({ name: "Down payment", note: "Two-bed flat" }),
+    ]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(within(card()).getByTestId("goal-note")).toHaveTextContent(
+      "Two-bed flat",
+    );
+    expect(loadGoals()[0]?.note).toBe("Two-bed flat");
+  });
+
+  it("saves an edited note", async () => {
+    const user = renderDashboard([
+      makeGoal({ name: "Down payment", note: "Two-bed flat" }),
+    ]);
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Note (optional)"));
+    await user.type(screen.getByLabelText("Note (optional)"), "Three-bed flat");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(loadGoals()[0]?.note).toBe("Three-bed flat");
+    expect(within(card()).getByTestId("goal-note")).toHaveTextContent(
+      "Three-bed flat",
+    );
+  });
+
+  it("lets the user clear a note", async () => {
+    const user = renderDashboard([
+      makeGoal({ name: "Down payment", note: "Two-bed flat" }),
+    ]);
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Note (optional)"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(loadGoals()[0]?.note).toBe("");
+    expect(within(card()).queryByTestId("goal-note")).not.toBeInTheDocument();
+  });
 });
 
 /**
@@ -181,12 +225,14 @@ describe("Editing a goal — the goal keeps its identity", () => {
     expect(loadGoals()[0]?.createdAt).toBe(new Date(2024, 0, 15, 12).getTime());
   });
 
+  // The goal edited here is the MIDDLE of three, and that is the point: a goal
+  // at either end survives both remove-and-prepend and remove-and-append, so
+  // only an interior goal can tell an in-place swap from either of them.
   it("leaves the goal where it sat in the list", async () => {
-    // A goal swapped in by id keeps its position; one removed and re-added
-    // would jump to the top, since new goals are prepended.
     const user = renderDashboard([
       makeGoal({ id: "a", name: "Down payment" }),
       makeGoal({ id: "b", name: "MacBook Pro" }),
+      makeGoal({ id: "c", name: "Sabbatical" }),
     ]);
 
     await user.click(within(card(1)).getByRole("button", { name: "Edit" }));
@@ -196,7 +242,8 @@ describe("Editing a goal — the goal keeps its identity", () => {
 
     expect(card(0)).toHaveTextContent("Down payment");
     expect(card(1)).toHaveTextContent("MacBook Air");
-    expect(loadGoals().map((g) => g.id)).toEqual(["a", "b"]);
+    expect(card(2)).toHaveTextContent("Sabbatical");
+    expect(loadGoals().map((g) => g.id)).toEqual(["a", "b", "c"]);
   });
 
   it("keeps the edit after the dashboard is reloaded", async () => {
