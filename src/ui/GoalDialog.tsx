@@ -72,7 +72,9 @@ export function GoalDialog({
   useEffect(() => {
     if (!open) return;
     setName(initial?.name ?? "");
-    setPrice(initial === null || initial === undefined ? "" : String(initial.price));
+    // A price of 0 is a legitimate stored value, so this cannot lean on `??`
+    // over `initial.price` — it branches on whether there is an `initial` at all.
+    setPrice(initial ? String(initial.price) : "");
     setNote(initial?.note ?? "");
   }, [open, initial]);
 

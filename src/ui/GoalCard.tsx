@@ -55,7 +55,8 @@ export function GoalCard({ goal, onEdit, onRemove }: GoalCardProps) {
       : verdict.monthsToSave !== null
         ? `${formatNumber(verdict.monthsToSave, profile.currency)} months`
         : verdict.cutMonths !== null
-          ? // The trailing `*` is the reference's own, and nothing on the card
+          ? // `cutMonths` is a literal 12 at src/engine/reference-evaluate.ts:75,90 — the only reason this locale formatting is untestable here and at the explainer site below; derive the horizon and both become live locale bugs with nothing pinning them.
+            // The trailing `*` is the reference's own, and nothing on the card
             // explains it. Reproduced deliberately (dossier §13).
             `${formatNumber(verdict.cutMonths, profile.currency)} months *`
           : "∞";

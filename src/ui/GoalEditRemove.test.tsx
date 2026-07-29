@@ -212,6 +212,67 @@ describe("Editing a goal — the goal keeps its identity", () => {
   });
 });
 
+/**
+ * One dialog serves both jobs, so the state of one use must not survive into the
+ * next. These are the tests that catch a stale `initial` — the failure mode of
+ * extending the create dialog rather than forking a second one.
+ */
+describe("Editing a goal — the dialog does not leak between uses", () => {
+  it("opens Add goal empty after an edit", async () => {
+    const user = renderDashboard([
+      makeGoal({ name: "Down payment", price: 5000, note: "Two-bed flat" }),
+    ]);
+
+    await renameFirstGoal(user, "House deposit");
+    await user.click(screen.getByRole("button", { name: "Add goal" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Add goal" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("");
+    expect(screen.getByLabelText("Price")).toHaveValue(null);
+    expect(screen.getByLabelText("Note (optional)")).toHaveValue("");
+  });
+
+  it("re-seeds from the goal after a cancelled edit", async () => {
+    const user = renderDashboard([makeGoal({ name: "Down payment" })]);
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Discarded");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("Down payment");
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("Down payment");
+  });
+
+  it("re-seeds when the user moves from one goal's edit to another's", async () => {
+    const user = renderDashboard([
+      makeGoal({ id: "a", name: "Down payment", price: 5000 }),
+      makeGoal({ id: "b", name: "MacBook Pro", price: 1500 }),
+    ]);
+
+    await user.click(within(card(0)).getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(within(card(1)).getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("MacBook Pro");
+    expect(screen.getByLabelText("Price")).toHaveValue(1500);
+  });
+
+  it("shows the freshly saved values when the same goal is edited twice", async () => {
+    const user = renderDashboard([makeGoal({ name: "Down payment" })]);
+
+    await renameFirstGoal(user, "House deposit");
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("House deposit");
+  });
+});
+
 describe("Removing a goal", () => {
   it("deletes the goal from the dashboard", async () => {
     const user = renderDashboard([makeGoal({ name: "Down payment" })]);
