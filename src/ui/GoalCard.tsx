@@ -8,11 +8,13 @@ import { VerdictBadge } from "./VerdictBadge";
 /**
  * A saved Goal weighed against the profile (docs/affordo-context.md §5).
  *
- * This slice builds the card's core (#60): the creation date, the goal name and
- * its optional note, the verdict badge, the price, and what the price costs in
- * days — or hours — of work. The threshold meter (#61), the stat block and
- * per-verdict explainers (#62), and the Edit/Remove actions land in later
- * slices, so the props stay `{ goal }` until those callbacks are needed.
+ * The card's core (#60) is the creation date, the goal name and its optional
+ * note, the verdict badge, the price, and what the price costs in days — or
+ * hours — of work. On top of that sits the threshold meter (#61): the caption
+ * row, a fill bar scaled to be full at twice the threshold, and a fixed
+ * midpoint marker. The stat block and per-verdict explainers (#62) and the
+ * Edit/Remove actions (#65) land in later slices, so the props stay `{ goal }`
+ * until those callbacks are needed.
  *
  * The date is `toLocaleDateString("en-US")` regardless of the profile currency —
  * a reference quirk reproduced deliberately (dossier §13).
@@ -22,6 +24,13 @@ export function GoalCard({ goal }: { goal: Goal }) {
   const verdict = useMemo(
     () => evaluateReference(profile, goal),
     [profile, goal],
+  );
+
+  // The meter is scaled so the track is full at TWICE the threshold, which puts
+  // the threshold itself on the midpoint (dossier §8).
+  const pctForBar = Math.min(
+    100,
+    (verdict.pctOfMonthlyIncome / (profile.threshold * 2)) * 100,
   );
 
   // Days once the price costs a full work day, hours below that (dossier §8).
@@ -59,6 +68,42 @@ export function GoalCard({ goal }: { goal: Goal }) {
         <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           {workLabel}
         </span>
+      </div>
+
+      <div className="mt-6">
+        <div className="mb-2 flex justify-between font-mono text-[10px] uppercase tracking-wider">
+          <span className="text-muted-foreground">
+            {formatNumber(verdict.pctOfMonthlyIncome, profile.currency, 1)}% of
+            monthly income
+          </span>
+          <span
+            className={
+              verdict.aboveThreshold ? "text-accent" : "text-muted-foreground"
+            }
+          >
+            Significance threshold: {profile.threshold}%
+          </span>
+        </div>
+
+        <div className="relative h-2 w-full bg-black/5 ring-1 ring-black/10 dark:bg-white/5 dark:ring-white/10">
+          <div
+            data-testid="threshold-fill"
+            className="animate-scale-in-x h-full bg-foreground"
+            style={{ width: `${pctForBar}%` }}
+          />
+          {/*
+            Hard-coded to the track's midpoint, exactly as the reference writes
+            it (`Math.min(100, 50)`). It marks where the threshold sits under
+            the twice-threshold scale, but it does NOT track the threshold — a
+            reference quirk reproduced on purpose (dossier §13, question 5).
+          */}
+          <div
+            data-testid="threshold-marker"
+            className="absolute top-0 h-full w-px bg-accent"
+            style={{ left: `${Math.min(100, 50)}%` }}
+            aria-hidden
+          />
+        </div>
       </div>
     </article>
   );

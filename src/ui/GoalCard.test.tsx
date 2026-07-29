@@ -113,6 +113,127 @@ describe("GoalCard price", () => {
  */
 const TWELVE_AN_HOUR = { salary: 2080, currency: "USD" } as const;
 
+describe("GoalCard threshold meter caption", () => {
+  it("states the price as a percentage of monthly income", () => {
+    // 500 of a 2000 salary is a quarter of a month's income.
+    renderCard(makeGoal({ price: 500 }), { salary: 2000 });
+    expect(screen.getByText("25% of monthly income")).toBeInTheDocument();
+  });
+
+  it("rounds the percentage to one decimal in the profile's locale", () => {
+    // 250 of 2000 is 12.5%, written with a decimal comma under de-DE (EUR).
+    renderCard(makeGoal({ price: 250 }), { salary: 2000, currency: "EUR" });
+    expect(screen.getByText("12,5% of monthly income")).toBeInTheDocument();
+  });
+
+  it("shows an em dash rather than NaN when there is no income to measure against", () => {
+    // salary 0 makes pctOfMonthlyIncome Infinity (dossier §8).
+    renderCard(makeGoal({ price: 500 }), { salary: 0 });
+    expect(screen.getByText("—% of monthly income")).toBeInTheDocument();
+  });
+});
+
+describe("GoalCard threshold caption", () => {
+  it("names the profile's significance threshold beside the percentage", () => {
+    renderCard(makeGoal({ price: 500 }), { threshold: 15 });
+    expect(screen.getByText("Significance threshold: 15%")).toBeInTheDocument();
+  });
+
+  // The caption's colour IS the behaviour — significance "visually flagged"
+  // (#61, user story 39). jsdom exposes a colour only through the utility class
+  // that sets it, so this follows the one exception VerdictBadge established
+  // rather than inventing a second kind.
+  //
+  // NOTE: the accent lands on the THRESHOLD caption, not the percent caption.
+  // The dossier's literal extraction (§5) is
+  // `className={v.aboveThreshold ? "text-accent" : "text-muted-foreground"}` on
+  // the right-hand span, while the percent span is permanently muted. #61's AC
+  // and PRD story 39 read the other way round; the dossier wins on exact values.
+  it("accents the threshold caption when the purchase is above threshold", () => {
+    // 300 of a 2000 salary is 15%, past the 10% threshold.
+    renderCard(makeGoal({ price: 300 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByText("Significance threshold: 10%")).toHaveClass(
+      "text-accent",
+    );
+  });
+
+  it("leaves the threshold caption muted at exactly the threshold", () => {
+    // 200 of 2000 is exactly 10% — `aboveThreshold` is strictly greater-than.
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByText("Significance threshold: 10%")).toHaveClass(
+      "text-muted-foreground",
+    );
+  });
+});
+
+describe("GoalCard threshold meter fill", () => {
+  it("fills half the track at exactly the threshold", () => {
+    // The bar is scaled to be full at twice the threshold (dossier §8), so the
+    // threshold itself lands on the midpoint.
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "50%" });
+  });
+
+  it("fills the whole track at exactly twice the threshold", () => {
+    // 400 of a 2000 salary is 20% — double the 10% threshold.
+    renderCard(makeGoal({ price: 400 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "100%" });
+  });
+
+  it("caps the fill at a full track beyond twice the threshold", () => {
+    // 1000 of 2000 is 50% — 2.5× the scale, which would overflow uncapped.
+    renderCard(makeGoal({ price: 1000 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "100%" });
+  });
+
+  it("tracks a different threshold's scale", () => {
+    // With a 25% threshold the track is full at 50%; 500 of 2000 is 25%, the
+    // midpoint — proof the fill follows the threshold rather than a fixed scale.
+    renderCard(makeGoal({ price: 500 }), { salary: 2000, threshold: 25 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "50%" });
+  });
+
+  // Motion is the acceptance criterion here (#61, user story 69) and jsdom
+  // exposes it only through the utility class, so this reuses the same narrow
+  // exception as the colour assertions above. The utility itself — 0.7s,
+  // scaleX 0→1, origin left — is proven in src/styles/theme.test.ts (#45).
+  it("animates the fill in with the reference scale-in-x motion", () => {
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-fill")).toHaveClass(
+      "animate-scale-in-x",
+    );
+  });
+});
+
+/**
+ * The midpoint marker is hard-coded to `left: 50%` in the reference — it does
+ * NOT move with the threshold. The dossier flags this as one of the "mistakes
+ * that are requirements" (§13 open question 5, PRD §Formatting quirks), so it is
+ * reproduced deliberately and pinned here against a well-meaning future fix.
+ */
+describe("GoalCard threshold meter midpoint marker", () => {
+  it("sits at the midpoint of the track", () => {
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-marker")).toHaveStyle({ left: "50%" });
+  });
+
+  it("stays at the midpoint under a different threshold", () => {
+    // A 40% threshold puts this 10% purchase at 12.5% of the track, yet the
+    // marker does not follow the threshold — it is fixed, by design.
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 40 });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "12.5%" });
+    expect(screen.getByTestId("threshold-marker")).toHaveStyle({ left: "50%" });
+  });
+
+  it("hides the marker from assistive technology", () => {
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    expect(screen.getByTestId("threshold-marker")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+});
+
 describe("GoalCard work figure", () => {
   it("counts the price in days of work once it costs a full work day", () => {
     // $480 ÷ $12/hour = 40 hours = 5 eight-hour days.
