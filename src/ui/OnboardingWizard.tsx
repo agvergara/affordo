@@ -74,6 +74,17 @@ function WizardBody({
   const isFirst = step === 0;
   const isLast = step === steps.length - 1;
 
+  // §15: Income is the only gating step. Every other step advances freely —
+  // expenses and the rules figures are all optional-but-encouraged. The gate is
+  // deliberately quiet: the control simply stays disabled, with no error text
+  // (PRD story 22).
+  const canContinue =
+    step !== 1 ||
+    (draft.salary > 0 &&
+      draft.hoursPerWeek > 0 &&
+      draft.hoursPerDay > 0 &&
+      draft.paymentsPerYear > 0);
+
   // Advance: on the last step, persist the draft and leave for /goals (§15);
   // otherwise step forward. Nothing is written or navigated before finish.
   const next = () => {
@@ -138,7 +149,8 @@ function WizardBody({
           <button
             type="button"
             onClick={next}
-            className="rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
+            disabled={!canContinue}
+            className="rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
           >
             {primaryLabel}
           </button>

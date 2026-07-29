@@ -29,11 +29,29 @@ function renderWizard(navigate: (to: string) => void = vi.fn()) {
   });
 }
 
-/** Walk from step 0 to the last step, clicking through the primary control. */
+/**
+ * Walk from step 0 to the last step, clicking through the primary control.
+ *
+ * Income gates (#55): the defaults supply hours and pay periods, but salary
+ * starts at zero, so the walk must fill it or `Continue →` stays disabled.
+ * Anything asserting the *gate itself* should drive the fields directly rather
+ * than lean on this helper.
+ */
 async function reachLastStep(user: ReturnType<typeof userEvent.setup>) {
   await advance(user, "Start →"); // → step 1
+  await fillSalaryIfEmpty(user);
   await advance(user, "Continue →"); // → step 2
   await advance(user, "Continue →"); // → step 3
+}
+
+/**
+ * Satisfy the income gate without disturbing a seeded salary. Typing
+ * unconditionally would append to a seeded value (2400 → 24002000), so a walk
+ * that only needs to *get past* the gate fills the field solely when empty.
+ */
+async function fillSalaryIfEmpty(user: ReturnType<typeof userEvent.setup>) {
+  const salary = screen.getByLabelText<HTMLInputElement>("Net monthly salary");
+  if (salary.value === "") await user.type(salary, "2000");
 }
 
 /** Click the primary (forward) control by its arrow-suffixed label. */
@@ -80,6 +98,7 @@ describe("OnboardingWizard — primary control label", () => {
     const user = userEvent.setup();
     renderWizard();
     await advance(user, "Start →"); // → step 1
+    await fillSalaryIfEmpty(user); // the income gate blocks the walk otherwise
     await advance(user, "Continue →"); // → step 2
     await advance(user, "Continue →"); // → step 3
     expect(
@@ -155,10 +174,13 @@ describe("OnboardingWizard — finish action", () => {
     await reachLastStep(user);
     await advance(user, "Finish setup →");
 
-    // With nothing stored, finish persists the default profile — and the write
-    // is real: the raw record is present after finishing.
+    // With nothing stored, finish persists the defaults for every field the
+    // user did not touch — and the write is real: the raw record is present
+    // after finishing. Salary is the exception by necessity: the income gate
+    // (#55) will not let the wizard reach the last step at zero, so the only
+    // reachable "defaults" profile is one with a salary typed in.
     expect(window.localStorage.getItem("affordo.profile")).not.toBeNull();
-    expect(loadProfile()).toEqual(defaultProfile);
+    expect(loadProfile()).toEqual({ ...defaultProfile, salary: 2000 });
   });
 
   it("does not persist or navigate while advancing through earlier steps", async () => {
@@ -167,6 +189,7 @@ describe("OnboardingWizard — finish action", () => {
     renderWizard(navigate);
 
     await advance(user, "Start →"); // → step 1
+    await fillSalaryIfEmpty(user); // satisfy the income gate so the walk moves
     await advance(user, "Continue →"); // → step 2
     await advance(user, "Continue →"); // → step 3 (not yet finished)
 
@@ -192,6 +215,7 @@ describe("OnboardingWizard — progress bar", () => {
     await advance(user, "Start →"); // → step 1
     expect(filled()).toBe(2);
 
+    await fillSalaryIfEmpty(user); // the income gate blocks the walk otherwise
     await advance(user, "Continue →"); // → step 2
     expect(filled()).toBe(3);
 
@@ -312,5 +336,56 @@ describe("OnboardingWizard — step 1 Income fields", () => {
     const user = userEvent.setup();
     await advance(user, "Start →");
     expect(screen.getByLabelText("Net monthly salary")).toHaveFocus();
+  });
+});
+
+describe("OnboardingWizard — step 1 gating", () => {
+  /** Reach Income with the four gating fields at their default values. */
+  async function reachIncome() {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    return user;
+  }
+
+  const primary = () => screen.getByRole("button", { name: "Continue →" });
+
+  it("refuses to continue while the salary is still unfilled", async () => {
+    await reachIncome();
+    // Defaults give hours 40/8 and 12 payments, so salary is the only figure
+    // still at zero — the gate must hold on it alone.
+    expect(primary()).toBeDisabled();
+  });
+
+  it("lets the user continue once every income figure is above zero", async () => {
+    const user = await reachIncome();
+    await user.type(screen.getByLabelText("Net monthly salary"), "2000");
+    expect(primary()).toBeEnabled();
+  });
+
+  it.each([
+    ["Hours per week", "Net monthly salary"],
+    ["Hours per day", "Net monthly salary"],
+    ["Payments per year", "Net monthly salary"],
+  ])("refuses to continue when %s is cleared", async (cleared, filled) => {
+    const user = await reachIncome();
+    await user.type(screen.getByLabelText(filled), "2000");
+    expect(primary()).toBeEnabled();
+
+    await user.clear(screen.getByLabelText(cleared));
+    expect(primary()).toBeDisabled();
+  });
+
+  it("stays on the income step while the gate holds", async () => {
+    const user = await reachIncome();
+    await user.click(primary());
+    expect(screen.getByLabelText("Net monthly salary")).toBeInTheDocument();
+    expect(screen.getByText("02 / 04")).toBeInTheDocument();
+  });
+
+  it("says nothing about why — the gate is quiet, not explanatory", async () => {
+    await reachIncome();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(/required|must be|invalid/i)).not.toBeInTheDocument();
   });
 });
