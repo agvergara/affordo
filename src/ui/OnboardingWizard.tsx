@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
 import { useAffordo } from "../state/AffordoProvider";
 import { defaultProfile, type Profile } from "../state/profile-store";
@@ -208,18 +208,12 @@ function IncomeStep({
 }) {
   return (
     <>
-      <div className="space-y-2">
-        <label
-          htmlFor="onboarding-currency"
-          className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-        >
-          Currency
-        </label>
+      <Field id="onboarding-currency" label="Currency">
         <select
           id="onboarding-currency"
           value={draft.currency}
           onChange={(e) => set("currency", e.target.value as Currency)}
-          className="w-full border-b border-border bg-transparent py-2 text-3xl font-bold transition-colors focus-visible:border-accent focus-visible:outline-none"
+          className={bigInputClass + " h-auto"}
         >
           {CURRENCY_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -227,66 +221,74 @@ function IncomeStep({
             </option>
           ))}
         </select>
-      </div>
+      </Field>
 
-      <Field
-        id="onboarding-salary"
-        label="Net monthly salary"
-        value={draft.salary}
-        onChange={(v) => set("salary", num(v))}
-        autoFocus
-      />
+      <Field id="onboarding-salary" label="Net monthly salary">
+        <NumberInput
+          id="onboarding-salary"
+          value={draft.salary}
+          onChange={(v) => set("salary", num(v))}
+          placeholder="0"
+          autoFocus
+        />
+      </Field>
 
       <div className="grid gap-8 sm:grid-cols-2">
-        <Field
-          id="onboarding-hours-week"
-          label="Hours per week"
-          value={draft.hoursPerWeek}
-          onChange={(v) => set("hoursPerWeek", num(v))}
-        />
-        <Field
-          id="onboarding-hours-day"
-          label="Hours per day"
-          value={draft.hoursPerDay}
-          onChange={(v) => set("hoursPerDay", num(v))}
-        />
+        <Field id="onboarding-hours-week" label="Hours per week">
+          <NumberInput
+            id="onboarding-hours-week"
+            value={draft.hoursPerWeek}
+            onChange={(v) => set("hoursPerWeek", num(v))}
+          />
+        </Field>
+        <Field id="onboarding-hours-day" label="Hours per day">
+          <NumberInput
+            id="onboarding-hours-day"
+            value={draft.hoursPerDay}
+            onChange={(v) => set("hoursPerDay", num(v))}
+          />
+        </Field>
       </div>
 
       <Field
         id="onboarding-payments"
         label="Payments per year"
-        value={draft.paymentsPerYear}
-        onChange={(v) => set("paymentsPerYear", num(v))}
         hint="Use 14 for Spanish-style extra payments."
-      />
+      >
+        <NumberInput
+          id="onboarding-payments"
+          value={draft.paymentsPerYear}
+          onChange={(v) => set("paymentsPerYear", num(v))}
+        />
+      </Field>
     </>
   );
 }
 
 /**
- * One onboarding number field (dossier §15). Distinct from `SettingsScreen`'s
- * `NumberField` in one recorded respect: §4 gives onboarding's big input text
- * `text-3xl` against settings' `text-2xl`, so the two are not the same
- * component wearing a size prop.
- *
- * `value || ""` renders zero as empty, keeping the `0` placeholder visible
- * (§7) — the reference's own behaviour, so a freshly defaulted field reads as
- * unfilled rather than as a literal zero.
+ * `bigInputClass` (dossier §5) verbatim — the onboarding/settings big-input
+ * treatment. Onboarding's is `text-3xl` against settings' `text-2xl` (§4),
+ * which is why this is not shared with `SettingsScreen`'s field.
+ */
+const bigInputClass =
+  "w-full border-0 border-b-2 border-border bg-transparent px-0 py-2 text-3xl font-bold outline-none transition-colors focus-visible:border-accent focus-visible:ring-0 rounded-none shadow-none";
+
+/**
+ * The onboarding `Field` wrapper (dossier §5): label, the control itself, and
+ * an optional hint. It takes the control as `children` rather than owning an
+ * input, which is what lets the currency `<select>` and #57's slider wear the
+ * same label/hint chrome as the number fields instead of hand-copying it.
  */
 function Field({
   id,
   label,
-  value,
-  onChange,
   hint,
-  autoFocus,
+  children,
 }: {
   id: string;
   label: string;
-  value: number;
-  onChange: (v: string) => void;
   hint?: string;
-  autoFocus?: boolean;
+  children: ReactNode;
 }) {
   return (
     <div className="space-y-2">
@@ -296,17 +298,48 @@ function Field({
       >
         {label}
       </label>
-      <input
-        id={id}
-        inputMode="decimal"
-        placeholder="0"
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- §15 records autoFocus on the first field of steps 1 and 2.
-        autoFocus={autoFocus}
-        className="w-full border-b border-border bg-transparent py-2 text-3xl font-bold transition-colors focus-visible:border-accent focus-visible:outline-none"
-      />
-      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+      {children}
+      {hint && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {hint}
+        </p>
+      )}
     </div>
+  );
+}
+
+/**
+ * One `bigInputClass` number input. `value || ""` renders zero as empty (§7),
+ * so a defaulted field reads as unfilled rather than as a literal zero — the
+ * reference's own behaviour.
+ *
+ * `placeholder` is deliberately not defaulted: §15 gives `placeholder="0"` to
+ * salary and expenses only; hours and payments carry none.
+ */
+function NumberInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+  autoFocus,
+}: {
+  id: string;
+  value: number;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <input
+      id={id}
+      type="number"
+      inputMode="decimal"
+      placeholder={placeholder}
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- §15 records autoFocus on the first field of steps 1 and 2.
+      autoFocus={autoFocus}
+      className={bigInputClass}
+    />
   );
 }

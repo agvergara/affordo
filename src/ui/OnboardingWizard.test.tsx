@@ -193,6 +193,11 @@ describe("OnboardingWizard — finish action", () => {
     await advance(user, "Continue →"); // → step 2
     await advance(user, "Continue →"); // → step 3 (not yet finished)
 
+    // Prove the walk actually moved before asserting the negatives: clicking a
+    // disabled control is a silent no-op, so a gate that never opened would
+    // leave this test passing from step 1 with nothing to say.
+    expect(screen.getByText("04 / 04")).toBeInTheDocument();
+
     // Storage untouched (empty → loadProfile returns a fresh default) and no nav.
     expect(window.localStorage.getItem("affordo.profile")).toBeNull();
     expect(navigate).not.toHaveBeenCalled();
@@ -387,5 +392,52 @@ describe("OnboardingWizard — step 1 gating", () => {
     await reachIncome();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText(/required|must be|invalid/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("OnboardingWizard — income fields reach the saved profile", () => {
+  /**
+   * Every income field is driven to a value distinct from every other, then
+   * the wizard is finished and storage read back. Distinct values are the
+   * point: a flat `salary > 0 && hoursPerWeek > 0 && …` gate cannot tell which
+   * key a field writes, so two fields crossed onto one key stays green under
+   * gating tests alone.
+   */
+  async function fillIncomeAndFinish(currency?: string) {
+    const user = userEvent.setup();
+    renderWizard();
+    await advance(user, "Start →");
+    if (currency) {
+      await user.selectOptions(screen.getByLabelText("Currency"), currency);
+    }
+    await user.type(screen.getByLabelText("Net monthly salary"), "2500");
+    await user.clear(screen.getByLabelText("Hours per week"));
+    await user.type(screen.getByLabelText("Hours per week"), "37");
+    await user.clear(screen.getByLabelText("Hours per day"));
+    await user.type(screen.getByLabelText("Hours per day"), "7");
+    await user.clear(screen.getByLabelText("Payments per year"));
+    await user.type(screen.getByLabelText("Payments per year"), "14");
+    await advance(user, "Continue →"); // → step 2
+    await advance(user, "Continue →"); // → step 3
+    await advance(user, "Finish setup →");
+    return loadProfile();
+  }
+
+  it("writes each numeric field to its own key, uncrossed", async () => {
+    const saved = await fillIncomeAndFinish();
+    expect(saved.salary).toBe(2500);
+    expect(saved.hoursPerWeek).toBe(37);
+    expect(saved.hoursPerDay).toBe(7);
+    expect(saved.paymentsPerYear).toBe(14);
+  });
+
+  it("writes the chosen currency, which no other field can stand in for", async () => {
+    const saved = await fillIncomeAndFinish("GBP");
+    expect(saved.currency).toBe("GBP");
+  });
+
+  it("keeps the seeded currency when the user does not change it", async () => {
+    const saved = await fillIncomeAndFinish();
+    expect(saved.currency).toBe("EUR");
   });
 });
