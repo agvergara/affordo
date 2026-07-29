@@ -207,14 +207,23 @@ describe("OnboardingWizard — step 0 Welcome content", () => {
     const headline = screen.getByText(
       "Measure any purchase in hours of your life.",
     );
+    const body = screen.getByText(
+      "Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.",
+    );
     expect(kicker).toBeInTheDocument();
     // The name promises a stacking order, so assert it rather than mere
     // presence: §15 stacks kicker → headline → body, and presence-only
     // assertions leave the blocks freely interchangeable.
-    expect(
-      kicker.compareDocumentPosition(headline) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    //
+    // `toBe`, not `toBeTruthy`: a bitmask test also passes for containment
+    // (a nested node returns CONTAINED_BY|FOLLOWING = 20, and 20 & 4 is
+    // truthy), so only the exact sibling value pins "stacked below".
+    expect(kicker.compareDocumentPosition(headline)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(headline.compareDocumentPosition(body)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it("states the premise as the headline", () => {
