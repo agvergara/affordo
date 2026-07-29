@@ -5,6 +5,11 @@ export interface GoalDialogProps {
   open: boolean;
   /** Called with `false` when the dialog asks to close (Cancel, Escape, save). */
   onOpenChange: (open: boolean) => void;
+  /**
+   * The Goal being revised, or null/absent to add a new one. Its presence is
+   * what makes this the `Edit goal` dialog rather than the `Add goal` one.
+   */
+  initial?: Goal | null;
   /** Called with the built Goal when a valid form is submitted. */
   onSave: (goal: Goal) => void;
 }
@@ -44,25 +49,34 @@ const TEXTAREA =
  * eyebrow the reference renders as `DialogDescription`, the `sr-only` Close
  * control, Escape-to-dismiss, and the Tab focus trap (dossier §5, §6, §11).
  *
- * This slice is **create only** (issue #64). Editing an existing goal — the
- * reference's `initial` prop, the `Edit goal` title, and the preserved
- * `id`/`createdAt` — lands with issue #65, along with removal.
+ * One dialog serves both jobs (issue #65). Passing `initial` re-titles it to
+ * `Edit goal`, seeds the fields from that Goal, and — critically — carries its
+ * `id` and `createdAt` back out on save, so revising a goal updates it in place
+ * instead of minting a second one.
  */
-export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
+export function GoalDialog({
+  open,
+  onOpenChange,
+  initial,
+  onSave,
+}: GoalDialogProps) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
   const panel = useRef<HTMLDivElement>(null);
 
-  // The reference resets the fields on open (dossier §5). The dialog stays
-  // mounted between openings, so the reset has to be explicit — without it a
-  // cancelled or saved entry would still be sitting there next time.
+  // The reference resets the fields on open, seeding them from `initial`
+  // (dossier §5). The dialog stays mounted between openings, so the reset has to
+  // be explicit — without it a cancelled or saved entry would still be sitting
+  // there next time, and an edit would leak into the next Add.
   useEffect(() => {
     if (!open) return;
-    setName("");
-    setPrice("");
-    setNote("");
-  }, [open]);
+    setName(initial?.name ?? "");
+    // A price of 0 is a legitimate stored value, so this cannot lean on `??`
+    // over `initial.price` — it branches on whether there is an `initial` at all.
+    setPrice(initial ? String(initial.price) : "");
+    setNote(initial?.note ?? "");
+  }, [open, initial]);
 
   // Escape dismisses the dialog and Tab cycles within it — the two keyboard
   // behaviours Radix's Dialog gives the reference (dossier §11). Bound on the
@@ -110,12 +124,15 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!valid) return;
+    // An edit carries the original `id` and `createdAt` straight back out: the
+    // goal is revised, not replaced, so it keeps its identity and its stamped
+    // creation date (dossier §5, PRD story 51). Only a new goal mints them.
     onSave({
-      id: crypto.randomUUID(),
+      id: initial?.id ?? crypto.randomUUID(),
       name: name.trim().slice(0, 80),
       price: parseFloat(price),
       note: note.trim().slice(0, 200),
-      createdAt: Date.now(),
+      createdAt: initial?.createdAt ?? Date.now(),
     });
     onOpenChange(false);
   };
@@ -152,7 +169,7 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
           id="goal-dialog-title"
           className="font-display text-3xl uppercase tracking-tight"
         >
-          Add goal
+          {initial ? "Edit goal" : "Add goal"}
         </h2>
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           Affordo

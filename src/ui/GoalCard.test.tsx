@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { GoalCard } from "./GoalCard";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
@@ -30,12 +31,17 @@ function makeGoal(overrides?: Partial<Goal>): Goal {
 function renderCard(
   goal: Goal = makeGoal(),
   profile?: Partial<typeof defaultProfile>,
+  actions?: { onEdit?: () => void; onRemove?: () => void },
 ) {
   saveProfile({ ...defaultProfile, salary: 2000, ...profile });
   act(() => {
     render(
       <AffordoProvider>
-        <GoalCard goal={goal} />
+        <GoalCard
+          goal={goal}
+          onEdit={actions?.onEdit ?? (() => {})}
+          onRemove={actions?.onRemove ?? (() => {})}
+        />
       </AffordoProvider>,
     );
   });
@@ -500,5 +506,70 @@ describe("GoalCard verdict explainer", () => {
     });
     expect(screen.getByText("Stretch")).toBeInTheDocument();
     expectOnlyExplainer(null);
+  });
+});
+
+/**
+ * The card's actions row (#65, user story 45). The card owns no goal state — it
+ * only reports the intent upward, so what is testable here is that each control
+ * exists and calls its own callback and no other.
+ */
+describe("GoalCard actions", () => {
+  it("asks to edit this goal when Edit is pressed", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    const onRemove = vi.fn();
+    renderCard(makeGoal(), undefined, { onEdit, onRemove });
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  it("asks to remove this goal when Remove is pressed", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    const onRemove = vi.fn();
+    renderCard(makeGoal(), undefined, { onEdit, onRemove });
+
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  // Removal is the destructive half of the pair and the reference marks it as
+  // such — the only visual difference between the two controls (dossier §5,
+  // §12: a destructive ghost pins its text colour through hover).
+  it("marks Remove as the destructive action and leaves Edit neutral", () => {
+    renderCard();
+    expect(screen.getByRole("button", { name: "Remove" })).toHaveClass(
+      "text-destructive",
+    );
+    expect(screen.getByRole("button", { name: "Edit" })).not.toHaveClass(
+      "text-destructive",
+    );
+  });
+
+  /**
+   * "Pins" is the whole claim of a destructive ghost: Remove must NOT also
+   * carry the accent hover text colour. With both classes emitted, which one
+   * wins at hover would be decided by Tailwind's stylesheet ordering rather
+   * than by this code — a silent flip if that ordering ever changes. Affordo
+   * has no tailwind-merge to drop the loser, so the absence is asserted here.
+   */
+  it("does not let Remove also claim the accent hover colour", () => {
+    renderCard();
+    expect(screen.getByRole("button", { name: "Remove" })).not.toHaveClass(
+      "hover:text-accent-foreground",
+    );
+    expect(screen.getByRole("button", { name: "Remove" })).toHaveClass(
+      "hover:text-destructive",
+    );
+    // Edit is the plain ghost and does invert to the accent on hover.
+    expect(screen.getByRole("button", { name: "Edit" })).toHaveClass(
+      "hover:text-accent-foreground",
+    );
   });
 });

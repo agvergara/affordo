@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
+import type { Goal } from "../state/goals-store";
 import { AppHeader } from "./AppHeader";
 import { GoalCard } from "./GoalCard";
 import { GoalDialog } from "./GoalDialog";
@@ -24,7 +25,37 @@ import { formatMoney } from "./localeFormat";
  */
 export function GoalsDashboard() {
   const { profile, goals, setGoals } = useAffordo();
-  const [adding, setAdding] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  // The Goal the dialog is revising, or null when it is adding a new one. This
+  // is the only thing that distinguishes the two uses of the one dialog.
+  const [editing, setEditing] = useState<Goal | null>(null);
+
+  const openAdd = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (goal: Goal) => {
+    setEditing(goal);
+    setDialogOpen(true);
+  };
+
+  // Removal matches on id, never on the goal's contents: two goals may share a
+  // name, a price and a date, and only the id tells them apart.
+  const removeGoal = (goal: Goal) => {
+    setGoals(goals.filter((g) => g.id !== goal.id));
+  };
+
+  // A new goal is prepended so the most recent sits on top (dossier §8); an
+  // edited one is swapped in where it already sits, keeping the list's order.
+  // The dialog hands back the original `id`, which is what makes the match.
+  const saveGoal = (goal: Goal) => {
+    setGoals(
+      editing === null
+        ? [goal, ...goals]
+        : goals.map((g) => (g.id === goal.id ? goal : g)),
+    );
+  };
 
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
   const surplus =
@@ -87,7 +118,7 @@ export function GoalsDashboard() {
           </div>
           <button
             type="button"
-            onClick={() => setAdding(true)}
+            onClick={openAdd}
             className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
           >
             Add goal
@@ -112,7 +143,11 @@ export function GoalsDashboard() {
           <ul data-testid="goals-list" className="mt-6 space-y-4">
             {goals.map((goal) => (
               <li key={goal.id} data-testid="goal-item">
-                <GoalCard goal={goal} />
+                <GoalCard
+                  goal={goal}
+                  onEdit={() => openEdit(goal)}
+                  onRemove={() => removeGoal(goal)}
+                />
               </li>
             ))}
           </ul>
@@ -137,11 +172,12 @@ export function GoalsDashboard() {
         <span>Affordo</span>
       </footer>
 
-      {/* New goals are prepended, so the most recent sits on top (dossier §8). */}
+      {/* One dialog for both jobs: `initial` decides add vs edit (dossier §5). */}
       <GoalDialog
-        open={adding}
-        onOpenChange={setAdding}
-        onSave={(goal) => setGoals([goal, ...goals])}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        initial={editing}
+        onSave={saveGoal}
       />
     </div>
   );
