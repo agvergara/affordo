@@ -365,4 +365,55 @@ describe("GoalCard verdict explainer", () => {
       screen.getByText("Beyond a reasonable savings plan."),
     ).toBeInTheDocument();
   });
+
+  /**
+   * A cut-to-afford goal is the one verdict with a lever, so the explainer names
+   * it: how much to trim, and how long that buys. 30.000 over 12 months needs
+   * 2.500/month against a 1.000 surplus — a 1.500 shortfall, which is 37,5% of
+   * the 4.000 expenses.
+   */
+  const CUT_TO_AFFORD = {
+    currency: "EUR",
+    salary: 5000,
+    expenses: 4000,
+    savings: 0,
+  } as const;
+
+  // Read off the whole card, because the sentence is deliberately split across
+  // elements by the bolding — the user still reads one continuous sentence.
+  it("tells a cut verdict how much to trim and how long it takes", () => {
+    renderCard(makeGoal({ price: 30000 }), CUT_TO_AFFORD);
+    expect(screen.getByRole("article")).toHaveTextContent(
+      "Cut expenses by 37,5% to reach it in 12 months.",
+    );
+  });
+
+  // The bolding IS the acceptance criterion (#62, PRD user story 42) — the two
+  // numbers are what the sentence exists to deliver. jsdom renders no visual
+  // weight, so this asserts the emphasis element the same way #94's colour tests
+  // assert the utility class: the narrow exception where the visual property is
+  // the requirement, not a proxy for one.
+  it("bolds the cut percentage and the horizon inside the sentence", () => {
+    renderCard(makeGoal({ price: 30000 }), CUT_TO_AFFORD);
+    expect(screen.getByText("37,5%").tagName).toBe("B");
+    expect(screen.getByText("12 months").tagName).toBe("B");
+  });
+
+  it("leaves a stretch verdict unexplained", () => {
+    // The reference writes no fourth sentence: for a goal the surplus already
+    // reaches, the months in the stat block are the whole answer.
+    renderCard(makeGoal({ price: 1500 }), {
+      salary: 2000,
+      expenses: 1000,
+      savings: 0,
+    });
+    expect(screen.getByText("Stretch")).toBeInTheDocument();
+    expect(screen.getByRole("article")).not.toHaveTextContent("Cut expenses by");
+    expect(screen.getByRole("article")).not.toHaveTextContent(
+      "Beyond a reasonable savings plan.",
+    );
+    expect(screen.getByRole("article")).not.toHaveTextContent(
+      "You already have savings for this.",
+    );
+  });
 });

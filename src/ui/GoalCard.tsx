@@ -12,8 +12,9 @@ import { VerdictBadge } from "./VerdictBadge";
  * note, the verdict badge, the price, and what the price costs in days — or
  * hours — of work. On top of that sits the threshold meter (#61): the caption
  * row, a fill bar scaled to be full at twice the threshold, and a fixed
- * midpoint marker. The stat block and per-verdict explainers (#62) and the
- * Edit/Remove actions (#65) land in later slices, so the props stay `{ goal }`
+ * midpoint marker. Below that sits the stat block (#62) — `Time to save` and
+ * `Monthly surplus` — and the one explainer paragraph the verdict earns. The
+ * Edit/Remove actions (#65) land in a later slice, so the props stay `{ goal }`
  * until those callbacks are needed.
  *
  * The date is `toLocaleDateString("en-US")` regardless of the profile currency —
@@ -136,6 +137,23 @@ export function GoalCard({ goal }: { goal: Goal }) {
           </p>
         </div>
       </div>
+
+      {/*
+        One explainer per verdict, in the reference's copy and order (dossier
+        §5). `stretch` earns none: the months in the stat block are the whole
+        answer for a goal the surplus already reaches.
+      */}
+      {verdict.kind === "cutToAfford" && (
+        <p className="mt-4 border-l-2 border-accent bg-accent/5 p-3 text-sm">
+          Cut expenses by{" "}
+          <b>{formatNumber(verdict.cutPct ?? 0, profile.currency)}%</b> to reach
+          it in{" "}
+          <b>
+            {formatNumber(verdict.cutMonths ?? 0, profile.currency)} months
+          </b>
+          .
+        </p>
+      )}
 
       {verdict.kind === "cannot" && (
         <p className="mt-4 border-l-2 border-destructive bg-destructive/5 p-3 text-sm">
