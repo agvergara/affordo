@@ -5,6 +5,17 @@ import { defaultProfile, type Profile } from "../state/profile-store";
 import type { Currency } from "../engine/reference-types";
 
 /**
+ * `num(v)` (dossier §7): parse a field string with a comma-or-dot decimal
+ * separator, falling back to 0 on NaN. Matches the reference's onboarding
+ * helper — it accepts a decimal comma but not thousands separators, and that
+ * naivety is reproduced rather than fixed (PRD #39, formatting quirks).
+ */
+function num(v: string): number {
+  const parsed = parseFloat(v.replace(",", "."));
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+/**
  * How the wizard leaves for the next screen. Mirrors `Router`'s `Navigate`
  * (`(to: string) => void`): the client-only SPA (ADR 0004/0009) has no history
  * router, so a redirect is a real location change; tests inject a spy instead.
@@ -205,6 +216,85 @@ function IncomeStep({
           ))}
         </select>
       </div>
+
+      <Field
+        id="onboarding-salary"
+        label="Net monthly salary"
+        value={draft.salary}
+        onChange={(v) => set("salary", num(v))}
+        autoFocus
+      />
+
+      <div className="grid gap-8 sm:grid-cols-2">
+        <Field
+          id="onboarding-hours-week"
+          label="Hours per week"
+          value={draft.hoursPerWeek}
+          onChange={(v) => set("hoursPerWeek", num(v))}
+        />
+        <Field
+          id="onboarding-hours-day"
+          label="Hours per day"
+          value={draft.hoursPerDay}
+          onChange={(v) => set("hoursPerDay", num(v))}
+        />
+      </div>
+
+      <Field
+        id="onboarding-payments"
+        label="Payments per year"
+        value={draft.paymentsPerYear}
+        onChange={(v) => set("paymentsPerYear", num(v))}
+        hint="Use 14 for Spanish-style extra payments."
+      />
     </>
+  );
+}
+
+/**
+ * One onboarding number field (dossier §15). Distinct from `SettingsScreen`'s
+ * `NumberField` in one recorded respect: §4 gives onboarding's big input text
+ * `text-3xl` against settings' `text-2xl`, so the two are not the same
+ * component wearing a size prop.
+ *
+ * `value || ""` renders zero as empty, keeping the `0` placeholder visible
+ * (§7) — the reference's own behaviour, so a freshly defaulted field reads as
+ * unfilled rather than as a literal zero.
+ */
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  hint,
+  autoFocus,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (v: string) => void;
+  hint?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <label
+        htmlFor={id}
+        className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        inputMode="decimal"
+        placeholder="0"
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- §15 records autoFocus on the first field of steps 1 and 2.
+        autoFocus={autoFocus}
+        className="w-full border-b border-border bg-transparent py-2 text-3xl font-bold transition-colors focus-visible:border-accent focus-visible:outline-none"
+      />
+      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+    </div>
   );
 }

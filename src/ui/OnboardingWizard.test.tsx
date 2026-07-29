@@ -283,4 +283,34 @@ describe("OnboardingWizard — step 1 Income fields", () => {
       Array.from(select.querySelectorAll("option")).map((o) => o.textContent),
     ).toEqual(["EUR — €", "GBP — £", "USD — $"]);
   });
+
+  it("asks for salary, both hour figures and the pay periods", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    for (const label of [
+      "Net monthly salary",
+      "Hours per week",
+      "Hours per day",
+      "Payments per year",
+    ]) {
+      expect(screen.getByLabelText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("explains the extra pay periods with the reference hint", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    expect(
+      screen.getByText("Use 14 for Spanish-style extra payments."),
+    ).toBeInTheDocument();
+  });
+
+  it("puts the cursor in salary so the user can type straight away", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    expect(screen.getByLabelText("Net monthly salary")).toHaveFocus();
+  });
 });
