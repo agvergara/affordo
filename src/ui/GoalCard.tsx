@@ -12,8 +12,9 @@ import { VerdictBadge } from "./VerdictBadge";
  * note, the verdict badge, the price, and what the price costs in days — or
  * hours — of work. On top of that sits the threshold meter (#61): the caption
  * row, a fill bar scaled to be full at twice the threshold, and a fixed
- * midpoint marker. The stat block and per-verdict explainers (#62) and the
- * Edit/Remove actions (#65) land in later slices, so the props stay `{ goal }`
+ * midpoint marker. Below that sits the stat block (#62) — `Time to save` and
+ * `Monthly surplus` — and the one explainer paragraph the verdict earns. The
+ * Edit/Remove actions (#65) land in a later slice, so the props stay `{ goal }`
  * until those callbacks are needed.
  *
  * The date is `toLocaleDateString("en-US")` regardless of the profile currency —
@@ -32,6 +33,20 @@ export function GoalCard({ goal }: { goal: Goal }) {
     100,
     (verdict.pctOfMonthlyIncome / (profile.threshold * 2)) * 100,
   );
+
+  // `Time to save` reads off the verdict kind: an already-afforded goal has no
+  // horizon to state, so it shows an em dash; a stretch states the months the
+  // surplus needs (dossier §5).
+  const timeToSave =
+    verdict.kind === "afford"
+      ? "—"
+      : verdict.monthsToSave !== null
+        ? `${formatNumber(verdict.monthsToSave, profile.currency)} months`
+        : verdict.cutMonths !== null
+          ? // The trailing `*` is the reference's own, and nothing on the card
+            // explains it. Reproduced deliberately (dossier §13).
+            `${formatNumber(verdict.cutMonths, profile.currency)} months *`
+          : "∞";
 
   // Days once the price costs a full work day, hours below that (dossier §8).
   const showDays = verdict.daysOfWork >= 1;
@@ -105,6 +120,52 @@ export function GoalCard({ goal }: { goal: Goal }) {
           />
         </div>
       </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2">
+        <div className="bg-background p-4">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Time to save
+          </p>
+          <p className="mt-1 text-xl font-bold tracking-tight">{timeToSave}</p>
+        </div>
+        <div className="bg-background p-4">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Monthly surplus
+          </p>
+          <p className="mt-1 text-xl font-bold tracking-tight">
+            {formatMoney(verdict.monthlyDisposable, profile.currency)}
+          </p>
+        </div>
+      </div>
+
+      {/*
+        One explainer per verdict, in the reference's copy and order (dossier
+        §5). `stretch` earns none: the months in the stat block are the whole
+        answer for a goal the surplus already reaches.
+      */}
+      {verdict.kind === "cutToAfford" && (
+        <p className="mt-4 border-l-2 border-accent bg-accent/5 p-3 text-sm">
+          Cut expenses by{" "}
+          <b>{formatNumber(verdict.cutPct ?? 0, profile.currency)}%</b> to reach
+          it in{" "}
+          <b>
+            {formatNumber(verdict.cutMonths ?? 0, profile.currency)} months
+          </b>
+          .
+        </p>
+      )}
+
+      {verdict.kind === "cannot" && (
+        <p className="mt-4 border-l-2 border-destructive bg-destructive/5 p-3 text-sm">
+          Beyond a reasonable savings plan.
+        </p>
+      )}
+
+      {verdict.kind === "afford" && (
+        <p className="mt-4 border-l-2 border-emerald-600 bg-emerald-600/5 p-3 text-sm">
+          You already have savings for this.
+        </p>
+      )}
     </article>
   );
 }
