@@ -49,8 +49,9 @@ describe("GoalsDashboard heading", () => {
     const title = screen.getByRole("heading", { name: /goals/i });
     expect(title).toBeInTheDocument();
     // The eyebrow sits above the big title, distinct from the header wordmark
-    // (which is a link). It's the non-link `Affordo` in the page body.
-    const eyebrows = screen
+    // (which is a link) and from the footer's `Affordo` label (outside main).
+    // It's the non-link `Affordo` inside the page's main content.
+    const eyebrows = within(screen.getByRole("main"))
       .getAllByText("Affordo")
       .filter((el) => el.tagName !== "A");
     expect(eyebrows).toHaveLength(1);
@@ -183,6 +184,72 @@ describe("GoalsDashboard goal cards", () => {
     expect(item).toHaveTextContent("1.500,00 €");
     // 5000 savings already cover the 1500 price.
     expect(item).toHaveTextContent("Afford");
+  });
+});
+
+describe("GoalsDashboard footer", () => {
+  it("notes that the record is kept locally, on the left", () => {
+    renderDashboard();
+    const footer = screen.getByRole("contentinfo");
+    expect(
+      within(footer).getByText("Record persistent in local-cache"),
+    ).toBeInTheDocument();
+  });
+
+  it("labels the footer with the brand, on the right", () => {
+    renderDashboard();
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByText("Affordo")).toBeInTheDocument();
+  });
+
+  it("puts the local-cache note before the brand label in reading order", () => {
+    renderDashboard();
+    const footer = screen.getByRole("contentinfo");
+    const note = within(footer).getByText("Record persistent in local-cache");
+    const brand = within(footer).getByText("Affordo");
+    // DOCUMENT_POSITION_FOLLOWING (4): the brand comes after the note in the
+    // document, which is half of "note left, brand right".
+    expect(note.compareDocumentPosition(brand)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("pushes the two labels to opposite ends of the row", () => {
+    renderDashboard();
+    // The other half: source order only lands the note on the left because the
+    // row is laid out `flex` + `justify-between`. Drop that and both labels
+    // bunch together at the start — the AC's left/right split is gone while
+    // every text assertion above still passes. jsdom applies no stylesheet, so
+    // the classes are the only observable, the same narrow exception the
+    // verdict badge's colour tests take (PR #94).
+    expect(screen.getByRole("contentinfo")).toHaveClass(
+      "flex",
+      "justify-between",
+    );
+  });
+
+  it("renders the footer once goals exist too", () => {
+    renderDashboard(undefined, [makeGoal(), makeGoal()]);
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toHaveTextContent("Record persistent in local-cache");
+    expect(footer).toHaveTextContent("Affordo");
+  });
+
+  it("dims the footer with the muted token, adding no opacity of its own", () => {
+    renderDashboard();
+    // #63 asks for the footer "at the reference opacity", but the dossier
+    // records no class string for this footer at all — so the dimming it
+    // reproduces is the one the dossier *does* record for every muted mono
+    // micro-label (§4 Caption / meta): `text-muted-foreground`, with no
+    // `opacity-*` utility stacked on top. An extra step would be invented, not
+    // reproduced, and would drop 10px text to ~2:1 contrast in the default
+    // light theme. Confirming the real string is tracked as a follow-up.
+    //
+    // jsdom loads no stylesheet, so the class is the only observable — the
+    // narrow exception the verdict badge's colour tests take (PR #94).
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toHaveClass("text-muted-foreground");
+    expect(footer.className).not.toMatch(/\bopacity-/);
   });
 });
 
