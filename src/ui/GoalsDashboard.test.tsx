@@ -207,11 +207,24 @@ describe("GoalsDashboard footer", () => {
     const footer = screen.getByRole("contentinfo");
     const note = within(footer).getByText("Record persistent in local-cache");
     const brand = within(footer).getByText("Affordo");
-    // DOCUMENT_POSITION_FOLLOWING (4): the brand comes after the note, so the
-    // note takes the left slot and the brand the right one under
-    // `justify-between`.
+    // DOCUMENT_POSITION_FOLLOWING (4): the brand comes after the note in the
+    // document, which is half of "note left, brand right".
     expect(note.compareDocumentPosition(brand)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("pushes the two labels to opposite ends of the row", () => {
+    renderDashboard();
+    // The other half: source order only lands the note on the left because the
+    // row is laid out `flex` + `justify-between`. Drop that and both labels
+    // bunch together at the start — the AC's left/right split is gone while
+    // every text assertion above still passes. jsdom applies no stylesheet, so
+    // the classes are the only observable, the same narrow exception the
+    // verdict badge's colour tests take (PR #94).
+    expect(screen.getByRole("contentinfo")).toHaveClass(
+      "flex",
+      "justify-between",
     );
   });
 
@@ -222,12 +235,17 @@ describe("GoalsDashboard footer", () => {
     expect(footer).toHaveTextContent("Affordo");
   });
 
-  it("dims the footer to the reference opacity", () => {
+  it("dims the footer below the page's own muted text", () => {
     renderDashboard();
-    // The dimming *is* the acceptance criterion for this slice (#63: "at the
+    // The dimming *is* an acceptance criterion for this slice (#63: "at the
     // reference opacity"), and jsdom loads no stylesheet, so the utility class
     // that sets it is the only observable — same narrow exception the verdict
     // badge's colour tests take (PR #94). Everything else here is text/roles.
+    //
+    // The *step* is not dossier-recorded (see the footer comment in
+    // GoalsDashboard.tsx): this pins that the footer is dimmed beyond plain
+    // `text-muted-foreground`, and pins the chosen step so that correcting it
+    // against the reference is a deliberate edit rather than a silent drift.
     expect(screen.getByRole("contentinfo")).toHaveClass("opacity-60");
   });
 });
