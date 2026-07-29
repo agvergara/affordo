@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
+import type { Goal } from "../state/goals-store";
 import { AppHeader } from "./AppHeader";
 import { GoalCard } from "./GoalCard";
 import { GoalDialog } from "./GoalDialog";
@@ -24,7 +25,20 @@ import { formatMoney } from "./localeFormat";
  */
 export function GoalsDashboard() {
   const { profile, goals, setGoals } = useAffordo();
-  const [adding, setAdding] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  // The Goal the dialog is revising, or null when it is adding a new one. This
+  // is the only thing that distinguishes the two uses of the one dialog.
+  const [editing, setEditing] = useState<Goal | null>(null);
+
+  const openAdd = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (goal: Goal) => {
+    setEditing(goal);
+    setDialogOpen(true);
+  };
 
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
   const surplus =
@@ -87,7 +101,7 @@ export function GoalsDashboard() {
           </div>
           <button
             type="button"
-            onClick={() => setAdding(true)}
+            onClick={openAdd}
             className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
           >
             Add goal
@@ -112,7 +126,11 @@ export function GoalsDashboard() {
           <ul data-testid="goals-list" className="mt-6 space-y-4">
             {goals.map((goal) => (
               <li key={goal.id} data-testid="goal-item">
-                <GoalCard goal={goal} onEdit={() => {}} onRemove={() => {}} />
+                <GoalCard
+                  goal={goal}
+                  onEdit={() => openEdit(goal)}
+                  onRemove={() => {}}
+                />
               </li>
             ))}
           </ul>
@@ -121,8 +139,9 @@ export function GoalsDashboard() {
 
       {/* New goals are prepended, so the most recent sits on top (dossier §8). */}
       <GoalDialog
-        open={adding}
-        onOpenChange={setAdding}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        initial={editing}
         onSave={(goal) => setGoals([goal, ...goals])}
       />
     </div>

@@ -5,6 +5,11 @@ export interface GoalDialogProps {
   open: boolean;
   /** Called with `false` when the dialog asks to close (Cancel, Escape, save). */
   onOpenChange: (open: boolean) => void;
+  /**
+   * The Goal being revised, or null/absent to add a new one. Its presence is
+   * what makes this the `Edit goal` dialog rather than the `Add goal` one.
+   */
+  initial?: Goal | null;
   /** Called with the built Goal when a valid form is submitted. */
   onSave: (goal: Goal) => void;
 }
@@ -44,11 +49,17 @@ const TEXTAREA =
  * eyebrow the reference renders as `DialogDescription`, the `sr-only` Close
  * control, Escape-to-dismiss, and the Tab focus trap (dossier §5, §6, §11).
  *
- * This slice is **create only** (issue #64). Editing an existing goal — the
- * reference's `initial` prop, the `Edit goal` title, and the preserved
- * `id`/`createdAt` — lands with issue #65, along with removal.
+ * One dialog serves both jobs (issue #65). Passing `initial` re-titles it to
+ * `Edit goal`, seeds the fields from that Goal, and — critically — carries its
+ * `id` and `createdAt` back out on save, so revising a goal updates it in place
+ * instead of minting a second one.
  */
-export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
+export function GoalDialog({
+  open,
+  onOpenChange,
+  initial,
+  onSave,
+}: GoalDialogProps) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
@@ -152,7 +163,7 @@ export function GoalDialog({ open, onOpenChange, onSave }: GoalDialogProps) {
           id="goal-dialog-title"
           className="font-display text-3xl uppercase tracking-tight"
         >
-          Add goal
+          {initial ? "Edit goal" : "Add goal"}
         </h2>
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           Affordo
