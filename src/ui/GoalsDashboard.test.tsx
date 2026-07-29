@@ -49,8 +49,9 @@ describe("GoalsDashboard heading", () => {
     const title = screen.getByRole("heading", { name: /goals/i });
     expect(title).toBeInTheDocument();
     // The eyebrow sits above the big title, distinct from the header wordmark
-    // (which is a link). It's the non-link `Affordo` in the page body.
-    const eyebrows = screen
+    // (which is a link) and from the footer's `Affordo` label (outside main).
+    // It's the non-link `Affordo` inside the page's main content.
+    const eyebrows = within(screen.getByRole("main"))
       .getAllByText("Affordo")
       .filter((el) => el.tagName !== "A");
     expect(eyebrows).toHaveLength(1);
@@ -183,6 +184,51 @@ describe("GoalsDashboard goal cards", () => {
     expect(item).toHaveTextContent("1.500,00 €");
     // 5000 savings already cover the 1500 price.
     expect(item).toHaveTextContent("Afford");
+  });
+});
+
+describe("GoalsDashboard footer", () => {
+  it("notes that the record is kept locally, on the left", () => {
+    renderDashboard();
+    const footer = screen.getByRole("contentinfo");
+    expect(
+      within(footer).getByText("Record persistent in local-cache"),
+    ).toBeInTheDocument();
+  });
+
+  it("labels the footer with the brand, on the right", () => {
+    renderDashboard();
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByText("Affordo")).toBeInTheDocument();
+  });
+
+  it("puts the local-cache note before the brand label in reading order", () => {
+    renderDashboard();
+    const footer = screen.getByRole("contentinfo");
+    const note = within(footer).getByText("Record persistent in local-cache");
+    const brand = within(footer).getByText("Affordo");
+    // DOCUMENT_POSITION_FOLLOWING (4): the brand comes after the note, so the
+    // note takes the left slot and the brand the right one under
+    // `justify-between`.
+    expect(note.compareDocumentPosition(brand)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("renders the footer once goals exist too", () => {
+    renderDashboard(undefined, [makeGoal(), makeGoal()]);
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toHaveTextContent("Record persistent in local-cache");
+    expect(footer).toHaveTextContent("Affordo");
+  });
+
+  it("dims the footer to the reference opacity", () => {
+    renderDashboard();
+    // The dimming *is* the acceptance criterion for this slice (#63: "at the
+    // reference opacity"), and jsdom loads no stylesheet, so the utility class
+    // that sets it is the only observable — same narrow exception the verdict
+    // badge's colour tests take (PR #94). Everything else here is text/roles.
+    expect(screen.getByRole("contentinfo")).toHaveClass("opacity-60");
   });
 });
 

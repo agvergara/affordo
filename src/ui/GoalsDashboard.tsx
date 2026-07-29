@@ -119,6 +119,17 @@ export function GoalsDashboard() {
         )}
       </main>
 
+      {/*
+       * Dashboard footer (dossier §6 "Footer" + §11): a `<footer>` landmark
+       * carrying the local-cache note on the left and the literal `Affordo`
+       * label — not the dict's brand key — on the right, dimmed away from the
+       * page's content.
+       */}
+      <footer className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 pb-10 font-mono text-[10px] uppercase tracking-widest text-muted-foreground opacity-60 sm:px-6 sm:pb-16">
+        <span>Record persistent in local-cache</span>
+        <span>Affordo</span>
+      </footer>
+
       {/* New goals are prepended, so the most recent sits on top (dossier §8). */}
       <GoalDialog
         open={adding}
