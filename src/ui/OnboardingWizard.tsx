@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AppHeader } from "./AppHeader";
 import { useAffordo } from "../state/AffordoProvider";
 import { defaultProfile, type Profile } from "../state/profile-store";
+import type { Currency } from "../engine/reference-types";
 
 /**
  * How the wizard leaves for the next screen. Mirrors `Router`'s `Navigate`
@@ -50,11 +51,14 @@ function WizardBody({
 
   // The draft is a full Profile edited in place across steps, seeded from the
   // stored profile when the user has one (salary > 0) else from defaults (§15).
-  // Local state only — nothing is persisted until finish. Per-step field edits
-  // (`update`) land in later slices; the steps stay empty placeholders here.
-  const [draft] = useState<Profile>(
+  // Local state only — nothing is persisted until finish.
+  const [draft, setDraft] = useState<Profile>(
     profile.salary > 0 ? profile : defaultProfile,
   );
+
+  /** Edit one field of the draft in place. */
+  const set = <K extends keyof Profile>(key: K, value: Profile[K]) =>
+    setDraft((d) => ({ ...d, [key]: value }));
 
   const isFirst = step === 0;
   const isLast = step === steps.length - 1;
@@ -105,9 +109,10 @@ function WizardBody({
           ))}
         </div>
 
-        {/* Steps 1–3 render as empty placeholders until #55–#57 land. */}
+        {/* Steps 2–3 render as empty placeholders until #56–#57 land. */}
         <div key={step} className="animate-slide-up space-y-8">
           {step === 0 && <WelcomeStep />}
+          {step === 1 && <IncomeStep draft={draft} set={set} />}
         </div>
 
         <div className="mt-12 flex items-center justify-between border-t border-border pt-6">
@@ -156,5 +161,50 @@ function WelcomeStep() {
         tempted to spend.
       </p>
     </div>
+  );
+}
+
+/** The currency options, in the dossier's order, with their symbols (§15). */
+const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
+  { value: "EUR", label: "EUR — €" },
+  { value: "GBP", label: "GBP — £" },
+  { value: "USD", label: "USD — $" },
+];
+
+/**
+ * Step 1 — Income (dossier §15 "Step 1"). The only step that gates: the
+ * primary control stays disabled until all four numeric fields exceed zero
+ * (see `canContinue` in `WizardBody`).
+ */
+function IncomeStep({
+  draft,
+  set,
+}: {
+  draft: Profile;
+  set: <K extends keyof Profile>(key: K, value: Profile[K]) => void;
+}) {
+  return (
+    <>
+      <div className="space-y-2">
+        <label
+          htmlFor="onboarding-currency"
+          className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+        >
+          Currency
+        </label>
+        <select
+          id="onboarding-currency"
+          value={draft.currency}
+          onChange={(e) => set("currency", e.target.value as Currency)}
+          className="w-full border-b border-border bg-transparent py-2 text-3xl font-bold transition-colors focus-visible:border-accent focus-visible:outline-none"
+        >
+          {CURRENCY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
   );
 }

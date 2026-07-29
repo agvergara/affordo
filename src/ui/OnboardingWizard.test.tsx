@@ -272,3 +272,15 @@ describe("OnboardingWizard — step 0 Welcome content", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("OnboardingWizard — step 1 Income fields", () => {
+  it("offers the three currencies with their symbols", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    const select = screen.getByLabelText("Currency");
+    expect(
+      Array.from(select.querySelectorAll("option")).map((o) => o.textContent),
+    ).toEqual(["EUR — €", "GBP — £", "USD — $"]);
+  });
+});
