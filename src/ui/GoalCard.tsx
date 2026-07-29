@@ -136,6 +136,18 @@ export function GoalCard({ goal }: { goal: Goal }) {
           </p>
         </div>
       </div>
+
+      {verdict.kind === "cannot" && (
+        <p className="mt-4 border-l-2 border-destructive bg-destructive/5 p-3 text-sm">
+          Beyond a reasonable savings plan.
+        </p>
+      )}
+
+      {verdict.kind === "afford" && (
+        <p className="mt-4 border-l-2 border-emerald-600 bg-emerald-600/5 p-3 text-sm">
+          You already have savings for this.
+        </p>
+      )}
     </article>
   );
 }

@@ -341,3 +341,28 @@ describe("GoalCard time to save", () => {
     expect(statValue("Time to save")).toBe("∞");
   });
 });
+
+/**
+ * One explainer paragraph per verdict, in the reference's copy (dossier §5/§6).
+ * `stretch` deliberately has none — the months in the stat block are the whole
+ * story for a goal the surplus already reaches.
+ */
+describe("GoalCard verdict explainer", () => {
+  it("tells an afford verdict the savings are already there", () => {
+    renderCard(makeGoal({ price: 1500 }), { savings: 2000 });
+    expect(
+      screen.getByText("You already have savings for this."),
+    ).toBeInTheDocument();
+  });
+
+  it("tells a cannot verdict the goal is beyond a savings plan", () => {
+    renderCard(makeGoal({ price: 500000 }), {
+      salary: 2000,
+      expenses: 1000,
+      savings: 0,
+    });
+    expect(
+      screen.getByText("Beyond a reasonable savings plan."),
+    ).toBeInTheDocument();
+  });
+});
