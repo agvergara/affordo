@@ -203,7 +203,18 @@ describe("OnboardingWizard — progress bar", () => {
 describe("OnboardingWizard — step 0 Welcome content", () => {
   it("opens with the kicker above the headline", () => {
     renderWizard();
-    expect(screen.getByText("Before you buy")).toBeInTheDocument();
+    const kicker = screen.getByText("Before you buy");
+    const headline = screen.getByText(
+      "Measure any purchase in hours of your life.",
+    );
+    expect(kicker).toBeInTheDocument();
+    // The name promises a stacking order, so assert it rather than mere
+    // presence: §15 stacks kicker → headline → body, and presence-only
+    // assertions leave the blocks freely interchangeable.
+    expect(
+      kicker.compareDocumentPosition(headline) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("states the premise as the headline", () => {
@@ -239,6 +250,16 @@ describe("OnboardingWizard — step 0 Welcome content", () => {
     renderWizard();
     const user = userEvent.setup();
     await advance(user, "Start →");
+    // All three blocks, not just the kicker: confining one and leaking the
+    // other two is a mutation the kicker-only assertion could not see.
     expect(screen.queryByText("Before you buy")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Measure any purchase in hours of your life."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.",
+      ),
+    ).not.toBeInTheDocument();
   });
 });
