@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
-import { saveGoals, type Goal } from "../state/goals-store";
+import { loadGoals, saveGoals, type Goal } from "../state/goals-store";
 
 beforeEach(() => window.localStorage.clear());
 
@@ -49,6 +49,12 @@ function renderDashboard(goals: Goal[] = [makeGoal()]) {
   saveGoals(goals);
   mount();
   return userEvent.setup();
+}
+
+/** Throw the dashboard away and build it again from localStorage alone. */
+function remount() {
+  cleanup();
+  mount();
 }
 
 /** The card at `index` in the saved-goals list. */
@@ -138,6 +144,68 @@ describe("Editing a goal — saving updates it in place", () => {
 
     // Default profile currency is EUR → de-DE formatting.
     expect(screen.getByTestId("goals-list")).toHaveTextContent("6.000,00 €");
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 1",
+    );
+  });
+});
+
+/**
+ * The identity guarantees of PRD story 51. These are the assertions that must
+ * *fail* if the dialog ever re-stamps a goal on save, so each one names the
+ * value it pins rather than settling for a green list.
+ */
+describe("Editing a goal — the goal keeps its identity", () => {
+  it("keeps the goal's id, so the edit lands on the same record", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1" })]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    const stored = loadGoals();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.id).toBe("goal-1");
+    expect(stored[0]?.name).toBe("House deposit");
+  });
+
+  it("keeps the goal's original creation date rather than re-stamping it", async () => {
+    // The card prints `createdAt` as its date line, so a re-stamped goal would
+    // start reading as today's date instead of the day it was created.
+    const user = renderDashboard([
+      makeGoal({ createdAt: new Date(2024, 0, 15, 12).getTime() }),
+    ]);
+    expect(within(card()).getByText("1/15/2024")).toBeInTheDocument();
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(within(card()).getByText("1/15/2024")).toBeInTheDocument();
+    expect(loadGoals()[0]?.createdAt).toBe(new Date(2024, 0, 15, 12).getTime());
+  });
+
+  it("leaves the goal where it sat in the list", async () => {
+    // A goal swapped in by id keeps its position; one removed and re-added
+    // would jump to the top, since new goals are prepended.
+    const user = renderDashboard([
+      makeGoal({ id: "a", name: "Down payment" }),
+      makeGoal({ id: "b", name: "MacBook Pro" }),
+    ]);
+
+    await user.click(within(card(1)).getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "MacBook Air");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(card(0)).toHaveTextContent("Down payment");
+    expect(card(1)).toHaveTextContent("MacBook Air");
+    expect(loadGoals().map((g) => g.id)).toEqual(["a", "b"]);
+  });
+
+  it("keeps the edit after the dashboard is reloaded", async () => {
+    const user = renderDashboard([makeGoal({ name: "Down payment" })]);
+
+    await renameFirstGoal(user, "House deposit");
+    remount();
+
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("House deposit");
     expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
       "Saved goals · 1",
     );
