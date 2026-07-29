@@ -147,6 +147,9 @@ function WelcomeStep() {
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
         Before you buy
       </p>
+      <p className="font-display text-3xl uppercase leading-tight tracking-tight sm:text-4xl">
+        Measure any purchase in hours of your life.
+      </p>
     </div>
   );
 }
