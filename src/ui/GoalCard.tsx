@@ -105,6 +105,19 @@ export function GoalCard({ goal }: { goal: Goal }) {
           />
         </div>
       </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2">
+        <div className="bg-background p-4">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Time to save
+          </p>
+        </div>
+        <div className="bg-background p-4">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Monthly surplus
+          </p>
+        </div>
+      </div>
     </article>
   );
 }

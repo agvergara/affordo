@@ -253,3 +253,11 @@ describe("GoalCard work figure", () => {
     expect(screen.getByText("1 days of work")).toBeInTheDocument();
   });
 });
+
+describe("GoalCard stat block", () => {
+  it("labels the two cells Time to save and Monthly surplus", () => {
+    renderCard();
+    expect(screen.getByText("Time to save")).toBeInTheDocument();
+    expect(screen.getByText("Monthly surplus")).toBeInTheDocument();
+  });
+});
