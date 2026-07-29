@@ -75,4 +75,71 @@ describe("Editing a goal — opening the dialog", () => {
       within(dialog).queryByRole("heading", { name: "Add goal" }),
     ).not.toBeInTheDocument();
   });
+
+  it("pre-fills the dialog with the goal's own values", async () => {
+    const user = renderDashboard([
+      makeGoal({ name: "Down payment", price: 5000, note: "Two-bed flat" }),
+    ]);
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("Down payment");
+    expect(screen.getByLabelText("Price")).toHaveValue(5000);
+    expect(screen.getByLabelText("Note (optional)")).toHaveValue("Two-bed flat");
+  });
+
+  it("opens on the goal whose own Edit was pressed, not the first one", async () => {
+    const user = renderDashboard([
+      makeGoal({ id: "a", name: "Down payment", price: 5000 }),
+      makeGoal({ id: "b", name: "MacBook Pro", price: 1500 }),
+    ]);
+
+    await user.click(within(card(1)).getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("MacBook Pro");
+    expect(screen.getByLabelText("Price")).toHaveValue(1500);
+  });
+});
+
+/** Open the first card's Edit dialog, retype the Name, and Save. */
+async function renameFirstGoal(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+) {
+  await user.click(within(card()).getByRole("button", { name: "Edit" }));
+  await user.clear(screen.getByLabelText("Name"));
+  await user.type(screen.getByLabelText("Name"), name);
+  await user.click(screen.getByRole("button", { name: "Save" }));
+}
+
+describe("Editing a goal — saving updates it in place", () => {
+  it("replaces the goal rather than adding a second one", async () => {
+    const user = renderDashboard([makeGoal({ name: "Down payment" })]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 1",
+    );
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("House deposit");
+    expect(screen.getByTestId("goals-list")).not.toHaveTextContent(
+      "Down payment",
+    );
+  });
+
+  it("saves the edited price against the same goal", async () => {
+    const user = renderDashboard([makeGoal({ price: 5000 })]);
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Price"));
+    await user.type(screen.getByLabelText("Price"), "6000");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // Default profile currency is EUR → de-DE formatting.
+    expect(screen.getByTestId("goals-list")).toHaveTextContent("6.000,00 €");
+    expect(screen.getByTestId("saved-goals-divider")).toHaveTextContent(
+      "Saved goals · 1",
+    );
+  });
 });

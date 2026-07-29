@@ -65,15 +65,16 @@ export function GoalDialog({
   const [note, setNote] = useState("");
   const panel = useRef<HTMLDivElement>(null);
 
-  // The reference resets the fields on open (dossier §5). The dialog stays
-  // mounted between openings, so the reset has to be explicit — without it a
-  // cancelled or saved entry would still be sitting there next time.
+  // The reference resets the fields on open, seeding them from `initial`
+  // (dossier §5). The dialog stays mounted between openings, so the reset has to
+  // be explicit — without it a cancelled or saved entry would still be sitting
+  // there next time, and an edit would leak into the next Add.
   useEffect(() => {
     if (!open) return;
-    setName("");
-    setPrice("");
-    setNote("");
-  }, [open]);
+    setName(initial?.name ?? "");
+    setPrice(initial === null || initial === undefined ? "" : String(initial.price));
+    setNote(initial?.note ?? "");
+  }, [open, initial]);
 
   // Escape dismisses the dialog and Tab cycles within it — the two keyboard
   // behaviours Radix's Dialog gives the reference (dossier §11). Bound on the
@@ -121,12 +122,15 @@ export function GoalDialog({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!valid) return;
+    // An edit carries the original `id` and `createdAt` straight back out: the
+    // goal is revised, not replaced, so it keeps its identity and its stamped
+    // creation date (dossier §5, PRD story 51). Only a new goal mints them.
     onSave({
-      id: crypto.randomUUID(),
+      id: initial?.id ?? crypto.randomUUID(),
       name: name.trim().slice(0, 80),
       price: parseFloat(price),
       note: note.trim().slice(0, 200),
-      createdAt: Date.now(),
+      createdAt: initial?.createdAt ?? Date.now(),
     });
     onOpenChange(false);
   };

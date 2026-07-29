@@ -40,6 +40,17 @@ export function GoalsDashboard() {
     setDialogOpen(true);
   };
 
+  // A new goal is prepended so the most recent sits on top (dossier §8); an
+  // edited one is swapped in where it already sits, keeping the list's order.
+  // The dialog hands back the original `id`, which is what makes the match.
+  const saveGoal = (goal: Goal) => {
+    setGoals(
+      editing === null
+        ? [goal, ...goals]
+        : goals.map((g) => (g.id === goal.id ? goal : g)),
+    );
+  };
+
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
   const surplus =
     profile.salary - profile.expenses + profile.monthlyContribution;
@@ -137,12 +148,12 @@ export function GoalsDashboard() {
         )}
       </main>
 
-      {/* New goals are prepended, so the most recent sits on top (dossier §8). */}
+      {/* One dialog for both jobs: `initial` decides add vs edit (dossier §5). */}
       <GoalDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initial={editing}
-        onSave={(goal) => setGoals([goal, ...goals])}
+        onSave={saveGoal}
       />
     </div>
   );
