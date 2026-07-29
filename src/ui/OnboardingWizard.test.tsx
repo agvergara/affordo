@@ -212,4 +212,33 @@ describe("OnboardingWizard — step 0 Welcome content", () => {
       screen.getByText("Measure any purchase in hours of your life."),
     ).toBeInTheDocument();
   });
+
+  it("explains the premise in the body copy", () => {
+    renderWizard();
+    expect(
+      screen.getByText(
+        "Affordo turns your salary into a time budget, then weighs every goal against it. Set your income once, then add a goal any time you're tempted to spend.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for nothing — the welcome step has no fields to fill", () => {
+    renderWizard();
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);
+    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+    expect(screen.queryAllByRole("slider")).toHaveLength(0);
+  });
+
+  it("leaves the primary control enabled, since nothing here gates it", () => {
+    renderWizard();
+    expect(screen.getByRole("button", { name: "Start →" })).toBeEnabled();
+  });
+
+  it("drops the welcome copy once the user starts", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    expect(screen.queryByText("Before you buy")).not.toBeInTheDocument();
+  });
 });
