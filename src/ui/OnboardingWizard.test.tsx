@@ -199,3 +199,17 @@ describe("OnboardingWizard — progress bar", () => {
     expect(filled()).toBe(4);
   });
 });
+
+describe("OnboardingWizard — step 0 Welcome content", () => {
+  it("opens with the kicker above the headline", () => {
+    renderWizard();
+    expect(screen.getByText("Before you buy")).toBeInTheDocument();
+  });
+
+  it("states the premise as the headline", () => {
+    renderWizard();
+    expect(
+      screen.getByText("Measure any purchase in hours of your life."),
+    ).toBeInTheDocument();
+  });
+});
