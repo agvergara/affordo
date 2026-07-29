@@ -33,6 +33,16 @@ export function GoalCard({ goal }: { goal: Goal }) {
     (verdict.pctOfMonthlyIncome / (profile.threshold * 2)) * 100,
   );
 
+  // `Time to save` reads off the verdict kind: an already-afforded goal has no
+  // horizon to state, so it shows an em dash; a stretch states the months the
+  // surplus needs (dossier §5).
+  const timeToSave =
+    verdict.kind === "afford"
+      ? "—"
+      : verdict.monthsToSave !== null
+        ? `${formatNumber(verdict.monthsToSave, profile.currency)} months`
+        : "";
+
   // Days once the price costs a full work day, hours below that (dossier §8).
   const showDays = verdict.daysOfWork >= 1;
   const workLabel = showDays
@@ -111,6 +121,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Time to save
           </p>
+          <p className="mt-1 text-xl font-bold tracking-tight">{timeToSave}</p>
         </div>
         <div className="bg-background p-4">
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">

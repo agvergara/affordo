@@ -279,3 +279,38 @@ describe("GoalCard stat block", () => {
     expect(screen.getByText("-800,00 €")).toBeInTheDocument();
   });
 });
+
+/**
+ * The value a user reads under a stat cell's label. Found through the visible
+ * label rather than a test id, so the assertion also proves the value is paired
+ * with the right caption — which is the part of the stat block that can silently
+ * go wrong.
+ */
+function statValue(label: string): string {
+  const cell = screen.getByText(label).parentElement;
+  return (cell?.textContent ?? "").replace(label, "").trim();
+}
+
+/**
+ * `Time to save` reads off the verdict kind (dossier §5): an em dash when the
+ * goal is already afforded, the saved-up months for a stretch, the cut horizon
+ * with a trailing `*` for a cut, and `∞` when no plan reaches it.
+ */
+describe("GoalCard time to save", () => {
+  it("shows an em dash when savings already cover the price", () => {
+    renderCard(makeGoal({ price: 1500 }), { savings: 2000 });
+    expect(statValue("Time to save")).toBe("—");
+  });
+
+  it("counts the months the surplus needs when the goal is a stretch", () => {
+    // 1.500 to find at 1.000/month of surplus (2.000 − 1.000) → 1,5 months,
+    // written with a decimal comma under the profile's de-DE locale.
+    renderCard(makeGoal({ price: 1500 }), {
+      currency: "EUR",
+      salary: 2000,
+      expenses: 1000,
+      savings: 0,
+    });
+    expect(statValue("Time to save")).toBe("1,5 months");
+  });
+});
