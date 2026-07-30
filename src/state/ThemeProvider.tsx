@@ -15,7 +15,7 @@ import { defaultTheme, loadStoredTheme, saveTheme, type Theme } from "./theme-st
  * stored value, so a reload restores the last choice.
  *
  * Unlike `AffordoProvider`, whose hydration is deferred to after mount to keep
- * first paint deterministic, the theme is read synchronously (`useState(loadStoredTheme() ?? systemTheme())`)
+ * first paint deterministic, the theme is read synchronously (`useState(() => loadStoredTheme() ?? systemTheme())`)
  * and applied to the root in a `useLayoutEffect`, which React flushes
  * synchronously BEFORE the browser paints. Applying it in a plain `useEffect`
  * would run after paint and flash the light theme on a dark reload; a layout

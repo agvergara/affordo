@@ -105,6 +105,17 @@ describe("reference oklch color tokens (dossier §3)", () => {
     }
   });
 
+  it("binds native UI to the same class as the palette, not to the OS", () => {
+    // `color-scheme` drives scrollbars, the `<select>` popup and form controls.
+    // Left at `light dark` the OS decided them independently, so a user who
+    // chose against their OS got dark tokens with light scrollbars (#122's F5).
+    // Pinned here because its neighbours are: this file already guards
+    // `::selection` and the default border colour the same way.
+    expect(baseLayer()).toMatch(/html\s*\{[^}]*color-scheme:\s*light/);
+    expect(baseLayer()).toMatch(/html\.dark\s*\{[^}]*color-scheme:\s*dark/);
+    expect(baseLayer()).not.toMatch(/color-scheme:\s*light dark/);
+  });
+
   it("paints text selection in the accent via the base layer", () => {
     // ::selection can't be inspected through getComputedStyle in jsdom, so
     // assert the base-layer rule exists in source with the accent tokens.
