@@ -19,14 +19,6 @@
   --ink: #1c1a17; /* ink */
   --stone: #6b655c; /* muted */
 
-  /* Verdict tones (ADR 0010: challenging, never shaming — so no alarm-red).
-     A calm positive for Affordable Now, a constructive slate/blue for Not
-     Reachable; Save-Up stays neutral (the plain card). */
-  --positive: #3f7d54;
-  --positive-bg: #eef6f0;
-  --constructive: #4a6b8a;
-  --constructive-bg: #eef2f7;
-
   /* Reference oklch palette — the shadcn/new-york semantic token set from
      dossier §3, verbatim light values. This is the token system the rebuild
      migrates onto (ADR 0014 amendment): the warm-editorial canvas/ink/stone
@@ -97,10 +89,6 @@
   --canvas: #1c1a17;
   --ink: #f5efe4;
   --stone: #a8a093;
-  --positive: #7fb894;
-  --positive-bg: #223028;
-  --constructive: #8fb0cf;
-  --constructive-bg: #202a33;
 }
 
 /* Legacy warm-editorial dark variant (prefers-color-scheme). Retained so the
@@ -112,10 +100,6 @@
     --canvas: #1c1a17;
     --ink: #f5efe4;
     --stone: #a8a093;
-    --positive: #7fb894;
-    --positive-bg: #223028;
-    --constructive: #8fb0cf;
-    --constructive-bg: #202a33;
 
     /* Keep the three shared reference roles coherent under auto-dark, using
        their dossier §3 dark oklch values (same as the latent .dark block). */
@@ -132,10 +116,6 @@
   --color-stone: var(--stone);
   --color-card: var(--card);
   --color-border: var(--border);
-  --color-positive: var(--positive);
-  --color-positive-bg: var(--positive-bg);
-  --color-constructive: var(--constructive);
-  --color-constructive-bg: var(--constructive-bg);
 
   /* Reference oklch palette → Tailwind color utilities (dossier §3). Mapped
      *by reference* so `bg-background`, `text-foreground`, `border-border`,
@@ -260,30 +240,6 @@
     padding: 0 0.5rem;
     font-size: 0.875rem;
     color: var(--stone);
-  }
-}
-
-/* Additive reveal (Reveal.tsx): each answer fades and slides in as it appears,
-   never displacing what's above. Honoured only when the user hasn't asked for
-   reduced motion. */
-@layer components {
-  .reveal {
-    animation: reveal-in 0.28s ease-out both;
-  }
-  @keyframes reveal-in {
-    from {
-      opacity: 0;
-      transform: translateY(0.5rem);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal {
-      animation: none;
-    }
   }
 }
 

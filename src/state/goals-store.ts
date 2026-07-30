@@ -1,6 +1,7 @@
 /**
  * A reference Saved Goal (docs/affordo-context.md §8): a named purchase the user
- * has snapshotted. Unlike the legacy `src/ui/goals.ts` shape, it stores NO
+ * has snapshotted. Unlike the pre-#39 shape (`src/ui/goals.ts`, deleted in
+ * #114), it stores NO
  * Verdict — verdicts are always recomputed from the current Profile — and adds a
  * free-text `note` and a `createdAt` timestamp.
  */

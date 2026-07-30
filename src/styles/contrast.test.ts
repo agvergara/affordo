@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
@@ -240,61 +240,104 @@ describe("AA failures inherited from the reference", () => {
 });
 
 /**
- * The legacy warm-editorial verdict tones (ADR 0010). Unlike accent and emerald
- * these are **not** dossier-recorded — they are this project's own colours — so
- * the fidelity bar offers no defence for them, and `--positive` on
- * `--positive-bg` is 4.46:1 in light, just under the 4.5 this file demands
- * everywhere else.
+ * The legacy warm-editorial verdict tones (`--positive`, `--constructive`) used
+ * to be pinned here at 4.46:1 — below the AA this file demands — on the argument
+ * that no user could reach the surfaces they painted. #114 has now deleted both
+ * the components and the tokens, so the pin has gone with them, exactly as its
+ * own note said it should.
  *
- * They are not fixed here, and not because the number is close: their only
- * consumers are `VerdictCard.tsx` and `SavedGoals.tsx`, both reachable solely
- * from `App.tsx`, which has no non-test importer. `main.tsx` renders `<Router />`
- * alone, so **no user can reach any surface these tokens paint.** They are
- * scheduled for deletion with the rest of the retired progressive-disclosure
- * layer in #114.
- *
- * Pinned rather than omitted so the omission cannot recur: this file previously
- * claimed to sweep every pairing and missed these, which made #117's "no
- * hard-coded light-only colours remain" tick unearned. If #114 lands, these go
- * with the tokens. If a *live* screen ever adopts them instead, this block must
- * become a real AA failure to fix — there is no recorded literal to hide behind.
+ * The reachability assertion it rested on is kept below, because it is now the
+ * guard that the layer stays gone.
  */
-describe("legacy verdict tones: below AA, but unreachable pending #114", () => {
-  const light = resolver(":root");
-
-  it("stays unreachable — nothing outside the tests imports the dead layer", () => {
-    // The reachability argument above is what justifies pinning a sub-AA
-    // pairing instead of fixing it. Left as prose it would rot silently: give
-    // `App.tsx` one live importer and a user sees 4.46:1 with the suite still
-    // green. So the premise is asserted rather than asserted-in-a-comment.
-    const roots = ["src/main.tsx", "src/ui/Router.tsx"];
-    const reachable = roots.flatMap((file) =>
-      [...readFileSync(resolve(__dirname, "..", "..", file), "utf8").matchAll(
-        /from\s+"([^"]+)"/g,
-      )].map((m) => m[1] ?? ""),
-    );
-    for (const dead of ["./App", "./VerdictCard", "./SavedGoals"]) {
-      expect(reachable, `${dead} must stay out of the live graph`).not.toContain(
-        dead,
-      );
+describe("the retired progressive-disclosure layer stays retired", () => {
+  /**
+   * Walk the real module graph from the app's entry point.
+   *
+   * The first version of this guard read two files as text and looked for three
+   * literal specifiers. It was vacuous in three of four realistic reintroduction
+   * paths, and the one path it did catch was the one its author had tested —
+   * `main.tsx` lives in `src/`, so it can only ever write `"./ui/App"`, never the
+   * `"./App"` the guard scanned for, meaning that half could never fire at all.
+   *
+   * So this resolves specifiers instead of matching them: static imports,
+   * side-effect imports, and `export … from`, followed transitively.
+   */
+  function liveGraph(): Set<string> {
+    const root = resolve(__dirname, "..", "..", "src", "main.tsx");
+    const seen = new Set<string>();
+    const queue = [root];
+    while (queue.length) {
+      const file = queue.pop();
+      if (!file || seen.has(file)) continue;
+      seen.add(file);
+      let source: string;
+      try {
+        source = readFileSync(file, "utf8");
+      } catch {
+        continue;
+      }
+      const specifiers = [
+        ...source.matchAll(/(?:from|import)\s+"([^"]+)"/g),
+      ].map((m) => m[1] ?? "");
+      for (const spec of specifiers) {
+        if (!spec.startsWith(".")) continue;
+        const base = resolve(file, "..", spec);
+        // A `.js`/`.jsx` specifier is the TS/ESM convention for importing a
+        // `.ts`/`.tsx` sibling, so it must resolve to the source file or the
+        // walk stops at a path that does not exist and reports nothing.
+        const rewritten = base.replace(/\.jsx?$/, "");
+        for (const candidate of [
+          base,
+          `${base}.ts`,
+          `${base}.tsx`,
+          `${rewritten}.ts`,
+          `${rewritten}.tsx`,
+          `${base}/index.ts`,
+          `${base}/index.tsx`,
+        ]) {
+          if (existsSync(candidate) && statSync(candidate).isFile()) {
+            queue.push(candidate);
+            break;
+          }
+        }
+      }
     }
+    return seen;
+  }
+
+  /** Every module #114 deleted, not the three the first guard happened to name. */
+  const RETIRED = [
+    "App",
+    "Disclosure",
+    "Reveal",
+    "VerdictCard",
+    "ChallengeCard",
+    "MoneyField",
+    "SavedGoals",
+    "format",
+    "storage",
+    "goals",
+    "expenses",
+  ];
+
+  it("reaches a real graph, so the assertion below cannot pass vacuously", () => {
+    // Without this, a resolver that silently returns nothing would make every
+    // "is absent" assertion trivially true — the failure mode the first guard had.
+    const graph = liveGraph();
+    expect(graph.size).toBeGreaterThan(20);
+    expect([...graph].some((f) => f.endsWith("/ui/Router.tsx"))).toBe(true);
+    expect([...graph].some((f) => f.endsWith("/ui/GoalCard.tsx"))).toBe(true);
   });
 
-  it("positive on its own background sits just under AA", () => {
-    const ratio = contrast(
-      toSrgb(light("--positive")),
-      toSrgb(light("--positive-bg")),
-    );
-    expect(ratio).toBeLessThan(4.5);
-    expect(ratio).toBeGreaterThan(4.4);
-  });
-
-  it("constructive on its own background clears AA", () => {
+  it.each(RETIRED)("does not reach a module named %s", (name) => {
+    // Matched on basename anywhere under the graph, not on `src/ui/<name>`:
+    // reintroducing a retired module at a new path (`src/ui/legacy/App.tsx`) is
+    // at least as likely as restoring it in place, and a path-anchored match
+    // would wave it through.
+    const graph = [...liveGraph()];
     expect(
-      contrast(
-        toSrgb(light("--constructive")),
-        toSrgb(light("--constructive-bg")),
-      ),
-    ).toBeGreaterThanOrEqual(4.5);
+      graph.filter((f) => /([^/]+)\.(ts|tsx)$/.exec(f)?.[1] === name),
+      `a module named ${name} is reachable from main.tsx again`,
+    ).toEqual([]);
   });
 });

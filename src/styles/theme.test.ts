@@ -43,9 +43,4 @@ describe("motion keyframes and utilities (dossier §3)", () => {
       /animate-scale-in-x \{[^}]*transform-origin: left/,
     );
   });
-
-  it("keeps the existing .reveal animation intact", () => {
-    expect(normalized).toMatch(/\.reveal \{[^}]*animation: reveal-in 0\.28s/);
-    expect(normalized).toMatch(/@keyframes reveal-in \{/);
-  });
 });

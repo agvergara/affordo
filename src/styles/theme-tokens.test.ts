@@ -142,13 +142,6 @@ describe("reference oklch color tokens (dossier §3)", () => {
       expect(tokenValue("dark", "--canvas")).toBe("#1c1a17");
       expect(tokenValue("dark", "--stone")).toBe("#a8a093");
     });
-
-    it("flips the verdict tokens so their text stays legible on dark", () => {
-      expect(tokenValue("dark", "--positive")).toBe("#7fb894");
-      expect(tokenValue("dark", "--positive-bg")).toBe("#223028");
-      expect(tokenValue("dark", "--constructive")).toBe("#8fb0cf");
-      expect(tokenValue("dark", "--constructive-bg")).toBe("#202a33");
-    });
   });
 });
 
