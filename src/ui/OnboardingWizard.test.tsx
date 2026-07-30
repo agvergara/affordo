@@ -552,10 +552,24 @@ describe("OnboardingWizard — step 3 Rules", () => {
 
   it("bounds the threshold to 1..50 in whole percentage points", async () => {
     await reachRules();
-    const s = slider(10);
+    // Address it by ARIA role, not just by label: `min`/`max`/`step` survive on
+    // a text input, so asserting the attributes alone proves three attributes
+    // exist somewhere — not that the control is a slider or bounded at all.
+    const s = screen.getByRole("slider", {
+      name: "Significance threshold — 10%",
+    });
     expect(s).toHaveAttribute("min", "1");
     expect(s).toHaveAttribute("max", "50");
     expect(s).toHaveAttribute("step", "1");
+  });
+
+  it("sits the thumb on the threshold, not on some other figure", async () => {
+    const user = await reachRules();
+    expect(slider(10)).toHaveValue("10");
+    // Bound to the wrong key, the label still reads the threshold while the
+    // thumb tracks something else — so the label assertions cannot catch it.
+    await user.type(screen.getByLabelText("Current savings"), "4000");
+    expect(slider(10)).toHaveValue("10");
   });
 
   it("explains what the threshold does", async () => {
@@ -575,11 +589,14 @@ describe("OnboardingWizard — step 3 Rules", () => {
     );
     expect(savings).toHaveAttribute("placeholder", "0");
     expect(contribution).toHaveAttribute("placeholder", "0");
-    expect(
-      screen.getByText(
-        "Money you consistently set aside on top of expenses.",
-      ),
-    ).toBeInTheDocument();
+    // §16 gives this hint to the contribution field only. Asserting mere
+    // presence lets it sit under either field — the two are side by side in one
+    // grid, so mis-attachment is invisible without checking whose it is.
+    const hint = screen.getByText(
+      "Money you consistently set aside on top of expenses.",
+    );
+    expect(contribution.closest("div")).toContainElement(hint);
+    expect(savings.closest("div")).not.toContainElement(hint);
   });
 
   it("writes threshold, savings and contribution to their own keys", async () => {

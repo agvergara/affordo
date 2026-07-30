@@ -26,9 +26,9 @@ const defaultNavigate: Navigate = (to) => window.location.replace(to);
 
 /**
  * The onboarding wizard (docs/affordo-context.md §15/§16). Shell chrome from
- * #51, draft plumbing and the finish action from #53, then the step bodies:
- * Welcome (#54), Income and its gate (#55), Expenses (#56). Step 3 (Rules)
- * is still an empty placeholder until #57.
+ * #51, draft plumbing and the finish action from #53, then the four step
+ * bodies: Welcome (#54), Income and its gate (#55), Expenses (#56) and
+ * Rules (#57). Income is the only step that gates.
  *
  * The draft is seeded once, at mount, from the profile the provider holds. To
  * keep that seed from capturing the pre-hydration default (the provider renders
@@ -371,8 +371,9 @@ const bigInputClass =
 /**
  * The onboarding `Field` wrapper (dossier §5): label, the control itself, and
  * an optional hint. It takes the control as `children` rather than owning an
- * input, which is what lets the currency `<select>` and #57's slider wear the
- * same label/hint chrome as the number fields instead of hand-copying it.
+ * input, which is what lets the currency `<select>` (#55) and the threshold
+ * slider (#57) wear the same label/hint chrome as the number fields instead of
+ * hand-copying it.
  */
 function Field({
   id,
