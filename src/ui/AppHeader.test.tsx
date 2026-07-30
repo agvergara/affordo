@@ -11,7 +11,13 @@ import { saveTheme } from "../state/theme-store";
 beforeEach(() => window.localStorage.clear());
 // ThemeProvider writes `.dark` onto the shared document root; strip it between
 // tests so a dark case can't leak into the next one's starting theme.
-afterEach(() => document.documentElement.classList.remove("dark"));
+afterEach(() => {
+  document.documentElement.classList.remove("dark");
+  // #98 stamps `data-theme` on an explicit choice, and this suite clicks the
+  // toggle. The leak self-heals on the next mount, but only by accident — clear
+  // it so the suite cannot become order-dependent.
+  delete document.documentElement.dataset.theme;
+});
 
 /**
  * Render AppHeader inside real providers. When `profile` is given it is
@@ -175,8 +181,11 @@ describe("AppHeader theme toggle", () => {
 
     // A fresh mount is a reload: nothing survives but what was written to
     // storage, so coming up dark proves the choice was persisted, not held in
-    // memory. (The root class is reset so it can't be what carries the state.)
+    // memory. Both root markers are reset, so neither can be what carries the
+    // state: #98 added `data-theme`, which survived the class-only reset this
+    // comment used to claim was sufficient.
     document.documentElement.classList.remove("dark");
+    delete document.documentElement.dataset.theme;
     renderHeader();
 
     expect(

@@ -96,7 +96,12 @@
    `.dark` class stays latent. Only the canvas/ink/stone/verdict tokens the
    existing components still read are flipped here. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* `:not([data-theme])` — the OS only gets a say while the user has expressed
+     no preference. ThemeProvider stamps `data-theme` on an explicit choice, so
+     picking light on an OS-dark machine no longer leaves the legacy tokens dark
+     (#98): that put `--ink` on a near-white background at ~1.05:1 and blanked
+     the settings form. */
+  :root:not([data-theme]) {
     --canvas: #1c1a17;
     --ink: #f5efe4;
     --stone: #a8a093;

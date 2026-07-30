@@ -7,7 +7,12 @@ import { ThemeProvider, useTheme } from "./ThemeProvider";
 import { saveTheme } from "./theme-store";
 
 beforeEach(() => window.localStorage.clear());
-afterEach(() => document.documentElement.classList.remove("dark"));
+afterEach(() => {
+  document.documentElement.classList.remove("dark");
+  // #98 added a `data-theme` marker; without this it leaks between tests and
+  // makes results order-dependent.
+  delete document.documentElement.dataset.theme;
+});
 
 function Probe() {
   const { theme, setTheme } = useTheme();
@@ -135,5 +140,51 @@ describe("ThemeProvider applies and persists the theme", () => {
     });
     expect(screen.getByTestId("theme")).toHaveTextContent("dark");
     expect(document.documentElement).toHaveClass("dark");
+  });
+});
+
+describe("ThemeProvider — explicit choice versus OS preference (#98)", () => {
+  const root = () => document.documentElement;
+
+  it("marks the root when the user has chosen, so CSS can yield to it", async () => {
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    // Untouched: no marker, so the prefers-color-scheme block still applies.
+    expect(root().dataset.theme).toBeUndefined();
+
+    await userEvent.click(screen.getByRole("button", { name: "go-dark" }));
+    expect(root().dataset.theme).toBe("dark");
+
+    await userEvent.click(screen.getByRole("button", { name: "go-light" }));
+    // The point of #98: choosing *light* must be as explicit as choosing dark.
+    // It is the case that looks like the default and is not.
+    expect(root().dataset.theme).toBe("light");
+    expect(root().classList.contains("dark")).toBe(false);
+  });
+
+  it("keeps the marker for a returning user who chose light", () => {
+    saveTheme("light");
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    // Seeded from storage, not from the first toggle: a returning user's
+    // choice must keep overriding their OS across reloads.
+    expect(root().dataset.theme).toBe("light");
+  });
+
+  it("leaves the root unmarked when storage holds no usable preference", () => {
+    window.localStorage.setItem("affordo.theme", "not json");
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    // A corrupt record is not a choice — the OS keeps its say.
+    expect(root().dataset.theme).toBeUndefined();
   });
 });
