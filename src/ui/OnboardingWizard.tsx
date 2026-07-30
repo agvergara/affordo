@@ -25,11 +25,10 @@ export type Navigate = (to: string) => void;
 const defaultNavigate: Navigate = (to) => window.location.replace(to);
 
 /**
- * The onboarding wizard (docs/affordo-context.md §15/§16). The shell chrome
- * (#51) plus this slice's draft plumbing and finish action (#53). The four
- * steps still render as empty placeholders — their inputs and gating land in
- * later slices (#55–57); this slice owns only the local draft Profile and the
- * finish-then-persist behaviour.
+ * The onboarding wizard (docs/affordo-context.md §15/§16). Shell chrome from
+ * #51, draft plumbing and the finish action from #53, then the step bodies:
+ * Welcome (#54), Income and its gate (#55), Expenses (#56). Step 3 (Rules)
+ * is still an empty placeholder until #57.
  *
  * The draft is seeded once, at mount, from the profile the provider holds. To
  * keep that seed from capturing the pre-hydration default (the provider renders
