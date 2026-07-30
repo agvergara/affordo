@@ -441,3 +441,74 @@ describe("OnboardingWizard — income fields reach the saved profile", () => {
     expect(saved.currency).toBe("EUR");
   });
 });
+
+describe("OnboardingWizard — step 2 Expenses", () => {
+  /** Reach Expenses through the income gate. */
+  async function reachExpenses() {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    await fillSalaryIfEmpty(user);
+    await advance(user, "Continue →");
+    return user;
+  }
+
+  it("asks for monthly fixed expenses, with the reference hint", async () => {
+    await reachExpenses();
+    expect(screen.getByText("03 / 04")).toBeInTheDocument();
+    // The heading needs its own assertion: the counter derives from
+    // `steps.length`, so it reads 03 / 04 whatever this step is called.
+    expect(
+      screen.getByRole("heading", { name: "Expenses" }),
+    ).toBeInTheDocument();
+    const field = screen.getByLabelText("Monthly fixed expenses");
+    expect(field).toBeInTheDocument();
+    // §16 records `placeholder="0"`, and `value || ""` blanks a zero so the
+    // placeholder is what the user actually reads on an untouched field.
+    expect(field).toHaveAttribute("placeholder", "0");
+    expect(
+      screen.getByText("Rent, groceries, subscriptions, transport, utilities."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows only its own field — income does not leak forward", async () => {
+    await reachExpenses();
+    // Each step body is conditional on the exact step index. Widening any of
+    // those conditions stacks two steps on one screen, which nothing else here
+    // can see. Same mutation class as #106's "drops the welcome copy once the
+    // user starts", one step later.
+    expect(screen.queryByLabelText("Net monthly salary")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Hours per week")).not.toBeInTheDocument();
+  });
+
+  it("does not leak its own field forward onto the rules step", async () => {
+    const user = await reachExpenses();
+    await advance(user, "Continue →"); // → step 3
+    expect(screen.getByText("04 / 04")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Monthly fixed expenses"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("puts the cursor in the expenses field", async () => {
+    await reachExpenses();
+    expect(screen.getByLabelText("Monthly fixed expenses")).toHaveFocus();
+  });
+
+  it("lets the user continue without entering any expenses", async () => {
+    await reachExpenses();
+    // Expenses are optional-but-encouraged: §16 records this step as never
+    // gated, so an untouched zero must still advance.
+    expect(screen.getByLabelText("Monthly fixed expenses")).toHaveValue(null);
+    expect(screen.getByRole("button", { name: "Continue →" })).toBeEnabled();
+  });
+
+  it("writes the entered expenses to the saved profile", async () => {
+    const user = await reachExpenses();
+    await user.type(screen.getByLabelText("Monthly fixed expenses"), "1250");
+    await advance(user, "Continue →"); // → step 3
+    await advance(user, "Finish setup →");
+    expect(loadProfile().expenses).toBe(1250);
+  });
+});
