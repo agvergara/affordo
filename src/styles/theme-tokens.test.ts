@@ -195,6 +195,13 @@ describe("OS dark preference yields to an explicit choice (#98)", () => {
   it("still applies when the user has expressed no preference", () => {
     // No marker: the OS gets its say, which is the behaviour #98 must preserve
     // while fixing the other direction.
+    //
+    // This asserts only that the block still *reaches* an unmarked root. It is
+    // deliberately not an endorsement of the palette that results: the block
+    // flips 6 of 22 tokens and never touches `--background`, so an OS-dark user
+    // with no stored choice gets `--ink: #f5efe4` on a near-white background at
+    // 1.10:1 — the same blank settings form #98 fixed, on the default path.
+    // That is #121, whose fix is to stop resolving OS preference in CSS at all.
     expect(document.documentElement.matches(":root:not([data-theme])")).toBe(
       true,
     );
@@ -218,9 +225,12 @@ describe("OS dark preference yields to an explicit choice (#98)", () => {
   it("does not apply when the user has explicitly chosen dark either", () => {
     // Dark is then owned by the `.dark` class alone, so there is exactly one
     // mechanism deciding the theme rather than two that can disagree.
+    //
+    // Asserts the resolved value, not just `matches(...)`: a selector check
+    // alone is true for any content of theme.css and so cannot fail.
     document.documentElement.dataset.theme = "dark";
-    expect(document.documentElement.matches(":root:not([data-theme])")).toBe(
-      false,
-    );
+    expect(
+      getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(),
+    ).not.toBe("#f5efe4");
   });
 });
