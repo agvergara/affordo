@@ -687,6 +687,23 @@ describe("OnboardingWizard — slide-up between steps", () => {
     expect(screen.getByText("04 / 04")).toBeInTheDocument();
   });
 
+  it("holds the step body still while the user types", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    const before = screen.getByTestId("step-body");
+
+    await user.type(screen.getByLabelText("Net monthly salary"), "2000");
+
+    // Remount is what replays the animation, so a key that changes on every
+    // render — `Math.random()` being the obvious way to get one — would replay
+    // it on every keystroke. That currently only fails elsewhere, via
+    // persistence tests whose multi-character typing gets mangled; asserting it
+    // here makes the "only on step change" half of the invariant deliberate
+    // rather than protected by accident.
+    expect(screen.getByTestId("step-body")).toBe(before);
+  });
+
   it("remounts on the way back too, so returning also animates", async () => {
     renderWizard();
     const user = userEvent.setup();
