@@ -161,7 +161,7 @@ function WizardBody({
 }
 
 /**
- * Step 0 — Welcome (dossier §15 "Step 0"). No fields: three stacked text
+ * Step 0 — Welcome (dossier §16 "STEP 0"). No fields: three stacked text
  * blocks, and the primary control is enabled because this step gates nothing.
  *
  * The headline and body are `<p>`, not headings. That is the reference's own
@@ -187,7 +187,7 @@ function WelcomeStep() {
   );
 }
 
-/** The currency options, in the dossier's order, with their symbols (§15). */
+/** The currency options, in the dossier's order, with their symbols (§16). */
 const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
   { value: "EUR", label: "EUR — €" },
   { value: "GBP", label: "GBP — £" },
@@ -195,7 +195,7 @@ const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
 ];
 
 /**
- * Step 1 — Income (dossier §15 "Step 1"). The only step that gates: the
+ * Step 1 — Income (dossier §16 "STEP 1"). The only step that gates: the
  * primary control stays disabled until all four numeric fields exceed zero
  * (see `canContinue` in `WizardBody`).
  */
@@ -313,7 +313,7 @@ function Field({
  * so a defaulted field reads as unfilled rather than as a literal zero — the
  * reference's own behaviour.
  *
- * `placeholder` is deliberately not defaulted: §15 gives `placeholder="0"` to
+ * `placeholder` is deliberately not defaulted: §16 gives `placeholder="0"` to
  * salary and expenses only; hours and payments carry none.
  */
 function NumberInput({
@@ -337,7 +337,7 @@ function NumberInput({
       placeholder={placeholder}
       value={value || ""}
       onChange={(e) => onChange(e.target.value)}
-      // eslint-disable-next-line jsx-a11y/no-autofocus -- §15 records autoFocus on the first field of steps 1 and 2.
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- §16 records autoFocus on the first field of steps 1 and 2.
       autoFocus={autoFocus}
       className={bigInputClass}
     />
