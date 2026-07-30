@@ -282,10 +282,16 @@ describe("the retired progressive-disclosure layer stays retired", () => {
       for (const spec of specifiers) {
         if (!spec.startsWith(".")) continue;
         const base = resolve(file, "..", spec);
+        // A `.js`/`.jsx` specifier is the TS/ESM convention for importing a
+        // `.ts`/`.tsx` sibling, so it must resolve to the source file or the
+        // walk stops at a path that does not exist and reports nothing.
+        const rewritten = base.replace(/\.jsx?$/, "");
         for (const candidate of [
           base,
           `${base}.ts`,
           `${base}.tsx`,
+          `${rewritten}.ts`,
+          `${rewritten}.tsx`,
           `${base}/index.ts`,
           `${base}/index.tsx`,
         ]) {
@@ -323,11 +329,15 @@ describe("the retired progressive-disclosure layer stays retired", () => {
     expect([...graph].some((f) => f.endsWith("/ui/GoalCard.tsx"))).toBe(true);
   });
 
-  it.each(RETIRED)("does not reach src/ui/%s", (name) => {
+  it.each(RETIRED)("does not reach a module named %s", (name) => {
+    // Matched on basename anywhere under the graph, not on `src/ui/<name>`:
+    // reintroducing a retired module at a new path (`src/ui/legacy/App.tsx`) is
+    // at least as likely as restoring it in place, and a path-anchored match
+    // would wave it through.
     const graph = [...liveGraph()];
     expect(
-      graph.filter((f) => /\/ui\/([^/]+)\.(ts|tsx)$/.exec(f)?.[1] === name),
-      `src/ui/${name} is reachable from main.tsx again`,
+      graph.filter((f) => /([^/]+)\.(ts|tsx)$/.exec(f)?.[1] === name),
+      `a module named ${name} is reachable from main.tsx again`,
     ).toEqual([]);
   });
 });
