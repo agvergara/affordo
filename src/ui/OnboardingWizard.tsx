@@ -130,7 +130,17 @@ function WizardBody({
           ))}
         </div>
 
-        <div key={step} className="animate-slide-up space-y-8">
+        {/*
+          Keyed on `step` so each step body is a *new* element on every change:
+          that remount is what re-runs `animate-slide-up` (§17). The chrome above
+          and below sits outside this div and keeps its identity, so it never
+          re-animates.
+        */}
+        <div
+          key={step}
+          data-testid="step-body"
+          className="animate-slide-up space-y-8"
+        >
           {step === 0 && <WelcomeStep />}
           {step === 1 && <IncomeStep draft={draft} set={set} />}
           {step === 2 && <ExpensesStep draft={draft} set={set} />}

@@ -638,3 +638,58 @@ describe("OnboardingWizard — step 3 Rules", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("OnboardingWizard — slide-up between steps", () => {
+  /** The chrome that must survive a step change untouched. */
+  const chrome = () => ({
+    header: screen.getByRole("navigation"),
+    progress: screen.getByTestId("progress-bar"),
+    footer: screen.getByRole("button", { name: "← Back" }).parentElement,
+  });
+
+  it("remounts the step body on every step change, re-running the animation", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    const before = screen.getByTestId("step-body");
+
+    await advance(user, "Start →");
+
+    // A keyed remount means a genuinely different element, not the same node
+    // with new children — that is what restarts a CSS animation.
+    const after = screen.getByTestId("step-body");
+    expect(after).not.toBe(before);
+    expect(before).not.toBeInTheDocument();
+  });
+
+  it("carries the slide-up animation on the step body", () => {
+    renderWizard();
+    // A class assertion, under the narrow precedent PR #94 set: the animation
+    // *is* the acceptance criterion, and jsdom runs no CSS, so the utility that
+    // declares it is the only observable.
+    expect(screen.getByTestId("step-body")).toHaveClass("animate-slide-up");
+  });
+
+  it("keeps the header, progress bar and footer through a step change", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    const before = chrome();
+
+    await advance(user, "Start →");
+
+    // Same nodes, so nothing outside the step body can re-animate.
+    const after = chrome();
+    expect(after.header).toBe(before.header);
+    expect(after.progress).toBe(before.progress);
+    expect(after.footer).toBe(before.footer);
+  });
+
+  it("does not animate the chrome", () => {
+    renderWizard();
+    const { header, progress, footer } = chrome();
+    expect(header).not.toHaveClass("animate-slide-up");
+    expect(progress).not.toHaveClass("animate-slide-up");
+    expect(footer).not.toHaveClass("animate-slide-up");
+    // The counter moves with the step but is chrome, not step body.
+    expect(screen.getByText("01 / 04")).not.toHaveClass("animate-slide-up");
+  });
+});
