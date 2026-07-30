@@ -48,8 +48,22 @@ function tokens(selector: string): Record<string, string> {
 
 type RGB = [number, number, number];
 
-/** oklch() → sRGB, via Oklab and the linear-sRGB matrix. */
+/**
+ * oklch() → sRGB, via Oklab and the linear-sRGB matrix.
+ *
+ * Alpha is rejected rather than dropped. Several tokens carry it (`--border`,
+ * `--input`, and the `/5` and `/80` tints #71 named), and a contrast ratio
+ * against a translucent colour is meaningless until it is composited over a
+ * known backdrop — so treating `oklch(… / 15%)` as opaque would produce a
+ * confident wrong number. Extending the sweep to those tokens means
+ * implementing compositing, not relaxing this.
+ */
 function oklchToSrgb(value: string): RGB | null {
+  if (/\/\s*[\d.]+%?\s*\)/.test(value)) {
+    throw new Error(
+      `${value} carries alpha; composite it over a backdrop before measuring contrast`,
+    );
+  }
   const m = /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(value);
   if (!m) return null;
   const [L, C, H] = [Number(m[1]), Number(m[2]), Number(m[3])];
@@ -147,6 +161,9 @@ describe.each([
  * product owner — see the issue linked from #71. Do not "fix" these to make the
  * suite greener: the numbers are the finding.
  */
+/** Tailwind's `emerald-600`, the one non-token colour the reference specifies. */
+const TAILWIND_EMERALD_600: RGB = [5 / 255, 150 / 255, 105 / 255];
+
 describe("AA failures inherited from the reference", () => {
   it("accent surfaces fail in the light theme, and it is the worse of the two", () => {
     // §3's token table (dossier line 203) records `--accent` as
@@ -166,6 +183,20 @@ describe("AA failures inherited from the reference", () => {
     expect(ratio).toBeGreaterThan(2.9);
   });
 
+  it.each([
+    ["--background", 2.96],
+    ["--card", 3.1],
+  ])("accent used as text on %s also fails in light, at ~%s:1", (surface, approx) => {
+    // §3 (line 202) gives accent four roles, three of them text on a canvas
+    // rather than a filled surface — `text-accent` is on the wizard's kicker
+    // and the goal card's above-threshold caption, both 10px mono. The filled
+    // -surface row above understated the blast radius.
+    const light = resolver(":root");
+    const ratio = contrast(toSrgb(light("--accent")), toSrgb(light(surface)));
+    expect(ratio).toBeLessThan(4.5);
+    expect(ratio).toBeCloseTo(approx, 1);
+  });
+
   it("accent surfaces pass in the dark theme, so this is light-only", () => {
     const dark = resolver(".dark");
     expect(
@@ -179,8 +210,64 @@ describe("AA failures inherited from the reference", () => {
     // large text — and the badge is `text-[10px] font-bold`, which is not
     // large. Neither colour is a token, so the ratio cannot vary by theme;
     // that is precisely why this is not a dark-mode finding.
-    const ratio = contrast([1, 1, 1], [5 / 255, 150 / 255, 105 / 255]);
+    // The pair is read out of `VerdictBadge.tsx` rather than restated here.
+    // Hardcoding both sides made this a tautology: it contrasted two literals
+    // in its own body and passed even with the badge recoloured to
+    // `bg-yellow-200 text-white` at ~1.1:1. Scoped to the STYLES map, since a
+    // LABELS map in the same file has an `afford` key holding the word
+    // "Afford", which an unscoped match finds first.
+    const badge = readFileSync(
+      resolve(__dirname, "..", "ui", "VerdictBadge.tsx"),
+      "utf8",
+    );
+    const styles = /const STYLES[\s\S]*?\n\};/.exec(badge)?.[0] ?? "";
+    const afford = /afford:\s*"([^"]+)"/.exec(styles)?.[1] ?? "";
+    expect(afford, "afford badge classes").toBe("bg-emerald-600 text-white");
+
+    const ratio = contrast([1, 1, 1], TAILWIND_EMERALD_600);
     expect(ratio).toBeLessThan(4.5);
     expect(ratio).toBeGreaterThanOrEqual(3);
+  });
+});
+
+/**
+ * The legacy warm-editorial verdict tones (ADR 0010). Unlike accent and emerald
+ * these are **not** dossier-recorded — they are this project's own colours — so
+ * the fidelity bar offers no defence for them, and `--positive` on
+ * `--positive-bg` is 4.46:1 in light, just under the 4.5 this file demands
+ * everywhere else.
+ *
+ * They are not fixed here, and not because the number is close: their only
+ * consumers are `VerdictCard.tsx` and `SavedGoals.tsx`, both reachable solely
+ * from `App.tsx`, which has no non-test importer. `main.tsx` renders `<Router />`
+ * alone, so **no user can reach any surface these tokens paint.** They are
+ * scheduled for deletion with the rest of the retired progressive-disclosure
+ * layer in #114.
+ *
+ * Pinned rather than omitted so the omission cannot recur: this file previously
+ * claimed to sweep every pairing and missed these, which made #117's "no
+ * hard-coded light-only colours remain" tick unearned. If #114 lands, these go
+ * with the tokens. If a *live* screen ever adopts them instead, this block must
+ * become a real AA failure to fix — there is no recorded literal to hide behind.
+ */
+describe("legacy verdict tones: below AA, but unreachable pending #114", () => {
+  const light = resolver(":root");
+
+  it("positive on its own background sits just under AA", () => {
+    const ratio = contrast(
+      toSrgb(light("--positive")),
+      toSrgb(light("--positive-bg")),
+    );
+    expect(ratio).toBeLessThan(4.5);
+    expect(ratio).toBeGreaterThan(4.4);
+  });
+
+  it("constructive on its own background clears AA", () => {
+    expect(
+      contrast(
+        toSrgb(light("--constructive")),
+        toSrgb(light("--constructive-bg")),
+      ),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 });
