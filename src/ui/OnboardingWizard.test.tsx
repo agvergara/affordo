@@ -638,3 +638,135 @@ describe("OnboardingWizard — step 3 Rules", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("OnboardingWizard — slide-up between steps", () => {
+  /** The chrome that must survive a step change untouched. */
+  const chrome = () => ({
+    header: screen.getByRole("navigation"),
+    // The eyebrow / step heading / counter block. Its *contents* change per
+    // step, which makes it the easiest chrome to key by mistake — and the
+    // counter clause of the criterion lives here, on the ancestor rather than
+    // on the counter span itself.
+    head: screen.getByTestId("step-head"),
+    progress: screen.getByTestId("progress-bar"),
+    footer: screen.getByRole("button", { name: "← Back" }).parentElement,
+  });
+
+  /**
+   * Assert the step body is a genuinely different element after `move` — not
+   * the same node with new children. That distinction is the whole mechanism: a
+   * CSS animation restarts on remount and never on re-render, so a class
+   * assertion alone proves nothing about whether the transition plays.
+   */
+  async function expectRemount(label: string, move: () => Promise<void>) {
+    const before = screen.getByTestId("step-body");
+    await move();
+    const after = screen.getByTestId("step-body");
+    expect(after, label).not.toBe(before);
+    expect(before, label).not.toBeInTheDocument();
+  }
+
+  it("remounts the step body on every step change, re-running the animation", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+
+    // Every transition, not just the first: a key that merely distinguishes
+    // step 0 from the rest — which is what you would write to stop remounting
+    // inputs between form steps — leaves 0→1 remounting while 1→2 and 2→3
+    // silently reuse the node and stop animating.
+    await expectRemount("0→1", async () => {
+      await advance(user, "Start →");
+    });
+    await fillSalaryIfEmpty(user);
+    await expectRemount("1→2", async () => {
+      await advance(user, "Continue →");
+    });
+    await expectRemount("2→3", async () => {
+      await advance(user, "Continue →");
+    });
+    expect(screen.getByText("04 / 04")).toBeInTheDocument();
+  });
+
+  it("holds the step body still while the user types", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    const before = screen.getByTestId("step-body");
+
+    await user.type(screen.getByLabelText("Net monthly salary"), "2000");
+
+    // Remount is what replays the animation, so a key that changes on every
+    // render — `Math.random()` being the obvious way to get one — would replay
+    // it on every keystroke. That currently only fails elsewhere, via
+    // persistence tests whose multi-character typing gets mangled; asserting it
+    // here makes the "only on step change" half of the invariant deliberate
+    // rather than protected by accident.
+    expect(screen.getByTestId("step-body")).toBe(before);
+  });
+
+  it("remounts on the way back too, so returning also animates", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    await fillSalaryIfEmpty(user);
+    await advance(user, "Continue →"); // → step 2
+
+    // §17 gives backward step changes the same slide-in as forward ones, and
+    // nothing else here exercises ← Back.
+    await expectRemount("2→1", async () => {
+      await user.click(screen.getByRole("button", { name: "← Back" }));
+    });
+    expect(screen.getByText("02 / 04")).toBeInTheDocument();
+    expect(screen.getByTestId("step-body")).toHaveClass("animate-slide-up");
+  });
+
+  it("carries the slide-up animation on the step body", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    // A class assertion, under the narrow precedent PR #94 set: the animation
+    // *is* the acceptance criterion, and jsdom runs no CSS, so the utility that
+    // declares it is the only observable.
+    expect(screen.getByTestId("step-body")).toHaveClass("animate-slide-up");
+
+    // …and on every *incoming* step, which is what the criterion is about.
+    // Asserting at initial mount alone lets a class conditional on the first
+    // step kill the transition for every real step change and still pass; and
+    // stopping short of the last step lets one conditional on `isLast` through.
+    await advance(user, "Start →");
+    expect(screen.getByTestId("step-body")).toHaveClass("animate-slide-up");
+    await fillSalaryIfEmpty(user);
+    await advance(user, "Continue →");
+    expect(screen.getByTestId("step-body")).toHaveClass("animate-slide-up");
+    await advance(user, "Continue →");
+    expect(screen.getByTestId("step-body")).toHaveClass("animate-slide-up");
+    expect(screen.getByText("04 / 04")).toBeInTheDocument();
+  });
+
+  it("keeps the header, progress bar and footer through a step change", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    const before = chrome();
+
+    await advance(user, "Start →");
+
+    // Same nodes, so nothing outside the step body can re-animate.
+    const after = chrome();
+    expect(after.header).toBe(before.header);
+    expect(after.head).toBe(before.head);
+    expect(after.progress).toBe(before.progress);
+    expect(after.footer).toBe(before.footer);
+  });
+
+  it("does not animate the chrome", () => {
+    renderWizard();
+    const { header, head, progress, footer } = chrome();
+    expect(header).not.toHaveClass("animate-slide-up");
+    expect(progress).not.toHaveClass("animate-slide-up");
+    expect(footer).not.toHaveClass("animate-slide-up");
+    // The counter moves with the step but is chrome, not step body — asserted
+    // on its own span *and* on the block that wraps it, since animating the
+    // ancestor is the way the counter actually ends up moving.
+    expect(head).not.toHaveClass("animate-slide-up");
+    expect(screen.getByText("01 / 04")).not.toHaveClass("animate-slide-up");
+  });
+});

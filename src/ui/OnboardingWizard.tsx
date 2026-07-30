@@ -107,7 +107,10 @@ function WizardBody({
     <div className="min-h-dvh bg-background">
       <AppHeader showTimeValue={false} />
       <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-16">
-        <div className="mb-8 flex items-end justify-between gap-4">
+        <div
+          data-testid="step-head"
+          className="mb-8 flex items-end justify-between gap-4"
+        >
           <div>
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
               Set up your reckoning
@@ -130,7 +133,17 @@ function WizardBody({
           ))}
         </div>
 
-        <div key={step} className="animate-slide-up space-y-8">
+        {/*
+          Keyed on `step` so each step body is a *new* element on every change:
+          that remount is what re-runs `animate-slide-up` (§17). The chrome above
+          and below sits outside this div and keeps its identity, so it never
+          re-animates.
+        */}
+        <div
+          key={step}
+          data-testid="step-body"
+          className="animate-slide-up space-y-8"
+        >
           {step === 0 && <WelcomeStep />}
           {step === 1 && <IncomeStep draft={draft} set={set} />}
           {step === 2 && <ExpensesStep draft={draft} set={set} />}
