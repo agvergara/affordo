@@ -68,8 +68,12 @@ describe("loadStoredTheme distinguishes 'no preference' from a stored one", () =
     expect(loadStoredTheme()).toBeNull();
   });
 
-  it("returns the theme the user actually chose", () => {
-    saveTheme("light");
-    expect(loadStoredTheme()).toBe("light");
+  it.each(["light", "dark"] as const)("returns the %s the user chose", (t) => {
+    // Both values, because `light` alone is indistinguishable from
+    // `defaultTheme`: a `return defaultTheme` mutant would pass it. Other tests
+    // do kill that mutant, but an assertion that cannot tell the value it
+    // asserts from the fallback is not pulling its weight.
+    saveTheme(t);
+    expect(loadStoredTheme()).toBe(t);
   });
 });
