@@ -652,18 +652,55 @@ describe("OnboardingWizard — slide-up between steps", () => {
     footer: screen.getByRole("button", { name: "← Back" }).parentElement,
   });
 
+  /**
+   * Assert the step body is a genuinely different element after `move` — not
+   * the same node with new children. That distinction is the whole mechanism: a
+   * CSS animation restarts on remount and never on re-render, so a class
+   * assertion alone proves nothing about whether the transition plays.
+   */
+  async function expectRemount(label: string, move: () => Promise<void>) {
+    const before = screen.getByTestId("step-body");
+    await move();
+    const after = screen.getByTestId("step-body");
+    expect(after, label).not.toBe(before);
+    expect(before, label).not.toBeInTheDocument();
+  }
+
   it("remounts the step body on every step change, re-running the animation", async () => {
     renderWizard();
     const user = userEvent.setup();
-    const before = screen.getByTestId("step-body");
 
+    // Every transition, not just the first: a key that merely distinguishes
+    // step 0 from the rest — which is what you would write to stop remounting
+    // inputs between form steps — leaves 0→1 remounting while 1→2 and 2→3
+    // silently reuse the node and stop animating.
+    await expectRemount("0→1", async () => {
+      await advance(user, "Start →");
+    });
+    await fillSalaryIfEmpty(user);
+    await expectRemount("1→2", async () => {
+      await advance(user, "Continue →");
+    });
+    await expectRemount("2→3", async () => {
+      await advance(user, "Continue →");
+    });
+    expect(screen.getByText("04 / 04")).toBeInTheDocument();
+  });
+
+  it("remounts on the way back too, so returning also animates", async () => {
+    renderWizard();
+    const user = userEvent.setup();
     await advance(user, "Start →");
+    await fillSalaryIfEmpty(user);
+    await advance(user, "Continue →"); // → step 2
 
-    // A keyed remount means a genuinely different element, not the same node
-    // with new children — that is what restarts a CSS animation.
-    const after = screen.getByTestId("step-body");
-    expect(after).not.toBe(before);
-    expect(before).not.toBeInTheDocument();
+    // §17 gives backward step changes the same slide-in as forward ones, and
+    // nothing else here exercises ← Back.
+    await expectRemount("2→1", async () => {
+      await user.click(screen.getByRole("button", { name: "← Back" }));
+    });
+    expect(screen.getByText("02 / 04")).toBeInTheDocument();
+    expect(screen.getByTestId("step-body")).toHaveClass("animate-slide-up");
   });
 
   it("carries the slide-up animation on the step body", async () => {
