@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { AffordoProvider } from "../state/AffordoProvider";
@@ -510,5 +510,131 @@ describe("OnboardingWizard — step 2 Expenses", () => {
     await advance(user, "Continue →"); // → step 3
     await advance(user, "Finish setup →");
     expect(loadProfile().expenses).toBe(1250);
+  });
+});
+
+describe("OnboardingWizard — step 3 Rules", () => {
+  /** Reach Rules through the income gate. */
+  async function reachRules() {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    await fillSalaryIfEmpty(user);
+    await advance(user, "Continue →"); // → step 2
+    await advance(user, "Continue →"); // → step 3
+    return user;
+  }
+
+  /** The threshold slider, addressed through its interpolated label. */
+  const slider = (pct: number) =>
+    screen.getByLabelText(`Significance threshold — ${pct}%`);
+
+  it("names the step and offers the finish action", async () => {
+    await reachRules();
+    expect(screen.getByText("04 / 04")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rules" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Finish setup →" }),
+    ).toBeInTheDocument();
+  });
+
+  it("carries the live threshold percentage in the slider's own label", async () => {
+    await reachRules();
+    // defaultProfile.threshold is 10, so the label must read it rather than
+    // hardcode a number.
+    expect(slider(10)).toBeInTheDocument();
+    fireEvent.change(slider(10), { target: { value: "25" } });
+    expect(slider(25)).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Significance threshold — 10%"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("bounds the threshold to 1..50 in whole percentage points", async () => {
+    await reachRules();
+    // Address it by ARIA role, not just by label: `min`/`max`/`step` survive on
+    // a text input, so asserting the attributes alone proves three attributes
+    // exist somewhere — not that the control is a slider or bounded at all.
+    const s = screen.getByRole("slider", {
+      name: "Significance threshold — 10%",
+    });
+    expect(s).toHaveAttribute("min", "1");
+    expect(s).toHaveAttribute("max", "50");
+    expect(s).toHaveAttribute("step", "1");
+  });
+
+  it("sits the thumb on the threshold, not on some other figure", async () => {
+    const user = await reachRules();
+    expect(slider(10)).toHaveValue("10");
+    // Bound to the wrong key, the label still reads the threshold while the
+    // thumb tracks something else — so the label assertions cannot catch it.
+    await user.type(screen.getByLabelText("Current savings"), "4000");
+    expect(slider(10)).toHaveValue("10");
+  });
+
+  it("explains what the threshold does", async () => {
+    await reachRules();
+    expect(
+      screen.getByText(
+        "Purchases above this % of your monthly income are flagged.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for savings and optional extra savings, with the reference hint", async () => {
+    await reachRules();
+    const savings = screen.getByLabelText("Current savings");
+    const contribution = screen.getByLabelText(
+      "Extra monthly savings (optional)",
+    );
+    expect(savings).toHaveAttribute("placeholder", "0");
+    expect(contribution).toHaveAttribute("placeholder", "0");
+    // §16 gives this hint to the contribution field only. Asserting mere
+    // presence lets it sit under either field — the two are side by side in one
+    // grid, so mis-attachment is invisible without checking whose it is.
+    const hint = screen.getByText(
+      "Money you consistently set aside on top of expenses.",
+    );
+    expect(contribution.closest("div")).toContainElement(hint);
+    expect(savings.closest("div")).not.toContainElement(hint);
+  });
+
+  it("writes threshold, savings and contribution to their own keys", async () => {
+    const user = await reachRules();
+    fireEvent.change(slider(10), { target: { value: "30" } });
+    await user.type(screen.getByLabelText("Current savings"), "4000");
+    await user.type(
+      screen.getByLabelText("Extra monthly savings (optional)"),
+      "150",
+    );
+    await advance(user, "Finish setup →");
+
+    const saved = loadProfile();
+    expect(saved.threshold).toBe(30);
+    expect(saved.savings).toBe(4000);
+    expect(saved.monthlyContribution).toBe(150);
+    // …and the earlier steps' figures are still intact, uncrossed.
+    expect(saved.salary).toBe(2000);
+  });
+
+  it("shows only its own fields — expenses does not leak forward", async () => {
+    await reachRules();
+    expect(
+      screen.queryByLabelText("Monthly fixed expenses"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Net monthly salary")).not.toBeInTheDocument();
+  });
+
+  it("does not leak its own fields back onto earlier steps", async () => {
+    const user = await reachRules();
+    await user.click(screen.getByRole("button", { name: "← Back" })); // → step 2
+    expect(screen.getByText("03 / 04")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Current savings")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Extra monthly savings (optional)"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Significance threshold/),
+    ).not.toBeInTheDocument();
   });
 });
