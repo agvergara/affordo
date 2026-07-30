@@ -130,11 +130,11 @@ function WizardBody({
           ))}
         </div>
 
-        {/* Step 3 renders as an empty placeholder until #57 lands. */}
         <div key={step} className="animate-slide-up space-y-8">
           {step === 0 && <WelcomeStep />}
           {step === 1 && <IncomeStep draft={draft} set={set} />}
           {step === 2 && <ExpensesStep draft={draft} set={set} />}
+          {step === 3 && <RulesStep draft={draft} set={set} />}
         </div>
 
         <div className="mt-12 flex items-center justify-between border-t border-border pt-6">
@@ -291,6 +291,72 @@ function ExpensesStep({
         autoFocus
       />
     </Field>
+  );
+}
+
+/**
+ * Step 3 — Rules (dossier §16 "STEP 3"). Three controls, none gating: the
+ * significance-threshold slider whose *label* carries the live percentage, and
+ * the two savings figures.
+ *
+ * The threshold label is the interpolated string, not a separate readout, so
+ * the slider's accessible name changes as it moves — that is how §16 records
+ * it, and it is what makes the value reachable without a `data-testid`.
+ *
+ * The control is a native `<input type="range">` rather than the reference's
+ * shadcn `Slider`: this port has no shadcn, and `SettingsScreen` already
+ * established the native range with `accent-accent` for the same field. §16's
+ * `pt-3` is kept, since it is a recorded literal.
+ */
+function RulesStep({
+  draft,
+  set,
+}: {
+  draft: Profile;
+  set: <K extends keyof Profile>(key: K, value: Profile[K]) => void;
+}) {
+  return (
+    <>
+      <Field
+        id="onboarding-threshold"
+        label={`Significance threshold — ${draft.threshold}%`}
+        hint="Purchases above this % of your monthly income are flagged."
+      >
+        <input
+          id="onboarding-threshold"
+          type="range"
+          min={1}
+          max={50}
+          step={1}
+          value={draft.threshold}
+          onChange={(e) => set("threshold", num(e.target.value))}
+          className="w-full accent-accent pt-3"
+        />
+      </Field>
+
+      <div className="grid gap-8 sm:grid-cols-2">
+        <Field id="onboarding-savings" label="Current savings">
+          <NumberInput
+            id="onboarding-savings"
+            value={draft.savings}
+            onChange={(v) => set("savings", num(v))}
+            placeholder="0"
+          />
+        </Field>
+        <Field
+          id="onboarding-contribution"
+          label="Extra monthly savings (optional)"
+          hint="Money you consistently set aside on top of expenses."
+        >
+          <NumberInput
+            id="onboarding-contribution"
+            value={draft.monthlyContribution}
+            onChange={(v) => set("monthlyContribution", num(v))}
+            placeholder="0"
+          />
+        </Field>
+      </div>
+    </>
   );
 }
 
