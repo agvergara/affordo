@@ -240,61 +240,31 @@ describe("AA failures inherited from the reference", () => {
 });
 
 /**
- * The legacy warm-editorial verdict tones (ADR 0010). Unlike accent and emerald
- * these are **not** dossier-recorded — they are this project's own colours — so
- * the fidelity bar offers no defence for them, and `--positive` on
- * `--positive-bg` is 4.46:1 in light, just under the 4.5 this file demands
- * everywhere else.
+ * The legacy warm-editorial verdict tones (`--positive`, `--constructive`) used
+ * to be pinned here at 4.46:1 — below the AA this file demands — on the argument
+ * that no user could reach the surfaces they painted. #114 has now deleted both
+ * the components and the tokens, so the pin has gone with them, exactly as its
+ * own note said it should.
  *
- * They are not fixed here, and not because the number is close: their only
- * consumers are `VerdictCard.tsx` and `SavedGoals.tsx`, both reachable solely
- * from `App.tsx`, which has no non-test importer. `main.tsx` renders `<Router />`
- * alone, so **no user can reach any surface these tokens paint.** They are
- * scheduled for deletion with the rest of the retired progressive-disclosure
- * layer in #114.
- *
- * Pinned rather than omitted so the omission cannot recur: this file previously
- * claimed to sweep every pairing and missed these, which made #117's "no
- * hard-coded light-only colours remain" tick unearned. If #114 lands, these go
- * with the tokens. If a *live* screen ever adopts them instead, this block must
- * become a real AA failure to fix — there is no recorded literal to hide behind.
+ * The reachability assertion it rested on is kept below, because it is now the
+ * guard that the layer stays gone.
  */
-describe("legacy verdict tones: below AA, but unreachable pending #114", () => {
-  const light = resolver(":root");
-
-  it("stays unreachable — nothing outside the tests imports the dead layer", () => {
-    // The reachability argument above is what justifies pinning a sub-AA
-    // pairing instead of fixing it. Left as prose it would rot silently: give
-    // `App.tsx` one live importer and a user sees 4.46:1 with the suite still
-    // green. So the premise is asserted rather than asserted-in-a-comment.
+describe("the retired progressive-disclosure layer stays retired", () => {
+  it("nothing in the live import graph reaches it", () => {
+    // #114 deleted App.tsx and its stage components. This fails if any of them
+    // is reintroduced into the graph rooted at main.tsx.
     const roots = ["src/main.tsx", "src/ui/Router.tsx"];
     const reachable = roots.flatMap((file) =>
-      [...readFileSync(resolve(__dirname, "..", "..", file), "utf8").matchAll(
-        /from\s+"([^"]+)"/g,
-      )].map((m) => m[1] ?? ""),
+      [
+        ...readFileSync(resolve(__dirname, "..", "..", file), "utf8").matchAll(
+          /from\s+"([^"]+)"/g,
+        ),
+      ].map((m) => m[1] ?? ""),
     );
     for (const dead of ["./App", "./VerdictCard", "./SavedGoals"]) {
       expect(reachable, `${dead} must stay out of the live graph`).not.toContain(
         dead,
       );
     }
-  });
-
-  it("positive on its own background sits just under AA", () => {
-    const ratio = contrast(
-      toSrgb(light("--positive")),
-      toSrgb(light("--positive-bg")),
-    );
-    expect(ratio).toBeLessThan(4.5);
-    expect(ratio).toBeGreaterThan(4.4);
-  });
-
-  it("constructive on its own background clears AA", () => {
-    expect(
-      contrast(
-        toSrgb(light("--constructive")),
-        toSrgb(light("--constructive-bg")),
-      ),
-    ).toBeGreaterThanOrEqual(4.5);
   });
 });
