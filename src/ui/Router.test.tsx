@@ -276,3 +276,24 @@ describe("Router — per-screen document head (#111)", () => {
     expect(document.title).toBe("Affordo — Audit: Life/Cost");
   });
 });
+
+describe("Router — head is keyed on the path, not the outcome (#111)", () => {
+  function Boom(): JSX.Element {
+    throw new Error("boom");
+  }
+
+  it("keeps a titled route's head when its screen throws", () => {
+    seedProfile();
+    navigateTo("/goals");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    render(<Router routes={{ "/goals": () => <Boom /> }} navigate={vi.fn()} />);
+
+    // The error boundary is what the user sees…
+    expect(screen.getByText(/something broke/i)).toBeInTheDocument();
+    // …but the tab still names the route, because `head()` belongs to the
+    // route that matched rather than to the outcome of rendering it. Pinned
+    // because the docblock previously claimed the opposite.
+    expect(document.title).toBe("Goals · Affordo");
+  });
+});

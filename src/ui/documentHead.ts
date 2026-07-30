@@ -21,9 +21,16 @@ export interface DocumentHead {
 }
 
 /**
- * The root head, verbatim from §1. Applied to any route with no head of its
- * own — `/` (the redirect gate), the 404 screen, and the error boundary — so
+ * The root head, verbatim from §1. Applied to any *path* with no head of its
+ * own — `/` (the redirect gate) and any unmatched path (the 404 screen) — so
  * navigating away from a titled screen never leaves its title behind.
+ *
+ * Note it is keyed on the **path**, not on what rendered. A titled route whose
+ * screen throws keeps its own title while the error boundary is displayed: the
+ * tab reads `Goals · Affordo` above "Something broke". That is deliberate and
+ * matches the reference, where `head()` belongs to the route that matched
+ * rather than to the outcome of rendering it — but it is the kind of thing a
+ * comment can quietly claim otherwise, so it is pinned by a test.
  */
 export const ROOT_HEAD: DocumentHead = {
   title: "Affordo — Audit: Life/Cost",
