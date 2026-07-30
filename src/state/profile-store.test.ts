@@ -37,7 +37,10 @@ describe("profile persistence", () => {
   });
 
   it("falls back to defaults for a foreign-shaped profile (missing/mistyped fields)", () => {
-    // The legacy string-valued shape from src/ui/storage.ts must not be accepted.
+    // The pre-#39 string-valued shape must not be accepted. It came from
+    // src/ui/storage.ts, deleted in #114 — but the guard still matters: both
+    // stores used the same key at the same SCHEMA_VERSION, so a profile saved
+    // by the old app is still on disk for anyone who used it.
     window.localStorage.setItem(
       "affordo.profile",
       JSON.stringify({

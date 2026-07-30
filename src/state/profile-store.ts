@@ -3,7 +3,8 @@ import type { Currency } from "../engine/reference-types";
 /**
  * The reference Profile (docs/affordo-context.md §8) — the user's finances as
  * plain numbers, persisted to localStorage. This is the reference-semantics
- * state layer, introduced additively alongside the legacy `src/ui/storage.ts`.
+ * state layer. It was introduced additively alongside the legacy
+ * `src/ui/storage.ts`, which #114 has since deleted.
  * No stored Verdict lives here; verdicts are always recomputed.
  */
 export interface Profile {

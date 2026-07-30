@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
@@ -250,21 +250,84 @@ describe("AA failures inherited from the reference", () => {
  * guard that the layer stays gone.
  */
 describe("the retired progressive-disclosure layer stays retired", () => {
-  it("nothing in the live import graph reaches it", () => {
-    // #114 deleted App.tsx and its stage components. This fails if any of them
-    // is reintroduced into the graph rooted at main.tsx.
-    const roots = ["src/main.tsx", "src/ui/Router.tsx"];
-    const reachable = roots.flatMap((file) =>
-      [
-        ...readFileSync(resolve(__dirname, "..", "..", file), "utf8").matchAll(
-          /from\s+"([^"]+)"/g,
-        ),
-      ].map((m) => m[1] ?? ""),
-    );
-    for (const dead of ["./App", "./VerdictCard", "./SavedGoals"]) {
-      expect(reachable, `${dead} must stay out of the live graph`).not.toContain(
-        dead,
-      );
+  /**
+   * Walk the real module graph from the app's entry point.
+   *
+   * The first version of this guard read two files as text and looked for three
+   * literal specifiers. It was vacuous in three of four realistic reintroduction
+   * paths, and the one path it did catch was the one its author had tested —
+   * `main.tsx` lives in `src/`, so it can only ever write `"./ui/App"`, never the
+   * `"./App"` the guard scanned for, meaning that half could never fire at all.
+   *
+   * So this resolves specifiers instead of matching them: static imports,
+   * side-effect imports, and `export … from`, followed transitively.
+   */
+  function liveGraph(): Set<string> {
+    const root = resolve(__dirname, "..", "..", "src", "main.tsx");
+    const seen = new Set<string>();
+    const queue = [root];
+    while (queue.length) {
+      const file = queue.pop();
+      if (!file || seen.has(file)) continue;
+      seen.add(file);
+      let source: string;
+      try {
+        source = readFileSync(file, "utf8");
+      } catch {
+        continue;
+      }
+      const specifiers = [
+        ...source.matchAll(/(?:from|import)\s+"([^"]+)"/g),
+      ].map((m) => m[1] ?? "");
+      for (const spec of specifiers) {
+        if (!spec.startsWith(".")) continue;
+        const base = resolve(file, "..", spec);
+        for (const candidate of [
+          base,
+          `${base}.ts`,
+          `${base}.tsx`,
+          `${base}/index.ts`,
+          `${base}/index.tsx`,
+        ]) {
+          if (existsSync(candidate) && statSync(candidate).isFile()) {
+            queue.push(candidate);
+            break;
+          }
+        }
+      }
     }
+    return seen;
+  }
+
+  /** Every module #114 deleted, not the three the first guard happened to name. */
+  const RETIRED = [
+    "App",
+    "Disclosure",
+    "Reveal",
+    "VerdictCard",
+    "ChallengeCard",
+    "MoneyField",
+    "SavedGoals",
+    "format",
+    "storage",
+    "goals",
+    "expenses",
+  ];
+
+  it("reaches a real graph, so the assertion below cannot pass vacuously", () => {
+    // Without this, a resolver that silently returns nothing would make every
+    // "is absent" assertion trivially true — the failure mode the first guard had.
+    const graph = liveGraph();
+    expect(graph.size).toBeGreaterThan(20);
+    expect([...graph].some((f) => f.endsWith("/ui/Router.tsx"))).toBe(true);
+    expect([...graph].some((f) => f.endsWith("/ui/GoalCard.tsx"))).toBe(true);
+  });
+
+  it.each(RETIRED)("does not reach src/ui/%s", (name) => {
+    const graph = [...liveGraph()];
+    expect(
+      graph.filter((f) => /\/ui\/([^/]+)\.(ts|tsx)$/.exec(f)?.[1] === name),
+      `src/ui/${name} is reachable from main.tsx again`,
+    ).toEqual([]);
   });
 });
