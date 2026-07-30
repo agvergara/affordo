@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { applyDocumentHead, headForPath } from "./documentHead";
 import { NotFoundScreen } from "./Placeholder";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { GoalsDashboard } from "./GoalsDashboard";
@@ -98,6 +99,15 @@ export function Router({
 }: { routes?: RouteTable; navigate?: Navigate } = {}) {
   const path = normalize(window.location.pathname);
   const supplied = routes[path];
+
+  // Swap the document head to match the screen (#111, dossier §1). A layout
+  // effect rather than a plain one: the tab label is chrome, and updating it
+  // after paint means a visible flash of the previous screen's title. Keyed on
+  // `path` so a route with no head of its own restores the root set rather than
+  // inheriting whatever the last titled screen left behind.
+  useLayoutEffect(() => {
+    applyDocumentHead(headForPath(path));
+  }, [path]);
 
   let screen: JSX.Element;
   if (supplied) {

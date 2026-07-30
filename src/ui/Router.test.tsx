@@ -216,3 +216,63 @@ describe("Router — unguarded routes", () => {
     expect(screen.getByText("Saved")).toBeInTheDocument();
   });
 });
+
+describe("Router — per-screen document head (#111)", () => {
+  const meta = (attr: "name" | "property", key: string) =>
+    document.head
+      .querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`)
+      ?.getAttribute("content");
+
+  it.each([
+    ["/onboarding", "Set up · Affordo", "Configure your financial profile once. Then weigh purchases in seconds."],
+    ["/goals", "Goals · Affordo", "See every purchase weighed against your working hours."],
+    ["/settings", "Settings · Affordo", "Edit your financial profile and preferences."],
+  ])("titles %s as %s", (path, title, description) => {
+    seedProfile();
+    navigateTo(path);
+    render(<Router navigate={vi.fn()} />);
+    expect(document.title).toBe(title);
+    expect(meta("name", "description")).toBe(description);
+    // og:title tracks the title, and og:description the description — the two
+    // are equal on every sub-route and differ only at the root (§1).
+    expect(meta("property", "og:title")).toBe(title);
+    expect(meta("property", "og:description")).toBe(description);
+  });
+
+  it("uses the separator the dossier records, a middle dot", () => {
+    seedProfile();
+    navigateTo("/goals");
+    render(<Router navigate={vi.fn()} />);
+    // U+00B7, not a bullet (•) or a hyphen — invisible to read, and the kind of
+    // thing a copy-paste silently changes.
+    expect(document.title).toContain("·");
+    expect(document.title).not.toContain("•");
+  });
+
+  it("restores the root head on a screen that has none of its own", () => {
+    navigateTo("/nonsense");
+    render(<Router navigate={vi.fn()} />);
+    expect(document.title).toBe("Affordo — Audit: Life/Cost");
+    // The root is the one place description and og:description differ.
+    expect(meta("name", "description")).toBe(
+      "Weigh purchases against your working hours. A private, local-first affordability calculator.",
+    );
+    expect(meta("property", "og:description")).toBe(
+      "Weigh purchases against your working hours.",
+    );
+  });
+
+  it("does not leave a previous screen's title behind", () => {
+    seedProfile();
+    navigateTo("/goals");
+    const first = render(<Router navigate={vi.fn()} />);
+    expect(document.title).toBe("Goals · Affordo");
+    first.unmount();
+
+    navigateTo("/nonsense");
+    render(<Router navigate={vi.fn()} />);
+    // The failure this guards is a head applied once at mount: the 404 would
+    // keep announcing itself as the goals dashboard.
+    expect(document.title).toBe("Affordo — Audit: Life/Cost");
+  });
+});
