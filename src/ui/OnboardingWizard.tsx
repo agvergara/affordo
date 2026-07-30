@@ -107,7 +107,10 @@ function WizardBody({
     <div className="min-h-dvh bg-background">
       <AppHeader showTimeValue={false} />
       <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-16">
-        <div className="mb-8 flex items-end justify-between gap-4">
+        <div
+          data-testid="step-head"
+          className="mb-8 flex items-end justify-between gap-4"
+        >
           <div>
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
               Set up your reckoning
