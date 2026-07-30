@@ -15,15 +15,14 @@ import { defaultTheme, loadStoredTheme, saveTheme, type Theme } from "./theme-st
  * stored value, so a reload restores the last choice.
  *
  * Unlike `AffordoProvider`, whose hydration is deferred to after mount to keep
- * first paint deterministic, the theme is read synchronously (`useState(loadTheme)`)
+ * first paint deterministic, the theme is read synchronously (`useState(loadStoredTheme() ?? systemTheme())`)
  * and applied to the root in a `useLayoutEffect`, which React flushes
  * synchronously BEFORE the browser paints. Applying it in a plain `useEffect`
  * would run after paint and flash the light theme on a dark reload; a layout
  * effect lands the `.dark` class in the same frame as first paint, so no flash
  * occurs. (`index.html` ships no `.dark` class, so the pre-React initial markup
  * is light — the layout effect is what closes that gap before the pixel hits the
- * screen.) This slice carries no toggle UI and no system-preference logic; those
- * are #72/#73.
+ * screen.) The toggle UI is #72; the system-preference logic below is #73.
  */
 export interface ThemeContextValue {
   theme: Theme;

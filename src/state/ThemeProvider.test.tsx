@@ -150,29 +150,39 @@ describe("ThemeProvider applies and persists the theme", () => {
  */
 function stubMatchMedia(initialDark: boolean) {
   let matches = initialDark;
-  const listeners = new Set<(e: MediaQueryListEvent) => void>();
-  const query = {
-    get matches() {
-      return matches;
-    },
-    media: "(prefers-color-scheme: dark)",
-    addEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
-      void listeners.add(fn),
-    removeEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
-      void listeners.delete(fn),
+  // A new MediaQueryList per call, each with its OWN listener set, as CSSOM
+  // View specifies. Sharing one set across instances would let code that
+  // subscribes to one and unsubscribes from another pass — which leaks the
+  // listener in a real browser, and is the likeliest refactor to break this.
+  const instances: Array<Set<(e: MediaQueryListEvent) => void>> = [];
+  const make = () => {
+    const listeners = new Set<(e: MediaQueryListEvent) => void>();
+    instances.push(listeners);
+    return {
+      get matches() {
+        return matches;
+      },
+      media: "(prefers-color-scheme: dark)",
+      addEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
+        void listeners.add(fn),
+      removeEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
+        void listeners.delete(fn),
+    };
   };
-  window.matchMedia = (() => query) as unknown as typeof window.matchMedia;
+  window.matchMedia = make as unknown as typeof window.matchMedia;
   return {
-    query,
-    /** Flip the OS preference and notify, as a real OS switch would. */
+    /** Flip the OS preference and notify every live listener, as an OS switch would. */
     switchTo(dark: boolean) {
       matches = dark;
       act(() => {
-        for (const fn of listeners) fn({ matches } as MediaQueryListEvent);
+        for (const listeners of instances) {
+          for (const fn of [...listeners]) fn({ matches } as MediaQueryListEvent);
+        }
       });
     },
+    /** Listeners still attached across every instance handed out. */
     get listenerCount() {
-      return listeners.size;
+      return instances.reduce((n, l) => n + l.size, 0);
     },
   };
 }
@@ -259,6 +269,36 @@ describe("ThemeProvider follows the OS until the user decides (#73)", () => {
     // protected, now enforced by the provider rather than by a CSS guard.
     expect(screen.getByTestId("theme")).toHaveTextContent("light");
     expect(document.documentElement).not.toHaveClass("dark");
+  });
+
+  it("treats a stored choice that agrees with the OS as a choice", () => {
+    // The seeded half of the `chosen` seam. Both other stored-choice tests use
+    // a value that *disagrees* with the OS, so `chosen` derived from
+    // "differs from system" would pass them — and would then discard this
+    // user's saved preference the moment their OS flipped, while
+    // `affordo.theme` still held the old value.
+    saveTheme("dark");
+    const os = stubMatchMedia(true);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+
+    os.switchTo(false);
+    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+  });
+
+  it("does not subscribe for a stored choice that agrees with the OS", () => {
+    saveTheme("dark");
+    const os = stubMatchMedia(true);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(os.listenerCount).toBe(0);
   });
 
   it("never subscribes when a stored choice already exists", () => {

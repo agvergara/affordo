@@ -144,8 +144,17 @@
 }
 
 @layer base {
+  /* Native UI — scrollbars, the `<select>` popup, form controls — follows this,
+     not the token palette. `light dark` let the OS decide it independently, so
+     a user who chose against their OS got dark tokens with light scrollbars and
+     a light `<select>` popup (reachable from settings and the wizard). Binding
+     it to the same `.dark` class the palette uses keeps one mechanism deciding
+     the theme, which is the whole point of #73 deleting the media block. */
   html {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   /* Reference base layer (dossier §3): every element defaults to the border
      token, so hairlines need no per-element color; text selection paints in
