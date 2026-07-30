@@ -25,6 +25,15 @@ import { resolve } from "node:path";
  *
  * The colour maths lives here rather than in `src/`: it has no runtime consumer,
  * and shipping unused production modules is the problem #114 exists to clean up.
+ *
+ * One assertion below reads class names out of `VerdictBadge.tsx`, which PRD
+ * #39's Testing Decisions forbid as a rule. The defence is narrow and worth
+ * stating: it reads a *recorded literal from source text* to identify which
+ * colours to measure — it does not assert on rendered output, and without it the
+ * assertion contrasted two literals it supplied itself and could not observe the
+ * badge at all. Raised by the #117 duel reviewer, who proposed the fix and
+ * declined to grade it clean; flagging it here so the next reader judges it
+ * rather than inherits it.
  */
 const css = readFileSync(
   resolve(__dirname, "theme.css"),
@@ -252,6 +261,24 @@ describe("AA failures inherited from the reference", () => {
  */
 describe("legacy verdict tones: below AA, but unreachable pending #114", () => {
   const light = resolver(":root");
+
+  it("stays unreachable — nothing outside the tests imports the dead layer", () => {
+    // The reachability argument above is what justifies pinning a sub-AA
+    // pairing instead of fixing it. Left as prose it would rot silently: give
+    // `App.tsx` one live importer and a user sees 4.46:1 with the suite still
+    // green. So the premise is asserted rather than asserted-in-a-comment.
+    const roots = ["src/main.tsx", "src/ui/Router.tsx"];
+    const reachable = roots.flatMap((file) =>
+      [...readFileSync(resolve(__dirname, "..", "..", file), "utf8").matchAll(
+        /from\s+"([^"]+)"/g,
+      )].map((m) => m[1] ?? ""),
+    );
+    for (const dead of ["./App", "./VerdictCard", "./SavedGoals"]) {
+      expect(reachable, `${dead} must stay out of the live graph`).not.toContain(
+        dead,
+      );
+    }
+  });
 
   it("positive on its own background sits just under AA", () => {
     const ratio = contrast(
