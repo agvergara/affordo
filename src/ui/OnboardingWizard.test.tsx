@@ -441,3 +441,45 @@ describe("OnboardingWizard — income fields reach the saved profile", () => {
     expect(saved.currency).toBe("EUR");
   });
 });
+
+describe("OnboardingWizard — step 2 Expenses", () => {
+  /** Reach Expenses through the income gate. */
+  async function reachExpenses() {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    await fillSalaryIfEmpty(user);
+    await advance(user, "Continue →");
+    return user;
+  }
+
+  it("asks for monthly fixed expenses, with the reference hint", async () => {
+    await reachExpenses();
+    expect(screen.getByText("03 / 04")).toBeInTheDocument();
+    expect(screen.getByLabelText("Monthly fixed expenses")).toBeInTheDocument();
+    expect(
+      screen.getByText("Rent, groceries, subscriptions, transport, utilities."),
+    ).toBeInTheDocument();
+  });
+
+  it("puts the cursor in the expenses field", async () => {
+    await reachExpenses();
+    expect(screen.getByLabelText("Monthly fixed expenses")).toHaveFocus();
+  });
+
+  it("lets the user continue without entering any expenses", async () => {
+    await reachExpenses();
+    // Expenses are optional-but-encouraged: §16 records this step as never
+    // gated, so an untouched zero must still advance.
+    expect(screen.getByLabelText("Monthly fixed expenses")).toHaveValue(null);
+    expect(screen.getByRole("button", { name: "Continue →" })).toBeEnabled();
+  });
+
+  it("writes the entered expenses to the saved profile", async () => {
+    const user = await reachExpenses();
+    await user.type(screen.getByLabelText("Monthly fixed expenses"), "1250");
+    await advance(user, "Continue →"); // → step 3
+    await advance(user, "Finish setup →");
+    expect(loadProfile().expenses).toBe(1250);
+  });
+});

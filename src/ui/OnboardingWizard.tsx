@@ -131,10 +131,11 @@ function WizardBody({
           ))}
         </div>
 
-        {/* Steps 2–3 render as empty placeholders until #56–#57 land. */}
+        {/* Step 3 renders as an empty placeholder until #57 lands. */}
         <div key={step} className="animate-slide-up space-y-8">
           {step === 0 && <WelcomeStep />}
           {step === 1 && <IncomeStep draft={draft} set={set} />}
+          {step === 2 && <ExpensesStep draft={draft} set={set} />}
         </div>
 
         <div className="mt-12 flex items-center justify-between border-t border-border pt-6">
@@ -262,6 +263,35 @@ function IncomeStep({
         />
       </Field>
     </>
+  );
+}
+
+/**
+ * Step 2 — Expenses (dossier §16 "STEP 2"). A single field, and the step is
+ * never gated: expenses are optional-but-encouraged, so `Continue →` stays live
+ * even at zero (see `canContinue`, which gates step 1 alone).
+ */
+function ExpensesStep({
+  draft,
+  set,
+}: {
+  draft: Profile;
+  set: <K extends keyof Profile>(key: K, value: Profile[K]) => void;
+}) {
+  return (
+    <Field
+      id="onboarding-expenses"
+      label="Monthly fixed expenses"
+      hint="Rent, groceries, subscriptions, transport, utilities."
+    >
+      <NumberInput
+        id="onboarding-expenses"
+        value={draft.expenses}
+        onChange={(v) => set("expenses", num(v))}
+        placeholder="0"
+        autoFocus
+      />
+    </Field>
   );
 }
 
