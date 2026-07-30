@@ -6,8 +6,8 @@
  * `.dark` tokens (theme.css, from #44) a live, persisted theme; the ADR in
  * docs/adr/ records dark mode moving into scope.
  *
- * No toggle UI and no system-preference logic live here — those are later
- * slices (#72/#73). This module knows only how to remember the choice.
+ * No toggle UI and no live OS-change logic live here — those are #72/#73. This
+ * module knows how to remember the choice, and whether one was ever made.
  */
 export type Theme = "light" | "dark";
 
@@ -28,19 +28,31 @@ function isTheme(value: unknown): value is Theme {
  * theme (ADR 0011 defensive load, ADR 0019 validation on load).
  */
 export function loadTheme(): Theme {
+  return loadStoredTheme() ?? defaultTheme;
+}
+
+/**
+ * The stored preference, or `null` when the user has never expressed one.
+ *
+ * `loadTheme` collapses that distinction into `defaultTheme`, which is right
+ * for choosing what to render but wrong for deciding whether the OS gets a
+ * say: "light because chosen" and "light because untouched" must resolve the
+ * `prefers-color-scheme` block differently (#98).
+ */
+export function loadStoredTheme(): Theme | null {
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (!raw) return defaultTheme;
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as {
       schemaVersion?: number;
       theme?: unknown;
     };
     if (parsed.schemaVersion !== SCHEMA_VERSION || !isTheme(parsed.theme)) {
-      return defaultTheme;
+      return null;
     }
     return parsed.theme;
   } catch {
-    return defaultTheme;
+    return null;
   }
 }
 

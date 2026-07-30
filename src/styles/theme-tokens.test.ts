@@ -155,3 +155,72 @@ function baseLayer(): string {
   const next = css.indexOf("@layer components", start);
   return css.slice(start, next === -1 ? undefined : next);
 }
+
+/**
+ * The `prefers-color-scheme` block versus an explicit choice (#98).
+ *
+ * `mountTokenRules()` above cannot see this block at all: its regex requires the
+ * selector at column 0, so the media block's indented `:root` is silently
+ * excluded — which is why the bug shipped with a green suite.
+ *
+ * jsdom evaluates no media queries, so the block's *condition* is not testable
+ * here and is left to the browser. What is testable, and what was actually
+ * wrong, is its **selector**: the rules applied to every `:root`, including one
+ * the user had explicitly set to light. So the inner rules are mounted with the
+ * guard selector intact and matched against two roots.
+ */
+describe("OS dark preference yields to an explicit choice (#98)", () => {
+  /** The media block's inner rule, hoisted out of the untestable @media wrapper. */
+  function mountAutoDarkRule(): HTMLStyleElement {
+    const media = /@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/.exec(
+      css,
+    );
+    if (!media) throw new Error("no prefers-color-scheme block in theme.css");
+    const inner = media[1] ?? "";
+    const style = document.createElement("style");
+    style.textContent = inner;
+    document.head.appendChild(style);
+    return style;
+  }
+
+  let style: HTMLStyleElement;
+  beforeEach(() => {
+    style = mountAutoDarkRule();
+  });
+  afterEach(() => {
+    style.remove();
+    delete document.documentElement.dataset.theme;
+  });
+
+  it("still applies when the user has expressed no preference", () => {
+    // No marker: the OS gets its say, which is the behaviour #98 must preserve
+    // while fixing the other direction.
+    expect(document.documentElement.matches(":root:not([data-theme])")).toBe(
+      true,
+    );
+    expect(
+      getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(),
+    ).toBe("#f5efe4");
+  });
+
+  it("does not apply when the user has explicitly chosen light", () => {
+    document.documentElement.dataset.theme = "light";
+    // The bug: the dark `--ink` landed on a near-white background at ~1.05:1
+    // and blanked the settings form, because the rule matched every :root.
+    expect(document.documentElement.matches(":root:not([data-theme])")).toBe(
+      false,
+    );
+    expect(
+      getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(),
+    ).not.toBe("#f5efe4");
+  });
+
+  it("does not apply when the user has explicitly chosen dark either", () => {
+    // Dark is then owned by the `.dark` class alone, so there is exactly one
+    // mechanism deciding the theme rather than two that can disagree.
+    document.documentElement.dataset.theme = "dark";
+    expect(document.documentElement.matches(":root:not([data-theme])")).toBe(
+      false,
+    );
+  });
+});
