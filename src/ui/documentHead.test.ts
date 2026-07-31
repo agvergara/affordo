@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-// Load the real shipped shell as a string via Vite's ?raw. The document head
-// lives in index.html (a plain Vite SPA), not a React route, so these
-// assertions read the actual file — the reference title and social meta can't
-// silently drift out of the shell that serves them.
+// Load the real shipped shell as a string via Vite's ?raw. These assertions
+// cover the *root* head as index.html ships it — the tags a non-JS crawler
+// sees, and the ones the app never overwrites (og:type, twitter:card).
+//
+// They no longer cover the whole story: #111 made the head per-screen, so
+// `src/ui/documentHead.ts` swaps title/description/og:title/og:description at
+// runtime and `Router.test.tsx` pins that. This file's earlier framing — "the
+// head lives in index.html, not a React route" — was true when written and is
+// not now. Narrowed rather than deleted, because the shipped shell is still
+// the only thing a crawler reads and nothing else asserts it.
 import html from "../../index.html?raw";
 
 /** Extract the text between the first <title>…</title>. */

@@ -297,3 +297,16 @@ describe("Router — head is keyed on the path, not the outcome (#111)", () => {
     expect(document.title).toBe("Goals · Affordo");
   });
 });
+
+describe("Router — the redirect gate keeps the root head (#111)", () => {
+  it("titles / with the root head, not the screen it redirects to", () => {
+    navigateTo("/");
+    render(<Router navigate={vi.fn()} />);
+
+    // §1: "Route `/` has no head() — inherits root defaults only." The gate is
+    // the app's entry URL, so getting this wrong means the very first thing a
+    // user sees in their tab is the name of a screen they are being sent away
+    // from. It was also the one row of §1's table with nothing behind it.
+    expect(document.title).toBe("Affordo — Audit: Life/Cost");
+  });
+});
