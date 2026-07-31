@@ -7,12 +7,7 @@ import { ThemeProvider, useTheme } from "./ThemeProvider";
 import { defaultTheme, saveTheme } from "./theme-store";
 
 beforeEach(() => window.localStorage.clear());
-afterEach(() => {
-  document.documentElement.classList.remove("dark");
-  // #98 added a `data-theme` marker; without this it leaks between tests and
-  // makes results order-dependent.
-  delete document.documentElement.dataset.theme;
-});
+afterEach(() => document.documentElement.classList.remove("dark"));
 
 function Probe() {
   const { theme, setTheme } = useTheme();
