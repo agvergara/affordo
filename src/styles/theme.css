@@ -11,9 +11,15 @@
 @import "@fontsource-variable/jetbrains-mono/wght.css";
 @import "tailwindcss";
 
-/* Warm editorial palette as semantic custom properties, with a dark variant via
-   prefers-color-scheme. `@theme inline` maps Tailwind tokens onto these variables
-   *by reference*, so overriding a variable here flips the whole theme at runtime. */
+/* Warm editorial palette as semantic custom properties. `@theme inline` maps
+   Tailwind tokens onto these variables *by reference*, so overriding a variable
+   in `.dark` flips the whole theme at runtime.
+
+   There is deliberately no `prefers-color-scheme` block: #73 resolves the OS
+   preference in ThemeProvider and applies the same `.dark` class a chosen dark
+   uses. A media block would be a second place the dark palette is defined, and
+   the two drifted — it set six tokens and never `--background`, so an OS-dark
+   visitor read `--ink` cream on a near-white page at 1.10:1 (#121). */
 :root {
   --canvas: #fbf7f0; /* cream */
   --ink: #1c1a17; /* ink */
@@ -54,7 +60,7 @@
 /* Reference dark twins (dossier §3). Latent in this slice — nothing toggles the
    `.dark` class yet — but defined in full so the later dark-theme slices only
    need to wire the toggle. @custom-variant lets `dark:` utilities target the
-   class rather than the prefers-color-scheme media query the legacy tokens use. */
+   class, which is now the single mechanism deciding the theme. */
 @custom-variant dark (&:is(.dark *));
 
 .dark {
@@ -78,8 +84,8 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.72 0.19 45);
 
-  /* The legacy warm-editorial tokens, flipped to the same dark values the
-     prefers-color-scheme block below uses. These are not decoration: the base
+  /* The legacy warm-editorial tokens, flipped to their dark values. These are
+     not decoration: the base
      layer paints input/select text with --ink and labels with --stone, so a
      class-based dark theme that left them at their light values would put dark
      ink on the near-black --background and make every settings field
@@ -89,29 +95,6 @@
   --canvas: #1c1a17;
   --ink: #f5efe4;
   --stone: #a8a093;
-}
-
-/* Legacy warm-editorial dark variant (prefers-color-scheme). Retained so the
-   ship-current app's automatic dark response is unchanged while the reference
-   `.dark` class stays latent. Only the canvas/ink/stone/verdict tokens the
-   existing components still read are flipped here. */
-@media (prefers-color-scheme: dark) {
-  /* `:not([data-theme])` — the OS only gets a say while the user has expressed
-     no preference. ThemeProvider stamps `data-theme` on an explicit choice, so
-     picking light on an OS-dark machine no longer leaves the legacy tokens dark
-     (#98): that put `--ink` on a near-white background at ~1.05:1 and blanked
-     the settings form. */
-  :root:not([data-theme]) {
-    --canvas: #1c1a17;
-    --ink: #f5efe4;
-    --stone: #a8a093;
-
-    /* Keep the three shared reference roles coherent under auto-dark, using
-       their dossier §3 dark oklch values (same as the latent .dark block). */
-    --card: oklch(0.17 0 0);
-    --border: oklch(1 0 0 / 12%);
-    --accent: oklch(0.72 0.19 45);
-  }
 }
 
 @theme inline {
@@ -161,8 +144,17 @@
 }
 
 @layer base {
+  /* Native UI — scrollbars, the `<select>` popup, form controls — follows this,
+     not the token palette. `light dark` let the OS decide it independently, so
+     a user who chose against their OS got dark tokens with light scrollbars and
+     a light `<select>` popup (reachable from settings and the wizard). Binding
+     it to the same `.dark` class the palette uses keeps one mechanism deciding
+     the theme, which is the whole point of #73 deleting the media block. */
   html {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   /* Reference base layer (dossier §3): every element defaults to the border
      token, so hairlines need no per-element color; text selection paints in

@@ -49,10 +49,14 @@ describe("loadStoredTheme distinguishes 'no preference' from a stored one", () =
   });
 
   it("returns null for a record from a foreign schema version", () => {
-    // Not merely defensive: `loadStoredTheme() !== null` is what stamps
-    // `data-theme`, which suppresses the prefers-color-scheme block. Returning
-    // a theme here instead of null would mark the root for every stale record
-    // and silently force every OS-dark user to light on a schema bump.
+    // Not merely defensive: `loadStoredTheme() !== null` is what seeds
+    // `chosen`, which decides whether the OS gets a say at all (#73). So this
+    // return is the guard on the migration trap — bump `SCHEMA_VERSION` without
+    // mapping v1 records forward and every existing chooser silently becomes a
+    // system-follower, their saved theme discarded and their machine deciding
+    // for them on the next OS switch. Returning a theme here instead of null
+    // would trade that for the mirror failure: every stale record treated as a
+    // deliberate choice, freezing users out of the OS preference entirely.
     window.localStorage.setItem(
       "affordo.theme",
       JSON.stringify({ schemaVersion: 99, theme: "dark" }),

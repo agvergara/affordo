@@ -105,6 +105,20 @@ describe("reference oklch color tokens (dossier §3)", () => {
     }
   });
 
+  it("binds native UI to the same class as the palette, not to the OS", () => {
+    // `color-scheme` drives scrollbars, the `<select>` popup and form controls.
+    // Left at `light dark` the OS decided them independently, so a user who
+    // chose against their OS got dark tokens with light scrollbars (#122's F5).
+    // Pinned here because its neighbours are: this file already guards
+    // `::selection` and the default border colour the same way.
+    expect(baseLayer()).toMatch(/html\s*\{[^}]*color-scheme:\s*light/);
+    expect(baseLayer()).toMatch(/html\.dark\s*\{[^}]*color-scheme:\s*dark/);
+    // Checked against the whole file, not just the base layer: `:root` (0,1,0)
+    // outranks `html` (0,0,1), so a `light dark` reintroduced above the layer
+    // would escape a slice-scoped assertion *and* win the cascade.
+    expect(css).not.toMatch(/color-scheme:\s*light dark/);
+  });
+
   it("paints text selection in the accent via the base layer", () => {
     // ::selection can't be inspected through getComputedStyle in jsdom, so
     // assert the base-layer rule exists in source with the accent tokens.
@@ -126,12 +140,12 @@ describe("reference oklch color tokens (dossier §3)", () => {
   // the near-black --background: the settings fields went invisible. The
   // class-based theme has to flip them too, or choosing dark breaks any
   // component still reading them.
-  // Scope note: this harness can only observe the `:root` and `.dark` blocks —
-  // `mountTokenRules()`'s regex requires the selector at column 0, so the
-  // `@media (prefers-color-scheme: dark)` block's indented `:root` is excluded
-  // and nothing here says anything about OS-driven dark. That gap is real and
-  // tracked: the media block still overrides an explicit light choice on a
-  // dark-set OS.
+  // Scope note: this harness observes the `:root` and `.dark` blocks, which is
+  // now the whole palette. The `@media (prefers-color-scheme: dark)` block it
+  // used to be blind to is gone — #73 resolves the OS preference in
+  // `ThemeProvider` and applies the same `.dark` class a chosen dark uses, so
+  // there is no second dark palette for this file to miss. (#98 and #121, the
+  // two bugs that gap hid, are both fixed.)
   describe("legacy tokens flip when the .dark class is applied", () => {
     it("flips the ink the base layer paints input text with", () => {
       expect(tokenValue(null, "--ink")).toBe("#1c1a17");
@@ -155,82 +169,3 @@ function baseLayer(): string {
   const next = css.indexOf("@layer components", start);
   return css.slice(start, next === -1 ? undefined : next);
 }
-
-/**
- * The `prefers-color-scheme` block versus an explicit choice (#98).
- *
- * `mountTokenRules()` above cannot see this block at all: its regex requires the
- * selector at column 0, so the media block's indented `:root` is silently
- * excluded — which is why the bug shipped with a green suite.
- *
- * jsdom evaluates no media queries, so the block's *condition* is not testable
- * here and is left to the browser. What is testable, and what was actually
- * wrong, is its **selector**: the rules applied to every `:root`, including one
- * the user had explicitly set to light. So the inner rules are mounted with the
- * guard selector intact and matched against two roots.
- */
-describe("OS dark preference yields to an explicit choice (#98)", () => {
-  /** The media block's inner rule, hoisted out of the untestable @media wrapper. */
-  function mountAutoDarkRule(): HTMLStyleElement {
-    const media = /@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n\}/.exec(
-      css,
-    );
-    if (!media) throw new Error("no prefers-color-scheme block in theme.css");
-    const inner = media[1] ?? "";
-    const style = document.createElement("style");
-    style.textContent = inner;
-    document.head.appendChild(style);
-    return style;
-  }
-
-  let style: HTMLStyleElement;
-  beforeEach(() => {
-    style = mountAutoDarkRule();
-  });
-  afterEach(() => {
-    style.remove();
-    delete document.documentElement.dataset.theme;
-  });
-
-  it("still applies when the user has expressed no preference", () => {
-    // No marker: the OS gets its say, which is the behaviour #98 must preserve
-    // while fixing the other direction.
-    //
-    // This asserts only that the block still *reaches* an unmarked root. It is
-    // deliberately not an endorsement of the palette that results: the block
-    // flips 6 of 22 tokens and never touches `--background`, so an OS-dark user
-    // with no stored choice gets `--ink: #f5efe4` on a near-white background at
-    // 1.10:1 — the same blank settings form #98 fixed, on the default path.
-    // That is #121, whose fix is to stop resolving OS preference in CSS at all.
-    expect(document.documentElement.matches(":root:not([data-theme])")).toBe(
-      true,
-    );
-    expect(
-      getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(),
-    ).toBe("#f5efe4");
-  });
-
-  it("does not apply when the user has explicitly chosen light", () => {
-    document.documentElement.dataset.theme = "light";
-    // The bug: the dark `--ink` landed on a near-white background at ~1.05:1
-    // and blanked the settings form, because the rule matched every :root.
-    expect(document.documentElement.matches(":root:not([data-theme])")).toBe(
-      false,
-    );
-    expect(
-      getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(),
-    ).not.toBe("#f5efe4");
-  });
-
-  it("does not apply when the user has explicitly chosen dark either", () => {
-    // Dark is then owned by the `.dark` class alone, so there is exactly one
-    // mechanism deciding the theme rather than two that can disagree.
-    //
-    // Asserts the resolved value, not just `matches(...)`: a selector check
-    // alone is true for any content of theme.css and so cannot fail.
-    document.documentElement.dataset.theme = "dark";
-    expect(
-      getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(),
-    ).not.toBe("#f5efe4");
-  });
-});

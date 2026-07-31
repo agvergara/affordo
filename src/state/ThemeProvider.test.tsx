@@ -4,15 +4,10 @@ import { useEffect } from "react";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider, useTheme } from "./ThemeProvider";
-import { saveTheme } from "./theme-store";
+import { defaultTheme, saveTheme } from "./theme-store";
 
 beforeEach(() => window.localStorage.clear());
-afterEach(() => {
-  document.documentElement.classList.remove("dark");
-  // #98 added a `data-theme` marker; without this it leaks between tests and
-  // makes results order-dependent.
-  delete document.documentElement.dataset.theme;
-});
+afterEach(() => document.documentElement.classList.remove("dark"));
 
 function Probe() {
   const { theme, setTheme } = useTheme();
@@ -143,48 +138,184 @@ describe("ThemeProvider applies and persists the theme", () => {
   });
 });
 
-describe("ThemeProvider — explicit choice versus OS preference (#98)", () => {
-  const root = () => document.documentElement;
+/**
+ * Stub `matchMedia`, which jsdom does not implement. Returns a handle so a test
+ * can flip the OS preference and fire the `change` event the provider listens
+ * for — the only way to exercise a live OS switch here.
+ */
+function stubMatchMedia(initialDark: boolean) {
+  let matches = initialDark;
+  // A new MediaQueryList per call, each with its OWN listener set, as CSSOM
+  // View specifies. Sharing one set across instances would let code that
+  // subscribes to one and unsubscribes from another pass — which leaks the
+  // listener in a real browser, and is the likeliest refactor to break this.
+  const instances: Array<Set<(e: MediaQueryListEvent) => void>> = [];
+  const make = () => {
+    const listeners = new Set<(e: MediaQueryListEvent) => void>();
+    instances.push(listeners);
+    return {
+      get matches() {
+        return matches;
+      },
+      media: "(prefers-color-scheme: dark)",
+      addEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
+        void listeners.add(fn),
+      removeEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
+        void listeners.delete(fn),
+    };
+  };
+  window.matchMedia = make as unknown as typeof window.matchMedia;
+  return {
+    /** Flip the OS preference and notify every live listener, as an OS switch would. */
+    switchTo(dark: boolean) {
+      matches = dark;
+      act(() => {
+        for (const listeners of instances) {
+          for (const fn of [...listeners]) fn({ matches } as MediaQueryListEvent);
+        }
+      });
+    },
+    /** Listeners still attached across every instance handed out. */
+    get listenerCount() {
+      return instances.reduce((n, l) => n + l.size, 0);
+    },
+  };
+}
 
-  it("marks the root when the user has chosen, so CSS can yield to it", async () => {
+describe("ThemeProvider follows the OS until the user decides (#73)", () => {
+  const realMatchMedia = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = realMatchMedia;
+  });
+
+  it("starts dark on an OS-dark machine with no stored preference", () => {
+    stubMatchMedia(true);
     render(
       <ThemeProvider>
         <Probe />
       </ThemeProvider>,
     );
-    // Untouched: no marker, so the prefers-color-scheme block still applies.
-    expect(root().dataset.theme).toBeUndefined();
+    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+    expect(document.documentElement).toHaveClass("dark");
+  });
+
+  it("starts light on an OS-light machine with no stored preference", () => {
+    stubMatchMedia(false);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("theme")).toHaveTextContent("light");
+  });
+
+  it("follows the OS switching to dark while the user has not chosen", () => {
+    const os = stubMatchMedia(false);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("theme")).toHaveTextContent("light");
+
+    os.switchTo(true);
+    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+    expect(document.documentElement).toHaveClass("dark");
+  });
+
+  it("stops following the OS once the user chooses", async () => {
+    const os = stubMatchMedia(false);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "go-light" }));
+
+    // The user picked the theme the OS already showed — the weakest case, and
+    // the one that must still count as a choice.
+    os.switchTo(true);
+    expect(screen.getByTestId("theme")).toHaveTextContent("light");
+    expect(document.documentElement).not.toHaveClass("dark");
+  });
+
+  it("unsubscribes once the user chooses, rather than listening forever", async () => {
+    const os = stubMatchMedia(false);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(os.listenerCount).toBe(1);
 
     await userEvent.click(screen.getByRole("button", { name: "go-dark" }));
-    expect(root().dataset.theme).toBe("dark");
-
-    await userEvent.click(screen.getByRole("button", { name: "go-light" }));
-    // The point of #98: choosing *light* must be as explicit as choosing dark.
-    // It is the case that looks like the default and is not.
-    expect(root().dataset.theme).toBe("light");
-    expect(root().classList.contains("dark")).toBe(false);
+    expect(os.listenerCount).toBe(0);
   });
 
-  it("keeps the marker for a returning user who chose light", () => {
+  it("prefers a stored choice over the OS on first paint", () => {
     saveTheme("light");
+    stubMatchMedia(true);
     render(
       <ThemeProvider>
         <Probe />
       </ThemeProvider>,
     );
-    // Seeded from storage, not from the first toggle: a returning user's
-    // choice must keep overriding their OS across reloads.
-    expect(root().dataset.theme).toBe("light");
+    // A returning user's choice outranks their machine — the behaviour #98
+    // protected, now enforced by the provider rather than by a CSS guard.
+    expect(screen.getByTestId("theme")).toHaveTextContent("light");
+    expect(document.documentElement).not.toHaveClass("dark");
   });
 
-  it("leaves the root unmarked when storage holds no usable preference", () => {
-    window.localStorage.setItem("affordo.theme", "not json");
+  it("treats a stored choice that agrees with the OS as a choice", () => {
+    // The seeded half of the `chosen` seam. Both other stored-choice tests use
+    // a value that *disagrees* with the OS, so `chosen` derived from
+    // "differs from system" would pass them — and would then discard this
+    // user's saved preference the moment their OS flipped, while
+    // `affordo.theme` still held the old value.
+    saveTheme("dark");
+    const os = stubMatchMedia(true);
     render(
       <ThemeProvider>
         <Probe />
       </ThemeProvider>,
     );
-    // A corrupt record is not a choice — the OS keeps its say.
-    expect(root().dataset.theme).toBeUndefined();
+    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+
+    os.switchTo(false);
+    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+  });
+
+  it("does not subscribe for a stored choice that agrees with the OS", () => {
+    saveTheme("dark");
+    const os = stubMatchMedia(true);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(os.listenerCount).toBe(0);
+  });
+
+  it("never subscribes when a stored choice already exists", () => {
+    saveTheme("dark");
+    const os = stubMatchMedia(false);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(os.listenerCount).toBe(0);
+  });
+
+  it("falls back to the default where matchMedia does not exist", () => {
+    // jsdom ships without it, and a theme provider is not the place to make a
+    // whole suite depend on a browser API being polyfilled.
+    (window as { matchMedia?: unknown }).matchMedia = undefined;
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("theme")).toHaveTextContent(defaultTheme);
   });
 });

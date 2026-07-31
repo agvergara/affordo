@@ -36,8 +36,9 @@ export function loadTheme(): Theme {
  *
  * `loadTheme` collapses that distinction into `defaultTheme`, which is right
  * for choosing what to render but wrong for deciding whether the OS gets a
- * say: "light because chosen" and "light because untouched" must resolve the
- * `prefers-color-scheme` block differently (#98).
+ * say. `ThemeProvider` needs both halves: the stored theme when there is one,
+ * and the knowledge that there is none, so it can fall back to the OS and keep
+ * following it until the user chooses (#73).
  */
 export function loadStoredTheme(): Theme | null {
   try {
