@@ -113,7 +113,10 @@ describe("reference oklch color tokens (dossier §3)", () => {
     // `::selection` and the default border colour the same way.
     expect(baseLayer()).toMatch(/html\s*\{[^}]*color-scheme:\s*light/);
     expect(baseLayer()).toMatch(/html\.dark\s*\{[^}]*color-scheme:\s*dark/);
-    expect(baseLayer()).not.toMatch(/color-scheme:\s*light dark/);
+    // Checked against the whole file, not just the base layer: `:root` (0,1,0)
+    // outranks `html` (0,0,1), so a `light dark` reintroduced above the layer
+    // would escape a slice-scoped assertion *and* win the cascade.
+    expect(css).not.toMatch(/color-scheme:\s*light dark/);
   });
 
   it("paints text selection in the accent via the base layer", () => {
