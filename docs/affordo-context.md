@@ -481,6 +481,39 @@ suffixes.
 ### Footer
 - `footerLocal`: `Record persistent in local-cache`
 
+**Teardown** (`src/routes/goals.tsx:146-149`) — added later than the rest of this
+document, which originally recorded this footer's copy and landmark but no class
+string.
+
+**This document tears down components, not route bodies.** §5 and §16 cover
+`AppHeader`, `OnboardingWizard`, `GoalCard`, `GoalDialog`, `VerdictBadge` and each
+wizard step exhaustively; nothing covers the bodies of `GoalsPage` or
+`SettingsPage`. So markup living directly in a route is unrecorded by default —
+this footer, the snapshot section, the divider hairlines, the add-goal button and
+the route `<main>` elements among them. Do not read silence here as evidence about
+the reference (#127).
+
+That gap caused a real regression: PR #102's duel reasoned from the silence that
+this footer's dimming must be invented, and it was removed. It is not invented
+(#104).
+
+```tsx
+<footer className="mt-16 flex justify-between border-t border-border pt-6 opacity-50">
+  <p className="font-mono text-[10px] uppercase tracking-wider">{t("footerLocal")}</p>
+  <p className="font-mono text-[10px] uppercase tracking-wider">Affordo</p>
+</footer>
+```
+
+Notes:
+- **Inside `<main>`** (`mx-auto max-w-3xl px-4 py-10 sm:px-6`), not after it — so
+  `mt-16 border-t border-border pt-6` separates the footer from the content above
+  rather than from the viewport edge.
+- **`opacity-50` on the footer**, not `text-muted-foreground` on the text. The
+  children carry no colour of their own, only `font-mono text-[10px] uppercase
+  tracking-wider` — §4's "Caption / meta" type without its muted colour.
+- The right-hand label is the literal `Affordo`, **not** a dict key, unlike the
+  left-hand note.
+
 ### Strings NOT in the dict (hard-coded in components)
 
 - Select option labels (onboarding + settings): `EUR — €`, `GBP — £`, `USD — $` (em-dash + currency symbol).
@@ -652,6 +685,21 @@ ships light-only. Dark mode is latent/unreachable via UI.
 - **Heading order:** one `<h1>` per page (goals title / settings title / onboarding step
   title / 404 numeral / error title); goal names are `<h2>`. Onboarding headline & welcome
   body are `<p>` (not headings).
+- **Landmarks:** the `/goals` footer sits **inside** `<main>` (§6). Per ARIA in HTML
+  a `<footer>` scoped to `main` is *not* a `contentinfo` landmark — so the reference
+  ships no `contentinfo` on this screen. Testing-library resolves it as one anyway,
+  which is why `getByRole("contentinfo")` works in the suite and would stop working
+  on a dependency bump rather than on a change to the markup.
+
+  The gap is in **`@testing-library/dom`**, not in `aria-query`. `aria-query@5.3.0`
+  models the rule correctly and names `main` explicitly — `footer` "scoped to the
+  body element" maps to `contentinfo`, and `footer` "scoped to the main element"
+  maps to `generic`. But `makeElementSelector` (`dist/role-helpers.js`) builds its
+  selector from a concept's `name` and `attributes` only, reading `constraints`
+  solely at the attribute level, so concept-level ancestry constraints are
+  discarded and both footer concepts collapse to a bare `footer` selector. Anyone
+  checking `aria-query` will find correct data and conclude the hazard is gone; it
+  is untouched.
 - **Labelling:** form fields use shadcn `<Label htmlFor>` bound to input `id`s (onboarding
   `Field` component, goal dialog). Settings labels are **not** associated via `htmlFor`/`id`
   (labels present but not programmatically linked to inputs).
