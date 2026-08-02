@@ -687,10 +687,19 @@ ships light-only. Dark mode is latent/unreachable via UI.
   body are `<p>` (not headings).
 - **Landmarks:** the `/goals` footer sits **inside** `<main>` (§6). Per ARIA in HTML
   a `<footer>` scoped to `main` is *not* a `contentinfo` landmark — so the reference
-  ships no `contentinfo` on this screen. Testing-library resolves it as one anyway
-  (`aria-query` maps `footer` unconditionally), which is why `getByRole("contentinfo")`
-  works in the suite and would stop working on a dependency bump rather than on a
-  change to the markup.
+  ships no `contentinfo` on this screen. Testing-library resolves it as one anyway,
+  which is why `getByRole("contentinfo")` works in the suite and would stop working
+  on a dependency bump rather than on a change to the markup.
+
+  The gap is in **`@testing-library/dom`**, not in `aria-query`. `aria-query@5.3.0`
+  models the rule correctly and names `main` explicitly — `footer` "scoped to the
+  body element" maps to `contentinfo`, and `footer` "scoped to the main element"
+  maps to `generic`. But `makeElementSelector` (`dist/role-helpers.js`) builds its
+  selector from a concept's `name` and `attributes` only, reading `constraints`
+  solely at the attribute level, so concept-level ancestry constraints are
+  discarded and both footer concepts collapse to a bare `footer` selector. Anyone
+  checking `aria-query` will find correct data and conclude the hazard is gone; it
+  is untouched.
 - **Labelling:** form fields use shadcn `<Label htmlFor>` bound to input `id`s (onboarding
   `Field` component, goal dialog). Settings labels are **not** associated via `htmlFor`/`id`
   (labels present but not programmatically linked to inputs).
