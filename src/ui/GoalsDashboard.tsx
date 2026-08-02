@@ -152,25 +152,30 @@ export function GoalsDashboard() {
             ))}
           </ul>
         )}
+
+        {/*
+         * Dashboard footer (reference `src/routes/goals.tsx:146-149`, read off
+         * the reference app to close #104 — the dossier had no teardown for it).
+         *
+         * `opacity-50` is the reference's own. #102's duel concluded it was an
+         * invention and I conceded; the extraction shows the reference dims this
+         * footer and the dossier was simply incomplete. Dimming lives here rather
+         * than on a `text-muted-foreground`, which is why the children carry no
+         * colour of their own.
+         *
+         * Inside `<main>`, not after it, so `mt-16 border-t pt-6` separates it
+         * from the content above rather than from the viewport edge.
+         */}
+        <footer className="mt-16 flex justify-between border-t border-border pt-6 opacity-50">
+          <p className="font-mono text-[10px] uppercase tracking-wider">
+            Record persistent in local-cache
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-wider">
+            Affordo
+          </p>
+        </footer>
       </main>
 
-      {/*
-       * Dashboard footer: a `<footer>` landmark (dossier §11) carrying the
-       * local-cache note on the left and the literal `Affordo` label — not the
-       * dict's brand key — on the right (dossier §6 "Footer").
-       *
-       * Copy and landmark are dossier-recorded; the class string is not — the
-       * dossier gives this footer no teardown. So the type follows its nearest
-       * recorded role, "Caption / meta" (§4), the same string the snapshot
-       * labels above use, and nothing is stacked on top of it: an extra
-       * `opacity-*` step would be invented rather than reproduced. Confirming
-       * the reference's real string is tracked as a follow-up (see the duel
-       * threads on PR #102).
-       */}
-      <footer className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 pb-10 font-mono text-[10px] uppercase tracking-wider text-muted-foreground sm:px-6 sm:pb-16">
-        <span>Record persistent in local-cache</span>
-        <span>Affordo</span>
-      </footer>
 
       {/* One dialog for both jobs: `initial` decides add vs edit (dossier §5). */}
       <GoalDialog

@@ -49,11 +49,14 @@ describe("GoalsDashboard heading", () => {
     const title = screen.getByRole("heading", { name: /goals/i });
     expect(title).toBeInTheDocument();
     // The eyebrow sits above the big title, distinct from the header wordmark
-    // (which is a link) and from the footer's `Affordo` label (outside main).
-    // It's the non-link `Affordo` inside the page's main content.
-    const eyebrows = within(screen.getByRole("main"))
+    // (a link) and from the footer's `Affordo` label — which lives *inside*
+    // main, as the reference has it, so scoping to main no longer separates
+    // them. Excluding the footer is what isolates the eyebrow.
+    const main = screen.getByRole("main");
+    const footer = screen.getByRole("contentinfo");
+    const eyebrows = within(main)
       .getAllByText("Affordo")
-      .filter((el) => el.tagName !== "A");
+      .filter((el) => el.tagName !== "A" && !footer.contains(el));
     expect(eyebrows).toHaveLength(1);
   });
 });
@@ -235,21 +238,34 @@ describe("GoalsDashboard footer", () => {
     expect(footer).toHaveTextContent("Affordo");
   });
 
-  it("dims the footer with the muted token, adding no opacity of its own", () => {
+  it("dims the footer with the reference's own opacity", () => {
     renderDashboard();
-    // #63 asks for the footer "at the reference opacity", but the dossier
-    // records no class string for this footer at all — so the dimming it
-    // reproduces is the one the dossier *does* record for every muted mono
-    // micro-label (§4 Caption / meta): `text-muted-foreground`, with no
-    // `opacity-*` utility stacked on top. An extra step would be invented, not
-    // reproduced, and would drop 10px text to ~2:1 contrast in the default
-    // light theme. Confirming the real string is tracked as a follow-up.
+    // Read off the reference app (`src/routes/goals.tsx:146`), which closes
+    // #104: the dossier had no teardown for this footer, and #102's duel
+    // reasoned from that silence that `opacity-50` must be an invention. It is
+    // not — the reference dims this footer, and the extraction was simply
+    // incomplete. This assertion replaces one that pinned that wrong
+    // conclusion.
+    //
+    // The dimming is on the footer, not on a `text-muted-foreground`, which is
+    // why the children carry no colour of their own.
     //
     // jsdom loads no stylesheet, so the class is the only observable — the
     // narrow exception the verdict badge's colour tests take (PR #94).
     const footer = screen.getByRole("contentinfo");
-    expect(footer).toHaveClass("text-muted-foreground");
-    expect(footer.className).not.toMatch(/\bopacity-/);
+    expect(footer).toHaveClass("opacity-50");
+    expect(footer).not.toHaveClass("text-muted-foreground");
+  });
+
+  it("separates the footer from the content above it, as the reference does", () => {
+    renderDashboard();
+    const footer = screen.getByRole("contentinfo");
+    // `mt-16 border-t pt-6` — a hairline rule above the footer, which our
+    // earlier version had no equivalent of at all.
+    expect(footer).toHaveClass("mt-16", "border-t", "border-border", "pt-6");
+    // Inside `<main>`, so that rule separates it from the content rather than
+    // from the viewport edge.
+    expect(screen.getByRole("main").contains(footer)).toBe(true);
   });
 });
 

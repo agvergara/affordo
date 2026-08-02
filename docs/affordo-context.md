@@ -481,6 +481,29 @@ suffixes.
 ### Footer
 - `footerLocal`: `Record persistent in local-cache`
 
+**Teardown** (`src/routes/goals.tsx:146-149`) — added later than the rest of this
+document, which originally recorded this footer's copy and landmark but no class
+string. It was the only in-scope element without a teardown, and that gap caused a
+real regression: PR #102's duel reasoned from the silence that the dimming must be
+invented, and it was removed. It is not invented (#104).
+
+```tsx
+<footer className="mt-16 flex justify-between border-t border-border pt-6 opacity-50">
+  <p className="font-mono text-[10px] uppercase tracking-wider">{t("footerLocal")}</p>
+  <p className="font-mono text-[10px] uppercase tracking-wider">Affordo</p>
+</footer>
+```
+
+Notes:
+- **Inside `<main>`** (`mx-auto max-w-3xl px-4 py-10 sm:px-6`), not after it — so
+  `mt-16 border-t border-border pt-6` separates the footer from the content above
+  rather than from the viewport edge.
+- **`opacity-50` on the footer**, not `text-muted-foreground` on the text. The
+  children carry no colour of their own, only `font-mono text-[10px] uppercase
+  tracking-wider` — §4's "Caption / meta" type without its muted colour.
+- The right-hand label is the literal `Affordo`, **not** a dict key, unlike the
+  left-hand note.
+
 ### Strings NOT in the dict (hard-coded in components)
 
 - Select option labels (onboarding + settings): `EUR — €`, `GBP — £`, `USD — $` (em-dash + currency symbol).
