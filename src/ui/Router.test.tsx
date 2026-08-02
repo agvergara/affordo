@@ -216,3 +216,97 @@ describe("Router — unguarded routes", () => {
     expect(screen.getByText("Saved")).toBeInTheDocument();
   });
 });
+
+describe("Router — per-screen document head (#111)", () => {
+  const meta = (attr: "name" | "property", key: string) =>
+    document.head
+      .querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`)
+      ?.getAttribute("content");
+
+  it.each([
+    ["/onboarding", "Set up · Affordo", "Configure your financial profile once. Then weigh purchases in seconds."],
+    ["/goals", "Goals · Affordo", "See every purchase weighed against your working hours."],
+    ["/settings", "Settings · Affordo", "Edit your financial profile and preferences."],
+  ])("titles %s as %s", (path, title, description) => {
+    seedProfile();
+    navigateTo(path);
+    render(<Router navigate={vi.fn()} />);
+    expect(document.title).toBe(title);
+    expect(meta("name", "description")).toBe(description);
+    // og:title tracks the title, and og:description the description — the two
+    // are equal on every sub-route and differ only at the root (§1).
+    expect(meta("property", "og:title")).toBe(title);
+    expect(meta("property", "og:description")).toBe(description);
+  });
+
+  it("uses the separator the dossier records, a middle dot", () => {
+    seedProfile();
+    navigateTo("/goals");
+    render(<Router navigate={vi.fn()} />);
+    // U+00B7, not a bullet (•) or a hyphen — invisible to read, and the kind of
+    // thing a copy-paste silently changes.
+    expect(document.title).toContain("·");
+    expect(document.title).not.toContain("•");
+  });
+
+  it("restores the root head on a screen that has none of its own", () => {
+    navigateTo("/nonsense");
+    render(<Router navigate={vi.fn()} />);
+    expect(document.title).toBe("Affordo — Audit: Life/Cost");
+    // The root is the one place description and og:description differ.
+    expect(meta("name", "description")).toBe(
+      "Weigh purchases against your working hours. A private, local-first affordability calculator.",
+    );
+    expect(meta("property", "og:description")).toBe(
+      "Weigh purchases against your working hours.",
+    );
+  });
+
+  it("does not leave a previous screen's title behind", () => {
+    seedProfile();
+    navigateTo("/goals");
+    const first = render(<Router navigate={vi.fn()} />);
+    expect(document.title).toBe("Goals · Affordo");
+    first.unmount();
+
+    navigateTo("/nonsense");
+    render(<Router navigate={vi.fn()} />);
+    // The failure this guards is a head applied once at mount: the 404 would
+    // keep announcing itself as the goals dashboard.
+    expect(document.title).toBe("Affordo — Audit: Life/Cost");
+  });
+});
+
+describe("Router — head is keyed on the path, not the outcome (#111)", () => {
+  function Boom(): JSX.Element {
+    throw new Error("boom");
+  }
+
+  it("keeps a titled route's head when its screen throws", () => {
+    seedProfile();
+    navigateTo("/goals");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    render(<Router routes={{ "/goals": () => <Boom /> }} navigate={vi.fn()} />);
+
+    // The error boundary is what the user sees…
+    expect(screen.getByText(/something broke/i)).toBeInTheDocument();
+    // …but the tab still names the route, because `head()` belongs to the
+    // route that matched rather than to the outcome of rendering it. Pinned
+    // because the docblock previously claimed the opposite.
+    expect(document.title).toBe("Goals · Affordo");
+  });
+});
+
+describe("Router — the redirect gate keeps the root head (#111)", () => {
+  it("titles / with the root head, not the screen it redirects to", () => {
+    navigateTo("/");
+    render(<Router navigate={vi.fn()} />);
+
+    // §1: "Route `/` has no head() — inherits root defaults only." The gate is
+    // the app's entry URL, so getting this wrong means the very first thing a
+    // user sees in their tab is the name of a screen they are being sent away
+    // from. It was also the one row of §1's table with nothing behind it.
+    expect(document.title).toBe("Affordo — Audit: Life/Cost");
+  });
+});
