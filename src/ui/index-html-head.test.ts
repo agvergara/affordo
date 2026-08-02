@@ -9,6 +9,11 @@ import { describe, expect, it } from "vitest";
 // head lives in index.html, not a React route" — was true when written and is
 // not now. Narrowed rather than deleted, because the shipped shell is still
 // the only thing a crawler reads and nothing else asserts it.
+//
+// Named for the artefact rather than the module: it was `documentHead.test.ts`,
+// which sat beside a `documentHead.ts` it does not test — and `X.test.ts` tests
+// `X.ts` is what `vitest related`, coverage mappings and plain instinct all
+// assume before anyone reads a comment. Follows `deploy-config.test.ts`.
 import html from "../../index.html?raw";
 
 /** Extract the text between the first <title>…</title>. */
