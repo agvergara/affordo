@@ -64,7 +64,14 @@ export function GoalsDashboard() {
   return (
     <div className="min-h-dvh bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
+      {/*
+        `py-10` with no `sm:py-16` — the reference's own (`goals.tsx:74`). The
+        extra step was borrowed from the onboarding rhythm (§10) and is now
+        load-bearing: with the footer inside `<main>`, this bottom padding *is*
+        the footer's gap to the viewport, 40px in the reference against 64px for
+        us at ≥640px.
+      */}
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <header>
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Affordo
@@ -175,7 +182,6 @@ export function GoalsDashboard() {
           </p>
         </footer>
       </main>
-
 
       {/* One dialog for both jobs: `initial` decides add vs edit (dossier §5). */}
       <GoalDialog

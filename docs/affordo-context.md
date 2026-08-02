@@ -483,9 +483,19 @@ suffixes.
 
 **Teardown** (`src/routes/goals.tsx:146-149`) — added later than the rest of this
 document, which originally recorded this footer's copy and landmark but no class
-string. It was the only in-scope element without a teardown, and that gap caused a
-real regression: PR #102's duel reasoned from the silence that the dimming must be
-invented, and it was removed. It is not invented (#104).
+string.
+
+**This document tears down components, not route bodies.** §5 and §16 cover
+`AppHeader`, `OnboardingWizard`, `GoalCard`, `GoalDialog`, `VerdictBadge` and each
+wizard step exhaustively; nothing covers the bodies of `GoalsPage` or
+`SettingsPage`. So markup living directly in a route is unrecorded by default —
+this footer, the snapshot section, the divider hairlines, the add-goal button and
+the route `<main>` elements among them. Do not read silence here as evidence about
+the reference (#127).
+
+That gap caused a real regression: PR #102's duel reasoned from the silence that
+this footer's dimming must be invented, and it was removed. It is not invented
+(#104).
 
 ```tsx
 <footer className="mt-16 flex justify-between border-t border-border pt-6 opacity-50">
@@ -675,6 +685,12 @@ ships light-only. Dark mode is latent/unreachable via UI.
 - **Heading order:** one `<h1>` per page (goals title / settings title / onboarding step
   title / 404 numeral / error title); goal names are `<h2>`. Onboarding headline & welcome
   body are `<p>` (not headings).
+- **Landmarks:** the `/goals` footer sits **inside** `<main>` (§6). Per ARIA in HTML
+  a `<footer>` scoped to `main` is *not* a `contentinfo` landmark — so the reference
+  ships no `contentinfo` on this screen. Testing-library resolves it as one anyway
+  (`aria-query` maps `footer` unconditionally), which is why `getByRole("contentinfo")`
+  works in the suite and would stop working on a dependency bump rather than on a
+  change to the markup.
 - **Labelling:** form fields use shadcn `<Label htmlFor>` bound to input `id`s (onboarding
   `Field` component, goal dialog). Settings labels are **not** associated via `htmlFor`/`id`
   (labels present but not programmatically linked to inputs).

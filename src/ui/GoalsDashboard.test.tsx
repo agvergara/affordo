@@ -48,15 +48,19 @@ describe("GoalsDashboard heading", () => {
     renderDashboard();
     const title = screen.getByRole("heading", { name: /goals/i });
     expect(title).toBeInTheDocument();
-    // The eyebrow sits above the big title, distinct from the header wordmark
-    // (a link) and from the footer's `Affordo` label — which lives *inside*
-    // main, as the reference has it, so scoping to main no longer separates
-    // them. Excluding the footer is what isolates the eyebrow.
+    // The eyebrow sits above the big title, distinct from the footer's
+    // `Affordo` label — which lives *inside* main, as the reference has it, so
+    // scoping to main no longer separates them. Excluding the footer is what
+    // isolates the eyebrow.
+    //
+    // The header wordmark needs no exclusion: it is a link inside a `<nav>`
+    // outside `<main>`, so scoping to main already drops it. A `tagName !== "A"`
+    // clause here would be dead.
     const main = screen.getByRole("main");
     const footer = screen.getByRole("contentinfo");
     const eyebrows = within(main)
       .getAllByText("Affordo")
-      .filter((el) => el.tagName !== "A" && !footer.contains(el));
+      .filter((el) => !footer.contains(el));
     expect(eyebrows).toHaveLength(1);
   });
 });
