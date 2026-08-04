@@ -748,14 +748,17 @@ observation was.**
 | error `<h1>` | `text-4xl` | `text-6xl sm:text-8xl` |
 | 404 `<h1>` | `text-8xl … text-foreground` | `text-8xl`, no `text-foreground` |
 | caption | `mt-4` (404) / `mt-2` (error), `text-xs` | `text-[11px]`, no `mt-*` |
-| solid control (`Try again`, 404 `Go home`) | `border-2 border-foreground bg-foreground px-4 py-2`, hovering to outline | `border border-border bg-foreground px-6 py-3`, hovering to accent |
-| outline control (error `Go home`) | `border-2 border-foreground text-foreground`, hovering to solid | `border border-border px-6 py-3` |
+| error `Try again` | **solid**: `border-2 border-foreground bg-foreground px-4 py-2 … text-background`, hovering to outline | **solid**: `border border-border bg-foreground px-6 py-3 … text-background`, hovering to accent |
+| error `Go home` | **outline**: `border-2 border-foreground … text-foreground`, hovering to solid | **outline**: `border border-border px-6 py-3`, hovering to solid |
+| 404 `Go home` | **solid**, as `Try again` above, plus `inline-flex items-center` | **outline** — byte-identical to our error `Go home` |
 
-Our 404 (`Placeholder.tsx`) and error screen (`ErrorBoundary.tsx`) share one
-container treatment where the reference gives them the same container but
-different headings, and ours gives its two error-screen controls **different**
-classes where the table above collapses them — so both sides of that comparison
-need reading per-control, not per-screen.
+**Read that per control, not per screen.** The reference ships **two solid and one
+outline**; we ship **one solid and two outline**, because our two `Go home` links
+are byte-identical to each other while the reference's 404 `Go home` is a filled
+CTA and its error `Go home` is not. A row grouping controls by their *reference*
+treatment hides that, since the grouping does not hold on our side — which is how
+an earlier draft of this table came to assert three classes our 404 button does
+not have.
 
 ## 7. FORMS AND INPUTS
 
