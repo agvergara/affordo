@@ -418,7 +418,15 @@ describe("AA failures inherited from the reference", () => {
  * guard that the layer stays gone.
  */
 describe("the retired progressive-disclosure layer stays retired", () => {
-  /** Every module #114 deleted, not the three the first guard happened to name. */
+  /**
+   * Every retired module — #114's progressive-disclosure layer, plus the legacy
+   * engine #119 retired once nothing imported its exports.
+   *
+   * `types` is deliberately absent: the legacy `engine/types.ts` went with the
+   * rest, but the name is generic enough that a future legitimate `types.ts`
+   * would trip this guard for no reason. The two engine entries are specific
+   * enough not to recur by accident.
+   */
   const RETIRED = [
     "App",
     "Disclosure",
@@ -431,6 +439,8 @@ describe("the retired progressive-disclosure layer stays retired", () => {
     "storage",
     "goals",
     "expenses",
+    "evaluate",
+    "money",
   ];
 
   it("reaches a real graph, so the assertion below cannot pass vacuously", () => {

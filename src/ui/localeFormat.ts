@@ -1,15 +1,19 @@
-import type { Settings } from "../engine";
+import type { Currency } from "../engine/reference-types";
 
 /**
  * Reference-design money/number formatters (issue #42, Parent #39).
  *
- * These reproduce the reference app's locale-by-currency output EXACTLY and are
- * intentionally separate from the app's existing `./format` helpers, whose
- * European-style output (e.g. `€7,50`) the current app still relies on. Do not
- * conflate the two: this module is additive.
+ * These reproduce the reference app's locale-by-currency output EXACTLY. They
+ * were once described as "additive", alongside a `./format` module whose
+ * European-style output the app still relied on — #114 deleted that module with
+ * the rest of the progressive-disclosure layer, so these are simply the
+ * formatters now.
+ *
+ * `Currency` comes from `reference-types` like every other consumer
+ * (`profile-store`, `OnboardingWizard`, `SettingsScreen`). It was derived from
+ * the legacy `Settings["currency"]` until #119, which was the last thread
+ * holding the legacy type surface alive.
  */
-
-export type Currency = Settings["currency"];
 
 /** Em dash (U+2014) shown for non-finite values, matching the reference. */
 const EM_DASH = "—";
