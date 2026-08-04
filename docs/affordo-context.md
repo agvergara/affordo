@@ -478,6 +478,111 @@ suffixes.
 - `resetConfirm`: `This will erase your profile and all goals. Continue?`
 - `savedGoals`: `Saved goals`
 
+## 6b. ROUTE-BODY TEARDOWN
+
+Added by #127. **§5 and §16 tear down components; this section tears down the
+markup that lives directly in a route.** Before this existed, route bodies were
+unrecorded by default, and #104 is what that cost: a duel reasoned from the
+silence that the `/goals` footer's dimming was invented, removed it, and shipped
+a regression that survived review because the premise looked authoritative.
+
+Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`.
+
+### `/` — `index.tsx`
+
+No head. Renders a hydration gate only:
+
+```tsx
+<div className="flex min-h-dvh items-center justify-center bg-background">
+  <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+    loading…
+  </p>
+</div>
+```
+
+Then `<Navigate to={hasProfile ? "/goals" : "/onboarding"} />`.
+
+### `/onboarding` — `onboarding.tsx`
+
+A head (§1) plus `component: OnboardingWizard`. **No body of its own** — all markup
+is the component, torn down in §16.
+
+### `/goals` — `goals.tsx`
+
+Shell: `<div className="min-h-dvh bg-background">`, `<AppHeader />`, then
+`<main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">`.
+
+```tsx
+{/* Snapshot */}
+<section className="mb-10 border-t-4 border-foreground pt-6">
+  <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{t("brand")}</p>
+  <h1 className="mt-2 font-display text-6xl uppercase leading-none tracking-tight sm:text-8xl">{t("goalsTitle")}</h1>
+  <div className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
+    {/* ×3 */}
+    <div className="bg-background p-4">
+      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("hourlyRate")}</p>
+      <p className="mt-1 text-xl font-bold tracking-tight">
+        {fmt(hourly)} <span className="font-mono text-xs font-normal text-muted-foreground">{t("perHour")}</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+{/* Divider */}
+<div className="mb-6 flex items-center justify-between">
+  <div className="flex items-center gap-4">
+    <div className="h-px flex-1 bg-border" />
+    <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+      {t("savedGoals")} · {goals.length}
+    </span>
+    <div className="h-px flex-1 bg-border" />
+  </div>
+</div>
+
+{/* Add button */}
+<div className="mb-8 flex justify-end">
+  <Button className="gap-2 rounded-none bg-foreground px-5 py-5 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground">
+    <Plus className="size-4" />
+    {t("addGoal")}
+  </Button>
+</div>
+
+{/* Empty state */}
+<div className="border-2 border-dashed border-border p-12 text-center">
+  <p className="font-display text-3xl uppercase tracking-tight">{t("empty")}</p>
+  <p className="mt-2 text-sm text-muted-foreground">{t("emptyHint")}</p>
+</div>
+
+{/* List */}
+<div className="space-y-5">…</div>
+```
+
+Footer: see §6 above.
+
+### `/settings` — `settings.tsx`
+
+Shell as `/goals` but `<main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">`.
+Same `mb-10 border-t-4 border-foreground pt-6` snapshot header, with
+`font-display text-6xl` and **no `sm:text-8xl`**. Fields in `space-y-8`, each
+`space-y-2` with a `font-mono text-[10px] font-bold uppercase tracking-widest
+text-muted-foreground` label; the hour pair in `grid gap-8 sm:grid-cols-3`, the
+savings pair in `grid gap-8 sm:grid-cols-2`.
+
+### Known divergences at time of extraction
+
+Recorded rather than fixed — reconciliation is tracked on #127. **This list is
+what one pass found; it is not a proof of completeness.**
+
+| element | reference | ours |
+| --- | --- | --- |
+| snapshot section wrapper | `mb-10 border-t-4 border-foreground pt-6` | **absent** |
+| snapshot grid | `mt-6` | `mt-10` |
+| divider hairlines | `h-px flex-1 bg-border` either side | **absent** |
+| divider wrapper | `mb-6` | `mt-12 … gap-4` |
+| add-goal button | `px-5 py-5`, `text-[11px]`, `gap-2`, `<Plus className="size-4" />`, in `mb-8 flex justify-end` | `px-4 py-2`, `text-[10px]`, no icon, no wrapper |
+| empty state | `border-2 … p-12`, `font-display text-3xl` | `border … p-10`, `text-2xl` |
+| goals list | `space-y-5` | `mt-6 space-y-4` |
+
 ### Footer
 - `footerLocal`: `Record persistent in local-cache`
 
