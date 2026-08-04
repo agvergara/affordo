@@ -478,111 +478,6 @@ suffixes.
 - `resetConfirm`: `This will erase your profile and all goals. Continue?`
 - `savedGoals`: `Saved goals`
 
-## 6b. ROUTE-BODY TEARDOWN
-
-Added by #127. **§5 and §16 tear down components; this section tears down the
-markup that lives directly in a route.** Before this existed, route bodies were
-unrecorded by default, and #104 is what that cost: a duel reasoned from the
-silence that the `/goals` footer's dimming was invented, removed it, and shipped
-a regression that survived review because the premise looked authoritative.
-
-Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`.
-
-### `/` — `index.tsx`
-
-No head. Renders a hydration gate only:
-
-```tsx
-<div className="flex min-h-dvh items-center justify-center bg-background">
-  <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-    loading…
-  </p>
-</div>
-```
-
-Then `<Navigate to={hasProfile ? "/goals" : "/onboarding"} />`.
-
-### `/onboarding` — `onboarding.tsx`
-
-A head (§1) plus `component: OnboardingWizard`. **No body of its own** — all markup
-is the component, torn down in §16.
-
-### `/goals` — `goals.tsx`
-
-Shell: `<div className="min-h-dvh bg-background">`, `<AppHeader />`, then
-`<main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">`.
-
-```tsx
-{/* Snapshot */}
-<section className="mb-10 border-t-4 border-foreground pt-6">
-  <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{t("brand")}</p>
-  <h1 className="mt-2 font-display text-6xl uppercase leading-none tracking-tight sm:text-8xl">{t("goalsTitle")}</h1>
-  <div className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
-    {/* ×3 */}
-    <div className="bg-background p-4">
-      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("hourlyRate")}</p>
-      <p className="mt-1 text-xl font-bold tracking-tight">
-        {fmt(hourly)} <span className="font-mono text-xs font-normal text-muted-foreground">{t("perHour")}</span>
-      </p>
-    </div>
-  </div>
-</section>
-
-{/* Divider */}
-<div className="mb-6 flex items-center justify-between">
-  <div className="flex items-center gap-4">
-    <div className="h-px flex-1 bg-border" />
-    <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-      {t("savedGoals")} · {goals.length}
-    </span>
-    <div className="h-px flex-1 bg-border" />
-  </div>
-</div>
-
-{/* Add button */}
-<div className="mb-8 flex justify-end">
-  <Button className="gap-2 rounded-none bg-foreground px-5 py-5 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground">
-    <Plus className="size-4" />
-    {t("addGoal")}
-  </Button>
-</div>
-
-{/* Empty state */}
-<div className="border-2 border-dashed border-border p-12 text-center">
-  <p className="font-display text-3xl uppercase tracking-tight">{t("empty")}</p>
-  <p className="mt-2 text-sm text-muted-foreground">{t("emptyHint")}</p>
-</div>
-
-{/* List */}
-<div className="space-y-5">…</div>
-```
-
-Footer: see §6 above.
-
-### `/settings` — `settings.tsx`
-
-Shell as `/goals` but `<main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">`.
-Same `mb-10 border-t-4 border-foreground pt-6` snapshot header, with
-`font-display text-6xl` and **no `sm:text-8xl`**. Fields in `space-y-8`, each
-`space-y-2` with a `font-mono text-[10px] font-bold uppercase tracking-widest
-text-muted-foreground` label; the hour pair in `grid gap-8 sm:grid-cols-3`, the
-savings pair in `grid gap-8 sm:grid-cols-2`.
-
-### Known divergences at time of extraction
-
-Recorded rather than fixed — reconciliation is tracked on #127. **This list is
-what one pass found; it is not a proof of completeness.**
-
-| element | reference | ours |
-| --- | --- | --- |
-| snapshot section wrapper | `mb-10 border-t-4 border-foreground pt-6` | **absent** |
-| snapshot grid | `mt-6` | `mt-10` |
-| divider hairlines | `h-px flex-1 bg-border` either side | **absent** |
-| divider wrapper | `mb-6` | `mt-12 … gap-4` |
-| add-goal button | `px-5 py-5`, `text-[11px]`, `gap-2`, `<Plus className="size-4" />`, in `mb-8 flex justify-end` | `px-4 py-2`, `text-[10px]`, no icon, no wrapper |
-| empty state | `border-2 … p-12`, `font-display text-3xl` | `border … p-10`, `text-2xl` |
-| goals list | `space-y-5` | `mt-6 space-y-4` |
-
 ### Footer
 - `footerLocal`: `Record persistent in local-cache`
 
@@ -636,6 +531,208 @@ Notes:
 - Toast on settings save: `t("save")` = `Save` (uses `toast.success`).
 
 ---
+
+## 6b. ROUTE-BODY TEARDOWN
+
+Added by #127. **§5 and §16 tear down components; this section tears down the
+markup that lives directly in a route.** Before this existed, route bodies were
+unrecorded by default, and #104 is what that cost: a duel reasoned from the
+silence that the `/goals` footer's dimming was invented, removed it, and shipped
+a regression that survived review because the premise looked authoritative.
+
+Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`.
+
+### `/` — `index.tsx`
+
+No head. Renders a hydration gate only:
+
+```tsx
+<div className="flex min-h-dvh items-center justify-center bg-background">
+  <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+    loading…
+  </p>
+</div>
+```
+
+Then `<Navigate to={hasProfile ? "/goals" : "/onboarding"} />`.
+
+### `/onboarding` — `onboarding.tsx`
+
+A head (§1) plus `component: OnboardingWizard`. **No body of its own** — all markup
+is the component, torn down in §16.
+
+### `/goals` — `goals.tsx`
+
+Shell: `<div className="min-h-dvh bg-background">`, `<AppHeader />`, then
+`<main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">`.
+
+```tsx
+{/* Snapshot */}
+<section className="mb-10 border-t-4 border-foreground pt-6">
+  <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{t("brand")}</p>
+  <h1 className="mt-2 font-display text-6xl uppercase leading-none tracking-tight sm:text-8xl">{t("goalsTitle")}</h1>
+  <div className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
+    {/* The three tiles share their chrome and DIFFER in their value. Do not
+        collapse them: only the first carries the per-hour suffix, the second is
+        a bare amount, and the third is a percentage rather than money. */}
+    <div className="bg-background p-4">
+      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("hourlyRate")}</p>
+      <p className="mt-1 text-xl font-bold tracking-tight">
+        {fmt(hourly)} <span className="font-mono text-xs font-normal text-muted-foreground">{t("perHour")}</span>
+      </p>
+    </div>
+    <div className="bg-background p-4">
+      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("disposable")}</p>
+      <p className="mt-1 text-xl font-bold tracking-tight">{fmt(disposable)}</p>
+    </div>
+    <div className="bg-background p-4">
+      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("threshold")}</p>
+      <p className="mt-1 text-xl font-bold tracking-tight">{profile.threshold}%</p>
+    </div>
+  </div>
+</section>
+
+{/* Divider */}
+<div className="mb-6 flex items-center justify-between">
+  <div className="flex items-center gap-4">
+    <div className="h-px flex-1 bg-border" />
+    <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+      {t("savedGoals")} · {goals.length}
+    </span>
+    <div className="h-px flex-1 bg-border" />
+  </div>
+</div>
+
+{/* Add button */}
+<div className="mb-8 flex justify-end">
+  <Button className="gap-2 rounded-none bg-foreground px-5 py-5 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground">
+    <Plus className="size-4" />
+    {t("addGoal")}
+  </Button>
+</div>
+
+{/* Empty state */}
+<div className="border-2 border-dashed border-border p-12 text-center">
+  <p className="font-display text-3xl uppercase tracking-tight">{t("empty")}</p>
+  <p className="mt-2 text-sm text-muted-foreground">{t("emptyHint")}</p>
+</div>
+
+{/* List */}
+<div className="space-y-5">…</div>
+```
+
+Footer: see §6 above.
+
+### `/settings` — `settings.tsx`
+
+Shell as `/goals` but `<main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">`.
+Same `mb-10 border-t-4 border-foreground pt-6` header wrapper, carrying the
+`Affordo` eyebrow and `<h1>` with `font-display text-6xl` and **no
+`sm:text-8xl`**.
+
+**`/settings` defines its own input class, not §16's.** `settings.tsx:59-60`:
+
+```
+w-full border-0 border-b-2 border-border bg-transparent px-0 py-2 text-2xl
+font-bold outline-none focus-visible:border-accent focus-visible:ring-0
+rounded-none shadow-none
+```
+
+That is `text-2xl` and has **no `transition-colors`**, where §16's
+`bigInputClass` is `text-3xl` **with** it. The two screens are not the same
+control and §16 must not be used as this screen's record — an earlier draft of
+this section said it could be, which is exactly the substitution that produces
+drift.
+
+Fields in `space-y-8`, each `space-y-2` with a `font-mono text-[10px] font-bold
+uppercase tracking-widest text-muted-foreground` label. Currency uses
+`bigInput + " h-auto"` on the `SelectTrigger`. The three hour/payment fields sit
+in `grid gap-8 sm:grid-cols-3`, the savings pair in `grid gap-8 sm:grid-cols-2`.
+
+**Field order:** currency, salary, the hours/payments trio, expenses, the savings
+pair, **threshold last**.
+
+Action row (`settings.tsx:148-162`), which is not a wizard control and has no
+other record:
+
+```tsx
+<div className="mt-12 flex items-center justify-between border-t border-border pt-6">
+  <Button variant="ghost" className="font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:text-destructive">{t("resetAll")}</Button>
+  <Button className="rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground">{t("save")}</Button>
+</div>
+```
+
+### `__root.tsx` — the 404 and error screens
+
+Route bodies like any other, and previously recorded only as copy (§6) and prose
+(§2/§14).
+
+```tsx
+{/* NotFoundComponent */}
+<div className="flex min-h-screen items-center justify-center bg-background px-4">
+  <div className="max-w-md text-center">
+    <h1 className="font-display text-8xl uppercase tracking-tight text-foreground">404</h1>
+    <p className="mt-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">Page not found</p>
+    <div className="mt-6">
+      <Link to="/" className="inline-flex items-center border-2 border-foreground bg-foreground px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-transparent hover:text-foreground">Go home</Link>
+    </div>
+  </div>
+</div>
+
+{/* ErrorComponent */}
+<div className="flex min-h-screen items-center justify-center bg-background px-4">
+  <div className="max-w-md text-center">
+    <h1 className="font-display text-4xl uppercase tracking-tight">Something broke</h1>
+    <p className="mt-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">The audit could not load.</p>
+    <div className="mt-6 flex flex-wrap justify-center gap-2">
+      <button className="border-2 border-foreground bg-foreground px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-transparent hover:text-foreground">Try again</button>
+      …
+    </div>
+  </div>
+</div>
+```
+
+Note the error screen's `<h1>` is `text-4xl` where the 404's is `text-8xl` — they
+are not the same treatment.
+
+### Known divergences at time of extraction
+
+Recorded rather than fixed — reconciliation is tracked on #127. **This list is
+what one pass found; it is not a proof of completeness.**
+
+| element | reference | ours |
+| --- | --- | --- |
+| snapshot section wrapper | `mb-10 border-t-4 border-foreground pt-6` | **absent** |
+| snapshot grid | `mt-6` | `mt-10` |
+| divider hairlines | `h-px flex-1 bg-border` either side | **absent** |
+| divider wrapper | `mb-6` | `mt-12 … gap-4` |
+| add-goal button | `px-5 py-5`, `text-[11px]`, `gap-2`, `<Plus className="size-4" />`, in `mb-8 flex justify-end` | `px-4 py-2`, `text-[10px]`, no icon, no wrapper |
+| empty state | `border-2 … p-12`, `font-display text-3xl` | `border … p-10`, `text-2xl` |
+| goals list | `space-y-5` | `mt-6 space-y-4` |
+| divider label | `font-medium`, `tracking-[0.2em]`, `<span>` | `font-bold`, `tracking-widest`, `<div>` |
+| divider / add-button | two blocks: `mb-6` divider, then `mb-8 flex justify-end` | merged into one `justify-between` row |
+| list element | `<div className="space-y-5">` | `<ul>` / `<li>` |
+
+**`/settings`:**
+
+| element | reference | ours |
+| --- | --- | --- |
+| header wrapper | `mb-10 border-t-4 border-foreground pt-6`, **with the `Affordo` eyebrow** | absent — including the eyebrow, which is copy, not chrome |
+| field order | threshold **last**, after the savings pair | follows the wizard's order |
+| main padding | `py-10` | `py-16` |
+| field label | `text-[11px]`, no `font-bold` | `text-[10px] font-bold` |
+| input | `border-b-2`, `text-2xl`, no `transition-colors` | `border-b` |
+| save button | `rounded-none … px-6 py-6` | `rounded-md … py-3` |
+| hints | none rendered on this screen | three hint paragraphs |
+| action row | `mt-12 … border-t border-border pt-6` wrapper | no equivalent wrapper |
+
+**`__root.tsx` (404 / error):**
+
+| element | reference | ours |
+| --- | --- | --- |
+| container | `min-h-screen … px-4` + inner `max-w-md text-center` | `min-h-dvh flex-col … gap-6 px-4 py-16 text-center` |
+| error `<h1>` | `text-4xl` | `text-6xl sm:text-8xl` |
+| buttons | `border-2 border-foreground bg-foreground px-4 py-2`, inverting on hover | `border border-border … px-6 py-3` |
 
 ## 7. FORMS AND INPUTS
 
