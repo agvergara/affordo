@@ -34,6 +34,5 @@ governing constraint for this rebuild.
 
 The float-based reference engine ships **additively** in
 `src/engine/reference-evaluate.ts` / `reference-types.ts`. The legacy
-integer-cents engine (`evaluate.ts`, `money.ts`) and its ADR 0012 invariant
-remain in force for the current UI until its last consumer migrates to the
-reference engine in a later slice.
+integer-cents engine (`evaluate.ts`, `money.ts`) and its ADR 0012 invariant were
+deleted in #119; float currency units are now the app's only money model.

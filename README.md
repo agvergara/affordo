@@ -70,21 +70,21 @@ Android app untouched ([ADR 0008](docs/adr/0008-isolated-pure-typescript-engine.
 
 ```
         ┌────────────────────────────────────────────────┐
-  UI    │  App.tsx  (React)                               │
- src/ui │  format · expenses · storage · goals            │
+  UI    │  Router · wizard · goals · settings  (React)     │
+ src/ui │  state/ holds profile · goals · theme            │
         └────────────────────────┬───────────────────────┘
-                                  │  evaluate(profile, purchase, settings)
+                                  │  evaluateReference(profile, goal)
         ┌────────────────────────▼───────────────────────┐
- ENGINE │  evaluate(…) → Evaluation                       │
- src/   │  pure TypeScript · money = integer cents        │
- engine │  zero framework imports · types · money         │
+ ENGINE │  evaluateReference(…) → ReferenceVerdict         │
+ src/   │  pure TypeScript · money = float currency units  │
+ engine │  zero framework imports · reference-types        │
         └────────────────────────────────────────────────┘
 ```
 
-`evaluate(profile, purchase, settings) → Evaluation` is the one seam: give it a
-financial profile, a purchase, and settings, and it hands back the Net Hourly Wage,
-the Time Cost, the Verdict, and whether the Challenge fires. Derived values (Net Hourly
-Wage, Surplus) are computed *inside* — the caller never supplies them.
+`evaluateReference(profile, goal) → ReferenceVerdict` is the one seam: give it a
+financial profile and a goal, and it hands back the Net Hourly Wage, the Time Cost in
+hours and days, and the four-way verdict. Derived values (Net Hourly Wage, Surplus) are
+computed *inside* — the caller never supplies them.
 
 ---
 
@@ -131,13 +131,15 @@ npm run typecheck # tsc --noEmit
 
 ```
 src/
-  engine/     evaluate · types · money   — pure TS, no framework imports
-  ui/         App.tsx · format · expenses · storage · goals
+  engine/     reference-evaluate · reference-types  — pure TS, no framework imports
+  ui/         Router · OnboardingWizard · GoalsDashboard · SettingsScreen
+  state/      profile · goals · theme stores and their providers
+  styles/     Tailwind v4 @theme tokens
   main.tsx    React entry point
 e2e/          Playwright journeys
 docs/
   prd/        product requirements (frozen, per release)
-  adr/        13 architecture decision records
+  adr/        21 architecture decision records
 CONTEXT.md    the glossary / ubiquitous language
 ```
 
