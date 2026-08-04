@@ -19,12 +19,21 @@ export type Navigate = (to: string) => void;
 
 const defaultNavigate: Navigate = (to) => window.location.replace(to);
 
-/** The mono loading line shown while the state layer hydrates (dossier §4/§9):
- * no skeletons, one centered line. */
+/**
+ * The mono loading line shown while the state layer hydrates (dossier §4/§9):
+ * no skeletons, one centered line.
+ *
+ * `text-muted-foreground`, not `text-muted`. The latter is a *surface* token —
+ * `oklch(0.94)` in light, `oklch(0.22)` in dark — so it rendered this line at
+ * ~1.15:1 against the background in both themes, i.e. invisible. It was the only
+ * bare `text-muted` in the codebase against 39 correct uses, and it survived
+ * because this gate renders for one frame before redirecting: no screenshot
+ * review sees it (#132).
+ */
 function Loading() {
   return (
     <main className="grid min-h-screen place-items-center">
-      <p className="font-mono text-[11px] uppercase tracking-widest text-muted">
+      <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
         loading…
       </p>
     </main>

@@ -135,6 +135,23 @@ const PAIRINGS: ReadonlyArray<[label: string, fg: string, bg: string]> = [
   ["legacy muted labels", "--stone", "--canvas"],
 ];
 
+/**
+ * Surface tokens, asserted to be unusable as text.
+ *
+ * `--muted` is a *background*, and `text-muted` reads it as a foreground. That
+ * shipped on the hydration gate at ~1.15:1 in both themes — invisible — and no
+ * pairing swept here would have caught it, because the sweep only knows the
+ * pairings someone thought to list. This inverts that: it asserts the surface
+ * tokens FAIL as text, so if a future pairing is added that quietly makes one
+ * legible, the contradiction surfaces here rather than in a screenshot nobody
+ * takes (#132).
+ */
+const SURFACES: ReadonlyArray<[label: string, token: string]> = [
+  ["muted", "--muted"],
+  ["card", "--card"],
+  ["popover", "--popover"],
+];
+
 /** Resolve a token in `selector`, falling back to `:root` for anything it does not restate. */
 function resolver(selector: string) {
   const declared = tokens(selector);
@@ -172,6 +189,21 @@ describe.each([
  */
 /** Tailwind's `emerald-600`, the one non-token colour the reference specifies. */
 const TAILWIND_EMERALD_600: RGB = [5 / 255, 150 / 255, 105 / 255];
+
+describe.each([
+  ["light", ":root"],
+  ["dark", ".dark"],
+])("%s theme: surface tokens are not legible as text", (_theme, selector) => {
+  const value = resolver(selector);
+
+  it.each(SURFACES)("%s is a surface, not a foreground", (_label, token) => {
+    // Well under AA — the point is that these are nowhere near usable, so a
+    // reading below 3:1 is the assertion rather than an accident of the palette.
+    expect(
+      contrast(toSrgb(value(token)), toSrgb(value("--background"))),
+    ).toBeLessThan(3);
+  });
+});
 
 describe("AA failures inherited from the reference", () => {
   it("accent surfaces fail in the light theme, and it is the worse of the two", () => {
