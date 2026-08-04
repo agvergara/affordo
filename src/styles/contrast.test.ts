@@ -35,15 +35,13 @@ import { resolve } from "node:path";
  * declined to grade it clean; flagging it here so the next reader judges it
  * rather than inherits it.
  */
-const css = readFileSync(
-  resolve(__dirname, "theme.css"),
-  "utf8",
-);
+const css = readFileSync(resolve(__dirname, "theme.css"), "utf8");
 
 /** Read one selector's custom-property declarations. */
 function tokens(selector: string): Record<string, string> {
   const block = new RegExp(
-    selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\{([\\s\\S]*?)\\n\\}",
+    selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+      "\\s*\\{([\\s\\S]*?)\\n\\}",
   ).exec(css);
   if (!block) throw new Error(`no ${selector} block in theme.css`);
   const out: Record<string, string> = {};
@@ -158,9 +156,67 @@ function resolver(selector: string) {
   const light = tokens(":root");
   return (name: string): string => {
     const v = declared[name] ?? light[name];
-    if (!v) throw new Error(`token ${name} is defined in neither ${selector} nor :root`);
+    if (!v)
+      throw new Error(
+        `token ${name} is defined in neither ${selector} nor :root`,
+      );
     return v;
   };
+}
+
+/**
+ * Walk the real module graph from the app's entry point.
+ *
+ * The first version of this guard read two files as text and looked for three
+ * literal specifiers. It was vacuous in three of four realistic reintroduction
+ * paths, and the one path it did catch was the one its author had tested —
+ * `main.tsx` lives in `src/`, so it can only ever write `"./ui/App"`, never the
+ * `"./App"` the guard scanned for, meaning that half could never fire at all.
+ *
+ * So this resolves specifiers instead of matching them: static imports,
+ * side-effect imports, and `export … from`, followed transitively.
+ */
+function liveGraph(): Set<string> {
+  const root = resolve(__dirname, "..", "..", "src", "main.tsx");
+  const seen = new Set<string>();
+  const queue = [root];
+  while (queue.length) {
+    const file = queue.pop();
+    if (!file || seen.has(file)) continue;
+    seen.add(file);
+    let source: string;
+    try {
+      source = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    const specifiers = [...source.matchAll(/(?:from|import)\s+"([^"]+)"/g)].map(
+      (m) => m[1] ?? "",
+    );
+    for (const spec of specifiers) {
+      if (!spec.startsWith(".")) continue;
+      const base = resolve(file, "..", spec);
+      // A `.js`/`.jsx` specifier is the TS/ESM convention for importing a
+      // `.ts`/`.tsx` sibling, so it must resolve to the source file or the
+      // walk stops at a path that does not exist and reports nothing.
+      const rewritten = base.replace(/\.jsx?$/, "");
+      for (const candidate of [
+        base,
+        `${base}.ts`,
+        `${base}.tsx`,
+        `${rewritten}.ts`,
+        `${rewritten}.tsx`,
+        `${base}/index.ts`,
+        `${base}/index.tsx`,
+      ]) {
+        if (existsSync(candidate) && statSync(candidate).isFile()) {
+          queue.push(candidate);
+          break;
+        }
+      }
+    }
+  }
+  return seen;
 }
 
 describe.each([
@@ -171,9 +227,9 @@ describe.each([
 
   it.each(PAIRINGS)("%s", (_label, fg, bg) => {
     // `resolver` throws on a missing token, so reaching here means both resolved.
-    expect(contrast(toSrgb(value(fg)), toSrgb(value(bg)))).toBeGreaterThanOrEqual(
-      4.5,
-    );
+    expect(
+      contrast(toSrgb(value(fg)), toSrgb(value(bg))),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 });
 
@@ -193,15 +249,92 @@ const TAILWIND_EMERALD_600: RGB = [5 / 255, 150 / 255, 105 / 255];
 describe.each([
   ["light", ":root"],
   ["dark", ".dark"],
-])("%s theme: surface tokens are not legible as text", (_theme, selector) => {
-  const value = resolver(selector);
+])(
+  "%s theme: surface tokens are illegible on the page background",
+  (_theme, selector) => {
+    const value = resolver(selector);
 
-  it.each(SURFACES)("%s is a surface, not a foreground", (_label, token) => {
-    // Well under AA — the point is that these are nowhere near usable, so a
-    // reading below 3:1 is the assertion rather than an accident of the palette.
+    it.each(SURFACES)(
+      "%s is illegible as text on --background",
+      (_label, token) => {
+        // Well under AA — the point is that these are nowhere near usable, so a
+        // reading below 3:1 is the assertion rather than an accident of the palette.
+        expect(
+          contrast(toSrgb(value(token)), toSrgb(value("--background"))),
+        ).toBeLessThan(3);
+      },
+    );
+  },
+);
+
+/**
+ * The surface tokens above are illegible as text — this asserts nothing in the
+ * shipped app uses them that way, anywhere.
+ *
+ * #133 originally guarded this with one `toHaveClass` on the loading line, which
+ * is where the bug happened to be. That guard was worth exactly one element on
+ * one route: mutating `GoalCard.tsx`'s note to `text-muted` left all 432 tests
+ * green. A DOM assertion can only ever cover the nodes a test renders, and the
+ * defect class here — a surface token typo'd into a text utility — can land in
+ * any file. So this scans source instead, over the same live import graph the
+ * retirement guard walks, and covers the files no test happens to mount.
+ *
+ * `--background` is deliberately absent: `text-background` is a legitimate
+ * foreground on `bg-foreground` (7 uses), and `PAIRINGS` requires it legible
+ * there. Illegible *on the page background* is not the same claim as *never a
+ * foreground*, which is why the describe above no longer says the latter.
+ */
+describe("no live module uses a surface token as a text colour", () => {
+  // `(?!-)` matters: `-` is a word boundary, so `/\btext-muted\b/` also matches
+  // inside `text-muted-foreground` and would flag all 39 correct uses. Same trap
+  // as the quote-sensitive `manifest` assertion in #128.
+  const FORBIDDEN = [
+    ["text-muted", /\btext-muted(?!-)/],
+    ["text-card", /\btext-card(?!-)/],
+    ["text-popover", /\btext-popover(?!-)/],
+  ] as const;
+
+  /**
+   * Comments are stripped before scanning. Without this the guard's first run
+   * flagged `Router.tsx` — for the docblock *explaining* the fix, which names
+   * the token it warns against. A guard that cannot survive being described is
+   * a guard nobody can document, and the false positive would have been
+   * silenced by weakening the pattern rather than by fixing the scan.
+   */
+  const code = (file: string) =>
+    readFileSync(file, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  it.each(FORBIDDEN)("no module uses %s", (name, pattern) => {
+    const offenders = [...liveGraph()].filter((file) =>
+      pattern.test(code(file)),
+    );
     expect(
-      contrast(toSrgb(value(token)), toSrgb(value("--background"))),
-    ).toBeLessThan(3);
+      offenders.map((f) => f.split("/src/")[1] ?? f),
+      `${name} is a surface token — it renders near-invisibly as text`,
+    ).toEqual([]);
+  });
+
+  it("catches the token used as text, so the scan cannot pass vacuously", () => {
+    // The regexes are the whole guard; if one silently matched nothing the
+    // assertions above would be trivially true. Prove they fire on the shape
+    // they are meant to catch, and stay quiet on the correct one.
+    expect(FORBIDDEN[0][1].test('className="text-muted"')).toBe(true);
+    expect(FORBIDDEN[0][1].test('className="text-muted-foreground"')).toBe(
+      false,
+    );
+    expect(FORBIDDEN[0][1].test('className="hover:text-muted"')).toBe(true);
+  });
+
+  it("strips comments but not the code beside them", () => {
+    // The stripper must not become the hiding place: a real usage on a line
+    // that also carries a comment still has to be seen.
+    const graph = [...liveGraph()];
+    const router = graph.find((f) => f.endsWith("/ui/Router.tsx"));
+    expect(router, "Router.tsx should be in the live graph").toBeDefined();
+    expect(code(router as string)).not.toContain("bare `text-muted`");
+    expect(code(router as string)).toContain("text-muted-foreground");
   });
 });
 
@@ -227,16 +360,19 @@ describe("AA failures inherited from the reference", () => {
   it.each([
     ["--background", 2.96],
     ["--card", 3.1],
-  ])("accent used as text on %s also fails in light, at ~%s:1", (surface, approx) => {
-    // §3 (line 202) gives accent four roles, three of them text on a canvas
-    // rather than a filled surface — `text-accent` is on the wizard's kicker
-    // and the goal card's above-threshold caption, both 10px mono. The filled
-    // -surface row above understated the blast radius.
-    const light = resolver(":root");
-    const ratio = contrast(toSrgb(light("--accent")), toSrgb(light(surface)));
-    expect(ratio).toBeLessThan(4.5);
-    expect(ratio).toBeCloseTo(approx, 1);
-  });
+  ])(
+    "accent used as text on %s also fails in light, at ~%s:1",
+    (surface, approx) => {
+      // §3 (line 202) gives accent four roles, three of them text on a canvas
+      // rather than a filled surface — `text-accent` is on the wizard's kicker
+      // and the goal card's above-threshold caption, both 10px mono. The filled
+      // -surface row above understated the blast radius.
+      const light = resolver(":root");
+      const ratio = contrast(toSrgb(light("--accent")), toSrgb(light(surface)));
+      expect(ratio).toBeLessThan(4.5);
+      expect(ratio).toBeCloseTo(approx, 1);
+    },
+  );
 
   it("accent surfaces pass in the dark theme, so this is light-only", () => {
     const dark = resolver(".dark");
@@ -282,61 +418,6 @@ describe("AA failures inherited from the reference", () => {
  * guard that the layer stays gone.
  */
 describe("the retired progressive-disclosure layer stays retired", () => {
-  /**
-   * Walk the real module graph from the app's entry point.
-   *
-   * The first version of this guard read two files as text and looked for three
-   * literal specifiers. It was vacuous in three of four realistic reintroduction
-   * paths, and the one path it did catch was the one its author had tested —
-   * `main.tsx` lives in `src/`, so it can only ever write `"./ui/App"`, never the
-   * `"./App"` the guard scanned for, meaning that half could never fire at all.
-   *
-   * So this resolves specifiers instead of matching them: static imports,
-   * side-effect imports, and `export … from`, followed transitively.
-   */
-  function liveGraph(): Set<string> {
-    const root = resolve(__dirname, "..", "..", "src", "main.tsx");
-    const seen = new Set<string>();
-    const queue = [root];
-    while (queue.length) {
-      const file = queue.pop();
-      if (!file || seen.has(file)) continue;
-      seen.add(file);
-      let source: string;
-      try {
-        source = readFileSync(file, "utf8");
-      } catch {
-        continue;
-      }
-      const specifiers = [
-        ...source.matchAll(/(?:from|import)\s+"([^"]+)"/g),
-      ].map((m) => m[1] ?? "");
-      for (const spec of specifiers) {
-        if (!spec.startsWith(".")) continue;
-        const base = resolve(file, "..", spec);
-        // A `.js`/`.jsx` specifier is the TS/ESM convention for importing a
-        // `.ts`/`.tsx` sibling, so it must resolve to the source file or the
-        // walk stops at a path that does not exist and reports nothing.
-        const rewritten = base.replace(/\.jsx?$/, "");
-        for (const candidate of [
-          base,
-          `${base}.ts`,
-          `${base}.tsx`,
-          `${rewritten}.ts`,
-          `${rewritten}.tsx`,
-          `${base}/index.ts`,
-          `${base}/index.tsx`,
-        ]) {
-          if (existsSync(candidate) && statSync(candidate).isFile()) {
-            queue.push(candidate);
-            break;
-          }
-        }
-      }
-    }
-    return seen;
-  }
-
   /** Every module #114 deleted, not the three the first guard happened to name. */
   const RETIRED = [
     "App",

@@ -26,9 +26,17 @@ const defaultNavigate: Navigate = (to) => window.location.replace(to);
  * `text-muted-foreground`, not `text-muted`. The latter is a *surface* token —
  * `oklch(0.94)` in light, `oklch(0.22)` in dark — so it rendered this line at
  * ~1.15:1 against the background in both themes, i.e. invisible. It was the only
- * bare `text-muted` in the codebase against 39 correct uses, and it survived
- * because this gate renders for one frame before redirecting: no screenshot
- * review sees it (#132).
+ * bare `text-muted` in the codebase against 39 correct uses (#132).
+ *
+ * Why it survived is worth stating accurately, since the first version of this
+ * comment got it wrong: *not* because the gate renders for a single frame. As
+ * line 16 above says, a redirect here is a real location change, so the document
+ * stays painted for the whole navigation — it only looks like one frame under
+ * test, where `navigate` is a spy that never leaves. And this line is not one
+ * gate: it serves the index redirect, the hydration wait, and the profile-less
+ * branch of `Guard`, which covers both `/goals` and `/settings`. It survived
+ * because these are transient states nobody screenshots, which is a weaker and
+ * more honest claim than the one it replaces.
  */
 function Loading() {
   return (
