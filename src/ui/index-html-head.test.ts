@@ -73,7 +73,7 @@ describe("document head", () => {
     // narrow thing #39 permits; these are the ones it rules out by name, and
     // the obvious next step for anyone "finishing" the icon set.
     expect(html).not.toMatch(/apple-touch-icon/);
-    expect(html).not.toMatch(/rel="manifest"/);
+    expect(html).not.toMatch(/rel=["\047]manifest/);
   });
 
   it("references no og:image, matching the reference (no image asset)", () => {
