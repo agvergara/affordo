@@ -686,19 +686,34 @@ Route bodies like any other, and previously recorded only as copy (§6) and pros
     <p className="mt-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">The audit could not load.</p>
     <div className="mt-6 flex flex-wrap justify-center gap-2">
       <button className="border-2 border-foreground bg-foreground px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-transparent hover:text-foreground">Try again</button>
-      …
+      <a href="/" className="border-2 border-foreground px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-foreground hover:text-background">Go home</a>
     </div>
   </div>
 </div>
 ```
 
-Note the error screen's `<h1>` is `text-4xl` where the 404's is `text-8xl` — they
-are not the same treatment.
+Two things not to collapse here:
+
+- **The error screen's `<h1>` is `text-4xl` where the 404's is `text-8xl`.** Not
+  the same treatment.
+- **The two error-screen controls are inverses, not variants of one button.**
+  `Try again` is solid (`bg-foreground`, `text-background`) hovering to outline;
+  `Go home` is outline (`text-foreground`, no `bg-`) hovering to solid. Each
+  inverts into the other. The 404's `Link` is the solid variant again, plus
+  `inline-flex items-center`.
 
 ### Known divergences at time of extraction
 
 Recorded rather than fixed — reconciliation is tracked on #127. **This list is
-what one pass found; it is not a proof of completeness.**
+what two passes found; it is not a proof of completeness.**
+
+Every row below is derived from the reference file and our source at the moment
+of writing. That qualifier is load-bearing: an earlier draft of this table
+carried two rows re-keyed from review comments rather than re-read from source,
+and both were wrong — one with its columns swapped against prose 60 lines above
+it, and one asserting a divergence where the two files are byte-identical. **A
+row copied from a correct observation has not been verified merely because the
+observation was.**
 
 | element | reference | ours |
 | --- | --- | --- |
@@ -720,19 +735,27 @@ what one pass found; it is not a proof of completeness.**
 | header wrapper | `mb-10 border-t-4 border-foreground pt-6`, **with the `Affordo` eyebrow** | absent — including the eyebrow, which is copy, not chrome |
 | field order | threshold **last**, after the savings pair | follows the wizard's order |
 | main padding | `py-10` | `py-16` |
-| field label | `text-[11px]`, no `font-bold` | `text-[10px] font-bold` |
+| field label | `text-[10px]` **with** `font-bold` | `text-[11px]`, no `font-bold` |
 | input | `border-b-2`, `text-2xl`, no `transition-colors` | `border-b` |
 | save button | `rounded-none … px-6 py-6` | `rounded-md … py-3` |
 | hints | none rendered on this screen | three hint paragraphs |
-| action row | `mt-12 … border-t border-border pt-6` wrapper | no equivalent wrapper |
 
 **`__root.tsx` (404 / error):**
 
 | element | reference | ours |
 | --- | --- | --- |
-| container | `min-h-screen … px-4` + inner `max-w-md text-center` | `min-h-dvh flex-col … gap-6 px-4 py-16 text-center` |
+| container (both screens) | `min-h-screen items-center justify-center … px-4` + inner `max-w-md text-center` | `min-h-dvh flex-col … gap-6 px-4 py-16 text-center`, no inner wrapper |
 | error `<h1>` | `text-4xl` | `text-6xl sm:text-8xl` |
-| buttons | `border-2 border-foreground bg-foreground px-4 py-2`, inverting on hover | `border border-border … px-6 py-3` |
+| 404 `<h1>` | `text-8xl … text-foreground` | `text-8xl`, no `text-foreground` |
+| caption | `mt-4` (404) / `mt-2` (error), `text-xs` | `text-[11px]`, no `mt-*` |
+| solid control (`Try again`, 404 `Go home`) | `border-2 border-foreground bg-foreground px-4 py-2`, hovering to outline | `border border-border bg-foreground px-6 py-3`, hovering to accent |
+| outline control (error `Go home`) | `border-2 border-foreground text-foreground`, hovering to solid | `border border-border px-6 py-3` |
+
+Our 404 (`Placeholder.tsx`) and error screen (`ErrorBoundary.tsx`) share one
+container treatment where the reference gives them the same container but
+different headings, and ours gives its two error-screen controls **different**
+classes where the table above collapses them — so both sides of that comparison
+need reading per-control, not per-screen.
 
 ## 7. FORMS AND INPUTS
 
