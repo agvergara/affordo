@@ -58,6 +58,24 @@ describe("document head", () => {
     expect(metaContent(html, "name", "twitter:card")).toBe("summary");
   });
 
+  it("links the favicon the reference ships", () => {
+    // §1 records this verbatim, and PRD #39's Out of Scope keeps it in by name:
+    // "og:image / PWA manifest / apple-touch-icon — favicon only". It was
+    // missing entirely until #124 — no link and no asset — so every tab showed
+    // the browser's default glyph.
+    expect(html).toMatch(
+      /<link rel="icon" href="\/favicon\.ico" type="image\/x-icon"\s*\/>/,
+    );
+  });
+
+  it("still ships no apple-touch-icon or manifest", () => {
+    // The other half of that Out of Scope line. Adding the favicon is the
+    // narrow thing #39 permits; these are the ones it rules out by name, and
+    // the obvious next step for anyone "finishing" the icon set.
+    expect(html).not.toMatch(/apple-touch-icon/);
+    expect(html).not.toMatch(/rel="manifest"/);
+  });
+
   it("references no og:image, matching the reference (no image asset)", () => {
     expect(metaContent(html, "property", "og:image")).toBeNull();
   });
