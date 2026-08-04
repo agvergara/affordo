@@ -49,16 +49,29 @@ swaps. Measured against the built app: `Affordo — Audit: Life/Cost` at
 `window.location.replace` (a full document load), this happens on **every**
 navigation, not only the first.
 
-`Router.tsx` applies the head in a layout effect specifically to keep that window
-as short as possible — the swap lands in React's first commit rather than after a
-paint — but a client-only app cannot close it entirely. Only markup in the shipped
-HTML can, and that means SSR or prerendering.
+`Router.tsx` applies the head in a layout effect to keep that window as short as
+it can be *once React is running* — the swap lands in React's first commit rather
+than after a paint. It cannot help with the window before React exists at all,
+which is the larger part: measured at **56.5ms** warm on localhost, **89.9ms**
+under a 6× CPU throttle, and **1.9s** on a 400ms/400kbps link. Not a flicker.
 
-Neither is a defect to fix here: fixing them means adopting the server this ADR
-decides against, and both costs are mild — a `/goals` link unfurling as the app's
-own name is wrong rather than misleading, and the title swap is a sub-frame
-flicker. They are recorded so PRD #39's story 73 is not read as fully delivered.
-See #125, which amends that story.
+**Closing it does not require a server.** A synchronous inline `<script>` in the
+head, setting `document.title` from the pathname before the parser reaches the
+body, shortens it to ~0.4ms — the swap then happens at `readyState=loading`. We
+do not do that, and the reason is a trade rather than an impossibility: it means a
+second copy of the route→title map living in `index.html`, which can drift from
+`documentHead.ts` silently and would have to be kept in step by hand. Given the
+cost above is a title flash rather than wrong content, that duplication is not
+worth buying — but the option exists, and this ADR should not be read as saying
+otherwise.
+
+**Shares are different**, and are the part genuinely closed off: an unfurler that
+runs no JavaScript cannot be reached by any client-side technique, inline script
+included. Only markup in the shipped HTML reaches it, and per-route markup means
+SSR or prerendering — which is the decision this ADR makes against.
+
+Recorded so PRD #39's story 73 is not read as fully delivered. See #125, which
+amends that story.
 
 Revisit if routing needs grow (nested layouts, code-split routes, typed params,
 scroll restoration) enough to outweigh a small library, or if SSR/SSG ever
