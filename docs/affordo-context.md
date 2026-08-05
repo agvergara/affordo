@@ -11,6 +11,27 @@ are prioritized over brevity. Anything undeterminable is under OPEN QUESTIONS.
 > reproduces that structure **in full** — router, routes, wizard, step counter, and Back/Start
 > controls are all in scope.
 
+> ⚠️ **What this dossier does and does not cover** (#127, and read this before
+> reasoning from an absence). **Silence here is not evidence about the
+> reference.** Some sections are exhaustive and some are samples, and the
+> difference is not visible from the writing:
+>
+> | section | coverage |
+> | --- | --- |
+> | §5 components, §16 wizard steps | **exhaustive** — character-perfect teardowns |
+> | §6 copy, §1 head | **exhaustive** for the keys listed |
+> | §6b route bodies | **exhaustive** for the five routes, as of the extraction |
+> | §3 tokens, §4 typography | **exhaustive** for the token set |
+> | everything else | **sample** — assume nothing from omission |
+>
+> This warning exists because it has already cost something. PR #102's duel
+> reasoned from this document's silence that the `/goals` footer's `opacity-50`
+> was invented, removed it, and shipped a regression that survived a full duel
+> because the premise looked authoritative. The reference had it all along
+> (#104). When the dossier does not mention an element, the correct next step is
+> to read `agvergara/dream-purchase-planner` — reachable via `gh api` — not to
+> conclude the element does not exist.
+
 ---
 
 ## 1. PRODUCT IDENTITY
@@ -722,18 +743,34 @@ it, and one asserting a divergence where the two files are byte-identical. **A
 row copied from a correct observation has not been verified merely because the
 observation was.**
 
-| element | reference | ours |
-| --- | --- | --- |
-| snapshot section wrapper | `mb-10 border-t-4 border-foreground pt-6` | **absent** |
-| snapshot grid | `mt-6` | `mt-10` |
-| divider hairlines | `h-px flex-1 bg-border` either side | **absent** |
-| divider wrapper | `mb-6` | `mt-12 … gap-4` |
-| add-goal button | `px-5 py-5`, `text-[11px]`, `gap-2`, `<Plus className="size-4" />`, in `mb-8 flex justify-end` | `px-4 py-2`, `text-[10px]`, no icon, no wrapper |
-| empty state | `border-2 … p-12`, `font-display text-3xl` | `border … p-10`, `text-2xl` |
-| goals list | `space-y-5` | `mt-6 space-y-4` |
-| divider label | `font-medium`, `tracking-[0.2em]`, `<span>` | `font-bold`, `tracking-widest`, `<div>` |
-| divider / add-button | two blocks: `mb-6` divider, then `mb-8 flex justify-end` | merged into one `justify-between` row |
-| list element | `<div className="space-y-5">` | `<ul>` / `<li>` |
+**All but the last row are reconciled** — see the PR closing #127 for `/goals`.
+They are kept here rather than deleted because the table's value is as a record
+of what drifted and why, and because a future extraction pass needs to know
+these rows were checked rather than never examined.
+
+| element | reference | ours (before) | status |
+| --- | --- | --- | --- |
+| snapshot section wrapper | `mb-10 border-t-4 border-foreground pt-6` | **absent** | fixed |
+| snapshot grid | `mt-6` | `mt-10` | fixed |
+| divider hairlines | `h-px flex-1 bg-border` either side | **absent** | fixed |
+| divider wrapper | `mb-6` | `mt-12 … gap-4` | fixed |
+| add-goal button | `px-5 py-5`, `text-[11px]`, `gap-2`, `<Plus className="size-4" />`, in `mb-8 flex justify-end` | `px-4 py-2`, `text-[10px]`, no icon, no wrapper | fixed |
+| empty state | `border-2 … p-12`, `font-display text-3xl` | `border … p-10`, `text-2xl` | fixed |
+| goals list | `space-y-5` | `mt-6 space-y-4` | fixed |
+| divider label | `font-medium`, `tracking-[0.2em]`, `<span>` | `font-bold`, `tracking-widest`, `<div>` | fixed |
+| divider / add-button | two blocks: `mb-6` divider, then `mb-8 flex justify-end` | merged into one `justify-between` row | fixed |
+| list element | `<div className="space-y-5">` | `<ul>` / `<li>` | **deferred** |
+
+The last row is deliberately not reconciled. Reproducing it would delete the
+list semantics a screen reader uses to announce "list, 3 items", which makes it
+the accessibility-versus-fidelity call that #115/#116/#99 are waiting on the
+product owner to settle. Every other row here is geometry, so none of them turn
+on that question and all were fixed. The `Plus` glyph is inlined at lucide's
+geometry rather than adding the dependency, following `AppHeader`'s precedent.
+
+Note the reference's `<Plus>` sits inside a button whose text already says "Add
+goal", so ours is `aria-hidden` — that is not a divergence from the reference's
+rendering, which produces an SVG with no accessible name either way.
 
 **`/settings`:**
 

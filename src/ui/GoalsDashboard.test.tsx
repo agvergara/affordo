@@ -127,6 +127,95 @@ describe("GoalsDashboard saved-goals divider", () => {
   });
 });
 
+/**
+ * Route-body parity (#127, dossier §6b).
+ *
+ * These are class assertions, under the same narrow exception #94 opened: the
+ * geometry *is* the requirement, jsdom applies no stylesheet, so the class is
+ * the only observable. Every value here was read off
+ * `agvergara/dream-purchase-planner`'s `src/routes/goals.tsx`, not inferred from
+ * the dossier's component teardowns — which is the whole point of #127, since
+ * those teardowns would have "corrected" `px-5 py-5` to the `px-6 py-6` every
+ * recorded CTA uses.
+ */
+describe("GoalsDashboard route-body parity", () => {
+  it("wraps the eyebrow, title and snapshot in one rule-topped section", () => {
+    // The reference has a single `<section>` opened by a 4px foreground rule
+    // (`goals.tsx:75`), not a bare `<header>` beside a separate grid. The rule
+    // is the page's masthead, so losing it flattens the whole screen's opening.
+    renderDashboard();
+    const snapshot = screen.getByTestId("snapshot");
+    expect(snapshot.tagName).toBe("SECTION");
+    expect(snapshot).toHaveClass(
+      "mb-10",
+      "border-t-4",
+      "border-foreground",
+      "pt-6",
+    );
+    expect(within(snapshot).getByText("Affordo")).toBeInTheDocument();
+    expect(
+      within(snapshot).getByRole("heading", { name: "Goals" }),
+    ).toBeInTheDocument();
+  });
+
+  it("spaces the snapshot grid at mt-6 below the title", () => {
+    renderDashboard();
+    expect(screen.getByTestId("snapshot-grid")).toHaveClass("mt-6");
+  });
+
+  it("flanks the saved-goals label with hairline rules", () => {
+    // `h-px flex-1 bg-border` either side (`goals.tsx:110/114`) — the label sits
+    // in the middle of a ruled line, it is not left-aligned text.
+    renderDashboard();
+    expect(screen.getAllByTestId("divider-rule")).toHaveLength(2);
+    for (const rule of screen.getAllByTestId("divider-rule")) {
+      expect(rule).toHaveClass("h-px", "flex-1", "bg-border");
+    }
+  });
+
+  it("sets the divider label at the reference weight and tracking", () => {
+    // `font-medium` and `tracking-[0.2em]`, matching the `Affordo` eyebrow
+    // above it — ours had `font-bold tracking-widest`, a heavier pairing that
+    // the dossier's own §6b prose describes correctly.
+    renderDashboard();
+    const label = screen.getByTestId("saved-goals-divider");
+    expect(label.tagName).toBe("SPAN");
+    expect(label).toHaveClass("font-medium", "tracking-[0.2em]");
+    expect(label).not.toHaveClass("font-bold");
+  });
+
+  it("puts the add button in its own right-aligned block below the divider", () => {
+    // Two stacked blocks in the reference, not one `justify-between` row: the
+    // divider (`mb-6`) then the button (`mb-8 flex justify-end`). Merging them
+    // pulls the button up onto the divider line.
+    renderDashboard();
+    const button = screen.getByRole("button", { name: /add goal/i });
+    const block = button.parentElement as HTMLElement;
+    expect(block).toHaveClass("mb-8", "flex", "justify-end");
+    expect(within(block).queryByTestId("saved-goals-divider")).toBeNull();
+  });
+
+  it("sizes the add button as the reference does, with its plus glyph", () => {
+    renderDashboard();
+    const button = screen.getByRole("button", { name: /add goal/i });
+    expect(button).toHaveClass("gap-2", "px-5", "py-5", "text-[11px]");
+    expect(button).not.toHaveClass("px-4", "py-2", "text-[10px]");
+    expect(within(button).getByTestId("add-goal-plus")).toBeInTheDocument();
+  });
+
+  it("draws the empty state at the reference's heavier border and scale", () => {
+    renderDashboard(undefined, []);
+    const empty = screen.getByTestId("goals-empty");
+    expect(empty).toHaveClass("border-2", "p-12");
+    expect(within(empty).getByText(/no decisions/i)).toHaveClass("text-3xl");
+  });
+
+  it("spaces the goals list at space-y-5", () => {
+    renderDashboard(undefined, [makeGoal(), makeGoal()]);
+    expect(screen.getByTestId("goals-list")).toHaveClass("space-y-5");
+  });
+});
+
 describe("GoalsDashboard empty state", () => {
   it("shows the reference empty copy when there are no goals", () => {
     renderDashboard(undefined, []);

@@ -72,62 +72,88 @@ export function GoalsDashboard() {
         us at ≥640px.
       */}
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <header>
+        {/*
+          One section, opened by the 4px foreground rule, holding the eyebrow,
+          the title and the snapshot grid (`goals.tsx:75`). Ours had a bare
+          `<header>` beside a separate grid — the rule is the page's masthead
+          and its absence flattened the opening (#127).
+        */}
+        <section
+          data-testid="snapshot"
+          className="mb-10 border-t-4 border-foreground pt-6"
+        >
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Affordo
           </p>
           <h1 className="mt-2 font-display text-6xl uppercase leading-none tracking-tight sm:text-8xl">
             Goals
           </h1>
-        </header>
 
-        <section
-          data-testid="snapshot"
-          className="mt-10 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3"
-        >
-          <div data-testid="snapshot-time-value" className="bg-background p-4">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Time value
-            </p>
-            <p className="mt-1 text-xl font-bold tracking-tight">
-              {formatMoney(hourly, profile.currency)}{" "}
-              <span className="font-mono text-xs font-normal text-muted-foreground">
-                / hour
-              </span>
-            </p>
-          </div>
+          <div
+            data-testid="snapshot-grid"
+            className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3"
+          >
+            <div
+              data-testid="snapshot-time-value"
+              className="bg-background p-4"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Time value
+              </p>
+              <p className="mt-1 text-xl font-bold tracking-tight">
+                {formatMoney(hourly, profile.currency)}{" "}
+                <span className="font-mono text-xs font-normal text-muted-foreground">
+                  / hour
+                </span>
+              </p>
+            </div>
 
-          <div data-testid="snapshot-surplus" className="bg-background p-4">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Monthly surplus
-            </p>
-            <p className="mt-1 text-xl font-bold tracking-tight">
-              {formatMoney(surplus, profile.currency)}
-            </p>
-          </div>
+            <div data-testid="snapshot-surplus" className="bg-background p-4">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Monthly surplus
+              </p>
+              <p className="mt-1 text-xl font-bold tracking-tight">
+                {formatMoney(surplus, profile.currency)}
+              </p>
+            </div>
 
-          <div data-testid="snapshot-threshold" className="bg-background p-4">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Significance threshold
-            </p>
-            <p className="mt-1 text-xl font-bold tracking-tight">
-              {profile.threshold}%
-            </p>
+            <div data-testid="snapshot-threshold" className="bg-background p-4">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Significance threshold
+              </p>
+              <p className="mt-1 text-xl font-bold tracking-tight">
+                {profile.threshold}%
+              </p>
+            </div>
           </div>
         </section>
 
-        <div className="mt-12 flex items-center justify-between gap-4">
-          <div
-            data-testid="saved-goals-divider"
-            className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-          >
-            Saved goals · {goals.length}
+        {/*
+          Divider and add-button are two stacked blocks in the reference
+          (`goals.tsx:108` and `:118`), not the one `justify-between` row we
+          had. The label is centred in a ruled line rather than left-aligned,
+          and the button sits right-aligned on its own below.
+        */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div data-testid="divider-rule" className="h-px flex-1 bg-border" />
+            <span
+              data-testid="saved-goals-divider"
+              className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground"
+            >
+              Saved goals · {goals.length}
+            </span>
+            <div data-testid="divider-rule" className="h-px flex-1 bg-border" />
           </div>
+        </div>
+
+        <div className="mb-8 flex justify-end">
           <button
             type="button"
             onClick={openAdd}
-            className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
+            className="flex items-center gap-2 rounded-none bg-foreground px-5 py-5 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
           >
+            <PlusIcon />
             Add goal
           </button>
         </div>
@@ -135,9 +161,9 @@ export function GoalsDashboard() {
         {goals.length === 0 && (
           <div
             data-testid="goals-empty"
-            className="mt-6 border border-dashed border-border p-10 text-center"
+            className="border-2 border-dashed border-border p-12 text-center"
           >
-            <p className="font-display text-2xl uppercase tracking-tight">
+            <p className="font-display text-3xl uppercase tracking-tight">
               No decisions to reckon with yet.
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -147,7 +173,7 @@ export function GoalsDashboard() {
         )}
 
         {goals.length > 0 && (
-          <ul data-testid="goals-list" className="mt-6 space-y-4">
+          <ul data-testid="goals-list" className="space-y-5">
             {goals.map((goal) => (
               <li key={goal.id} data-testid="goal-item">
                 <GoalCard
@@ -191,5 +217,31 @@ export function GoalsDashboard() {
         onSave={saveGoal}
       />
     </div>
+  );
+}
+
+/**
+ * The add-button's leading glyph — `lucide-react`'s `Plus` at `size-4`
+ * (`goals.tsx:126`). Inlined at lucide's own geometry rather than taking the
+ * dependency for one icon, exactly as `AppHeader` does for the theme toggle.
+ * `aria-hidden` because the button already reads "Add goal": announcing the
+ * glyph would say it twice.
+ */
+function PlusIcon() {
+  return (
+    <svg
+      data-testid="add-goal-plus"
+      className="size-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
   );
 }
