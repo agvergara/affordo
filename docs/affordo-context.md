@@ -796,15 +796,31 @@ is the easy mistake here; #134's duel made it.
 
 **`/settings`:**
 
-| element | reference | ours |
-| --- | --- | --- |
-| header wrapper | `mb-10 border-t-4 border-foreground pt-6`, **with the `Affordo` eyebrow** | absent — including the eyebrow, which is copy, not chrome |
-| field order | threshold **last**, after the savings pair | follows the wizard's order |
-| main padding | `py-10` | `py-16` |
-| field label | `text-[10px]` **with** `font-bold` | `text-[11px]`, no `font-bold` |
-| input | `border-b-2`, `text-2xl`, no `transition-colors` | `border-b` |
-| save button | `rounded-none … px-6 py-6` | `rounded-md … py-3` |
-| hints | none rendered on this screen | three hint paragraphs |
+**All reconciled** except the last row, which is behaviour rather than geometry
+and is filed as #136.
+
+| element | reference | ours (before) | status |
+| --- | --- | --- | --- |
+| header wrapper | `mb-10 border-t-4 border-foreground pt-6`, **with the `Affordo` eyebrow** | absent — including the eyebrow, which is copy, not chrome | fixed |
+| field order | threshold **last**, after the savings pair | follows the wizard's order | fixed |
+| main padding | `py-10` | `py-16` | fixed |
+| field label | `text-[10px]` **with** `font-bold` | `text-[11px]`, no `font-bold` | fixed |
+| input | `border-0 border-b-2 … px-0 rounded-none shadow-none` | `border-b`, no `border-0`/`px-0` | fixed |
+| save button | `rounded-none … px-6 py-6`, `font-bold` | `rounded-md … py-3`, no `font-bold` | fixed |
+| reset button | ghost `<Button>`: `h-9 px-4 py-2`, `hover:bg-accent` | `p-0`, no hit area beyond its text | fixed |
+| hints | none rendered on this screen | three hint paragraphs | fixed |
+| Save disabled | no disabled state | `disabled={!canSave}` | **deferred, #136** |
+
+Three rows here were **not** in the first extraction — the reset button's
+geometry, the input's full `bigInput` string, and the Save disabled state. The
+table above them still says this list is not a proof of completeness, and that
+remains true after this pass.
+
+Measured in Chromium, both buttons matching the reference's merged strings:
+Save **48px** (`h-9 px-6 py-6` — `py-6` dominates), Reset **36px** (`h-9 px-4
+py-2` — `h-9` dominates). The inputs need `border-0` for the reason #135
+records: this port's base layer puts a 1px border on every `input`, which
+`border-b-2` alone leaves on the other three sides.
 
 **`__root.tsx` (404 / error):**
 

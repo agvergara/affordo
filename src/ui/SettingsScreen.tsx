@@ -38,6 +38,23 @@ const defaultNavigate: Navigate = (to) => window.location.replace(to);
 /** The reference's `t("resetConfirm")` (dossier §6, Settings). */
 const RESET_CONFIRM = "This will erase your profile and all goals. Continue?";
 
+/**
+ * The reference's shared `bigInput` (`settings.tsx:59`), verbatim, plus the one
+ * class this port has to add.
+ *
+ * `border-0` is in the reference's own string — but it matters more here, since
+ * `theme.css`'s base layer paints every `input`/`select` with a 1px border on
+ * all four sides that `border-b-2` alone would not clear (#135). The reference
+ * has no such base rule; it carries `border-0` to escape shadcn's `<Input>`.
+ * Same string, two different things to undo.
+ */
+const bigInputClass =
+  "w-full rounded-none border-0 border-b-2 border-border bg-transparent px-0 py-2 text-2xl font-bold shadow-none outline-none focus-visible:border-accent focus-visible:ring-0";
+
+/** Every field label on this screen (`settings.tsx:77`). */
+const labelClass =
+  "font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
+
 const CURRENCY_OPTIONS: ReadonlyArray<{ value: Currency; label: string }> = [
   { value: "EUR", label: "EUR — €" },
   { value: "GBP", label: "GBP — £" },
@@ -125,16 +142,32 @@ function SettingsForm({
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
-        <h1 className="font-display text-6xl uppercase leading-none tracking-tight">
-          Settings
-        </h1>
+      <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+        {/*
+          The same rule-topped masthead `/goals` opens with (`settings.tsx:66`).
+          The `Affordo` eyebrow above the title is copy, not chrome — ours had
+          neither the rule nor the eyebrow, so this was a missing string as well
+          as missing geometry. `mb-10` on the masthead replaces the `mt-12` the
+          fields carried.
+        */}
+        <div
+          data-testid="settings-masthead"
+          className="mb-10 border-t-4 border-foreground pt-6"
+        >
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Affordo
+          </p>
+          <h1 className="mt-2 font-display text-6xl uppercase leading-none tracking-tight">
+            Settings
+          </h1>
+        </div>
 
-        <div className="mt-12 space-y-8">
+        <div className="space-y-8">
           <div className="space-y-2">
             <label
               htmlFor="settings-currency"
-              className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground"
+              data-testid="settings-field-label"
+              className={labelClass}
             >
               Currency
             </label>
@@ -142,7 +175,10 @@ function SettingsForm({
               id="settings-currency"
               value={draft.currency}
               onChange={(e) => set("currency", e.target.value as Currency)}
-              className="w-full border-b border-border bg-transparent py-2 text-2xl font-bold transition-colors focus-visible:border-accent focus-visible:outline-none"
+              // The reference's select takes `bigInput + " h-auto"`, since
+              // shadcn's `SelectTrigger` is a button with a fixed height its
+              // own base sets (`settings.tsx:81`).
+              className={`${bigInputClass} h-auto`}
             >
               {CURRENCY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -177,7 +213,6 @@ function SettingsForm({
               label="Payments per year"
               value={draft.paymentsPerYear}
               onChange={(v) => set("paymentsPerYear", num(v))}
-              hint="Use 14 for Spanish-style extra payments."
             />
           </div>
 
@@ -186,30 +221,7 @@ function SettingsForm({
             label="Monthly fixed expenses"
             value={draft.expenses}
             onChange={(v) => set("expenses", num(v))}
-            hint="Rent, groceries, subscriptions, transport, utilities."
           />
-
-          <div className="space-y-2">
-            <label
-              htmlFor="settings-threshold"
-              className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground"
-            >
-              Significance threshold — {draft.threshold}%
-            </label>
-            <input
-              id="settings-threshold"
-              type="range"
-              min={1}
-              max={50}
-              step={1}
-              value={draft.threshold}
-              onChange={(e) => set("threshold", num(e.target.value))}
-              className="w-full accent-accent"
-            />
-            <p className="text-sm text-muted-foreground">
-              Purchases above this % of your monthly income are flagged.
-            </p>
-          </div>
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
             <NumberField
@@ -223,7 +235,31 @@ function SettingsForm({
               label="Extra monthly savings (optional)"
               value={draft.monthlyContribution}
               onChange={(v) => set("monthlyContribution", num(v))}
-              hint="Money you consistently set aside on top of expenses."
+            />
+          </div>
+
+          {/*
+            Threshold sits **last** in the reference, after the savings pair
+            (`settings.tsx:140`). Ours followed the wizard's order, where it
+            comes earlier — the two screens genuinely differ (#127).
+          */}
+          <div className="space-y-2">
+            <label
+              htmlFor="settings-threshold"
+              data-testid="settings-field-label"
+              className={labelClass}
+            >
+              Significance threshold — {draft.threshold}%
+            </label>
+            <input
+              id="settings-threshold"
+              type="range"
+              min={1}
+              max={50}
+              step={1}
+              value={draft.threshold}
+              onChange={(e) => set("threshold", num(e.target.value))}
+              className="w-full accent-accent pt-3"
             />
           </div>
         </div>
@@ -232,13 +268,16 @@ function SettingsForm({
           <button
             type="button"
             onClick={reset}
-            // `border-0 bg-transparent p-0` neutralises the global `button`
-            // base rule (src/styles/theme.css), which otherwise paints every
-            // bare button as a bordered, --card-filled, 10px-radius pill with
-            // an accent hover border. The reference's destructive ghost has
-            // none of that (dossier §9), so it has to be escaped explicitly —
-            // the same way the wizard's ghost "← Back" does.
-            className="border-0 bg-transparent p-0 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            // The reference's `variant="ghost"` Button contributes `h-9 px-4
+            // py-2` and `hover:bg-accent`; the route's className overrides only
+            // the text colour (`settings.tsx:149`). Ours had `p-0`, so it had
+            // no hit area beyond its own text.
+            //
+            // `border-0 bg-transparent` stay: they neutralise theme.css's
+            // global `button` rule, which paints every bare button as a
+            // bordered, --card-filled pill. The reference has no such rule
+            // (#135).
+            className="inline-flex h-9 items-center justify-center rounded-none border-0 bg-transparent px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:bg-accent hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Reset everything
           </button>
@@ -246,7 +285,7 @@ function SettingsForm({
             type="button"
             onClick={save}
             disabled={!canSave}
-            className="rounded-md bg-foreground px-6 py-3 font-mono text-[11px] uppercase tracking-widest text-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-none border-0 bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background shadow transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
           >
             Save
           </button>
@@ -261,7 +300,6 @@ interface NumberFieldProps {
   label: string;
   value: number;
   onChange: (value: string) => void;
-  hint?: string;
 }
 
 /**
@@ -270,12 +308,13 @@ interface NumberFieldProps {
  * placeholder visible (dossier §7), and `inputMode="decimal"` for a numeric
  * mobile keypad while still accepting a decimal comma.
  */
-function NumberField({ id, label, value, onChange, hint }: NumberFieldProps) {
+function NumberField({ id, label, value, onChange }: NumberFieldProps) {
   return (
     <div className="space-y-2">
       <label
         htmlFor={id}
-        className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground"
+        data-testid="settings-field-label"
+        className={labelClass}
       >
         {label}
       </label>
@@ -285,9 +324,8 @@ function NumberField({ id, label, value, onChange, hint }: NumberFieldProps) {
         placeholder="0"
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border-b border-border bg-transparent py-2 text-2xl font-bold transition-colors focus-visible:border-accent focus-visible:outline-none"
+        className={bigInputClass}
       />
-      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
     </div>
   );
 }
