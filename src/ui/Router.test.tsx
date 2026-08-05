@@ -81,11 +81,18 @@ describe("Router — per-route guards", () => {
     render(<Router navigate={navigate} />);
 
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: /goals/i })).toBeInTheDocument(),
+      expect(
+        screen.getByRole("heading", { name: /goals/i }),
+      ).toBeInTheDocument(),
     );
     // The real dashboard mounts here (not the placeholder): its profile
-    // snapshot is present.
-    expect(screen.getByTestId("snapshot")).toBeInTheDocument();
+    // snapshot is present. Asserted on a *cell*, not on the `snapshot` wrapper
+    // — #134 moved that testid from the grid to the outer section, and this
+    // assertion silently became a check on a rule-topped div that would pass
+    // with the entire grid deleted. A cell only the real dashboard renders is
+    // what the sentence above always meant.
+    expect(screen.getByTestId("snapshot-time-value")).toBeInTheDocument();
+    expect(screen.getByTestId("snapshot-grid")).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -109,9 +116,7 @@ describe("Router — per-route guards", () => {
     const navigate = vi.fn();
     // The screen's default confirm is `window.confirm`; stub the global so the
     // route wiring is exercised end-to-end without a blocking dialog.
-    const confirm = vi
-      .spyOn(window, "confirm")
-      .mockImplementation(() => true);
+    const confirm = vi.spyOn(window, "confirm").mockImplementation(() => true);
     // A screen that fell back to its own default navigate would really replace
     // the document here; this stub is what tells the two apart. jsdom forbids
     // spying on `location.replace`, so swap the whole object — the Router only
@@ -137,7 +142,9 @@ describe("Router — per-route guards", () => {
           screen.getByRole("button", { name: "Reset everything" }),
         ).toBeInTheDocument(),
       );
-      await user.click(screen.getByRole("button", { name: "Reset everything" }));
+      await user.click(
+        screen.getByRole("button", { name: "Reset everything" }),
+      );
 
       // The route passes its own navigate down, so the reset lands on onboarding
       // through the injected seam — never by really re-loading the document.
@@ -159,7 +166,9 @@ describe("Router — unguarded routes", () => {
 
     // The wizard chrome opens on step 0 (Welcome, 01 / 04); no guard applies.
     expect(screen.getByText("Set up your reckoning")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Welcome" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Welcome" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("01 / 04")).toBeInTheDocument();
     expect(screen.queryByLabelText(/monthly net income/i)).toBeNull();
   });
@@ -193,7 +202,9 @@ describe("Router — unguarded routes", () => {
     const Boom = (): JSX.Element => {
       throw new Error("kaboom");
     };
-    render(<Router routes={{ "/onboarding": () => <Boom /> }} navigate={vi.fn()} />);
+    render(
+      <Router routes={{ "/onboarding": () => <Boom /> }} navigate={vi.fn()} />,
+    );
 
     expect(
       screen.getByRole("heading", { name: "Something broke" }),
@@ -209,7 +220,10 @@ describe("Router — unguarded routes", () => {
       return <button onClick={() => toast("Saved")}>save</button>;
     }
     render(
-      <Router routes={{ "/onboarding": () => <Screen /> }} navigate={vi.fn()} />,
+      <Router
+        routes={{ "/onboarding": () => <Screen /> }}
+        navigate={vi.fn()}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "save" }));
@@ -224,9 +238,21 @@ describe("Router — per-screen document head (#111)", () => {
       ?.getAttribute("content");
 
   it.each([
-    ["/onboarding", "Set up · Affordo", "Configure your financial profile once. Then weigh purchases in seconds."],
-    ["/goals", "Goals · Affordo", "See every purchase weighed against your working hours."],
-    ["/settings", "Settings · Affordo", "Edit your financial profile and preferences."],
+    [
+      "/onboarding",
+      "Set up · Affordo",
+      "Configure your financial profile once. Then weigh purchases in seconds.",
+    ],
+    [
+      "/goals",
+      "Goals · Affordo",
+      "See every purchase weighed against your working hours.",
+    ],
+    [
+      "/settings",
+      "Settings · Affordo",
+      "Edit your financial profile and preferences.",
+    ],
   ])("titles %s as %s", (path, title, description) => {
     seedProfile();
     navigateTo(path);
