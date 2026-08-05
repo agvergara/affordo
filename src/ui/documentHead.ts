@@ -13,7 +13,7 @@
  * delivery; reproducing the values is what #39 asks for, and reproducing the
  * delivery would mean SSR, which #39 rules out.
  */
-export interface DocumentHead {
+interface DocumentHead {
   title: string;
   description: string;
   /** Defaults to `description` — they differ only at the root (§1). */

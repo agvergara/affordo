@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { applyDocumentHead, headForPath } from "./documentHead";
-import { NotFoundScreen } from "./Placeholder";
+import { NotFoundScreen } from "./NotFoundScreen";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { GoalsDashboard } from "./GoalsDashboard";
 import { SettingsScreen } from "./SettingsScreen";
@@ -9,7 +9,7 @@ import { ToastProvider } from "./Toast";
 import { AffordoProvider, useAffordo } from "../state/AffordoProvider";
 import { ThemeProvider } from "../state/ThemeProvider";
 
-export type RouteTable = Record<string, () => JSX.Element>;
+type RouteTable = Record<string, () => JSX.Element>;
 
 /** How the gate leaves the current path. In the client-only SPA (ADR 0004/0009)
  * there is no history router, so a redirect is a real location change; tests
@@ -103,7 +103,7 @@ function Guard({
  * `navigate`); `routes` is the override seam, empty by default — a caller may
  * inject any path through it (used in tests to stub a screen).
  */
-export const ROUTES: RouteTable = {};
+const ROUTES: RouteTable = {};
 
 /** Drop a trailing slash so `/goals/` matches `/goals`, but keep root `/`. */
 function normalize(pathname: string): string {

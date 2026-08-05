@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Goal } from "../state/goals-store";
 
-export interface GoalDialogProps {
+interface GoalDialogProps {
   open: boolean;
   /** Called with `false` when the dialog asks to close (Cancel, Escape, save). */
   onOpenChange: (open: boolean) => void;

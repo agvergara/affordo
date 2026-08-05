@@ -19,7 +19,7 @@ import { loadGoals, saveGoals, type Goal } from "./goals-store";
  * only AFTER mount — so a server-rendered/first paint always matches the
  * defaults, and stored state arrives once `hydrated` flips true.
  */
-export interface AffordoContextValue {
+interface AffordoContextValue {
   /** False until the post-mount effect has read localStorage. */
   hydrated: boolean;
   profile: Profile;

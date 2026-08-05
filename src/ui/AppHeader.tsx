@@ -3,7 +3,7 @@ import { useAffordo } from "../state/AffordoProvider";
 import { useTheme } from "../state/ThemeProvider";
 import { formatMoney } from "./localeFormat";
 
-export interface AppHeaderProps {
+interface AppHeaderProps {
   /** Hide the time-value chip (used by the onboarding wizard). Default true. */
   showTimeValue?: boolean;
 }
