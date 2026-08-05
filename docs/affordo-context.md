@@ -28,9 +28,16 @@ are prioritized over brevity. Anything undeterminable is under OPEN QUESTIONS.
 > reasoned from this document's silence that the `/goals` footer's `opacity-50`
 > was invented, removed it, and shipped a regression that survived a full duel
 > because the premise looked authoritative. The reference had it all along
-> (#104). When the dossier does not mention an element, the correct next step is
-> to read `agvergara/dream-purchase-planner` — reachable via `gh api` — not to
-> conclude the element does not exist.
+> (#104). When the dossier does not mention an element, do **not** conclude the
+> element does not exist.
+>
+> ⚠️ **The reference is gone.** `agvergara/dream-purchase-planner` was private and
+> has been deleted, so the old advice — "read the reference" — is no longer
+> available to anyone. **This document is now the only record.** Outside the
+> sections marked exhaustive above, silence means *unknown*: not permission to
+> invent a value, and not permission to delete an element the code already has.
+> See `AGENTS.md`, which records what the reference was and the shadcn base
+> classes that turned out to be load-bearing.
 
 ---
 
@@ -561,7 +568,9 @@ unrecorded by default, and #104 is what that cost: a duel reasoned from the
 silence that the `/goals` footer's dimming was invented, removed it, and shipped
 a regression that survived review because the premise looked authoritative.
 
-Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`.
+Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`, while
+that repository still existed. It has since been deleted; these teardowns cannot
+be re-derived.
 
 ### `/` — `index.tsx`
 
