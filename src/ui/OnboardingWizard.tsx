@@ -264,6 +264,7 @@ function IncomeStep({
       <Field id="onboarding-salary" label="Net monthly salary">
         <NumberInput
           id="onboarding-salary"
+          decimalKeypad
           value={draft.salary}
           onChange={(v) => set("salary", num(v))}
           placeholder="0"
@@ -323,6 +324,7 @@ function ExpensesStep({
     >
       <NumberInput
         id="onboarding-expenses"
+        decimalKeypad
         value={draft.expenses}
         onChange={(v) => set("expenses", num(v))}
         placeholder="0"
@@ -463,18 +465,27 @@ function NumberInput({
   onChange,
   placeholder,
   autoFocus,
+  decimalKeypad,
 }: {
   id: string;
   value: number;
   onChange: (v: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  /**
+   * `inputMode="decimal"` is on **salary and expenses only** in the reference
+   * (`OnboardingWizard.tsx:130` and `:176`) — not on savings or the monthly
+   * contribution, which are money too. That is inconsistent, and under #39's
+   * bar an inconsistency in the reference is a requirement, so it is a prop
+   * rather than a default (#108).
+   */
+  decimalKeypad?: boolean;
 }) {
   return (
     <input
       id={id}
       type="number"
-      inputMode="decimal"
+      inputMode={decimalKeypad ? "decimal" : undefined}
       placeholder={placeholder}
       value={value || ""}
       onChange={(e) => onChange(e.target.value)}

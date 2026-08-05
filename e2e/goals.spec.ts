@@ -95,14 +95,41 @@ test("a goal edited from its card is updated in place and survives a reload", as
   page,
 }) => {
   await seedProfile(page);
+  // Seeded with a creation date in 2020, not created through the UI.
+  //
+  // The card renders `toLocaleDateString`, i.e. day granularity, so a goal
+  // created seconds before it is edited produces the same string whether or not
+  // `createdAt` is preserved — this assertion used to pass against a save path
+  // re-stamping `createdAt: Date.now()` on every write (#105). A date the run
+  // cannot possibly have produced is what makes it mean something.
+  await page.addInitScript(() => {
+    // Only on first load. `addInitScript` runs on every navigation, so an
+    // unguarded seed would re-write the original goal during the reload below
+    // and quietly undo the edit this test exists to verify.
+    if (window.localStorage.getItem("affordo.goals")) return;
+    window.localStorage.setItem(
+      "affordo.goals",
+      JSON.stringify({
+        schemaVersion: 1,
+        goals: [
+          {
+            id: "seeded-1",
+            name: "Down payment",
+            price: 20000,
+            note: "",
+            createdAt: Date.UTC(2020, 0, 15, 12),
+          },
+        ],
+      }),
+    );
+  });
   await page.goto("/goals");
-  await addGoals(page, [["Down payment", "20000"]]);
 
   const item = page.getByTestId("goals-list").getByRole("listitem").first();
-  const stamped = await item
-    .locator("p")
-    .first()
-    .textContent(); // the card's creation date
+  const stamped = await item.locator("p").first().textContent();
+  // Guard the guard: if the seed ever stops landing, `stamped` would be
+  // today's date and the assertion below would go hollow again.
+  expect(stamped).toContain("2020");
 
   await item.getByRole("button", { name: "Edit" }).click();
 
@@ -125,7 +152,8 @@ test("a goal edited from its card is updated in place and survives a reload", as
   await expect(page.getByText("House deposit")).toBeVisible();
   await expect(page.getByText("Down payment")).toBeHidden();
   await expect(page.getByTestId("goals-list")).toContainText("25.000,00 €");
-  // The creation date is the goal's, not the moment it was edited.
+  // The creation date is the goal's, not the moment it was edited — and now
+  // that the seed is from 2020, re-stamping it would read as today.
   await expect(page.getByTestId("goals-list").locator("p").first()).toHaveText(
     stamped ?? "",
   );

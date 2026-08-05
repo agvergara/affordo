@@ -889,6 +889,23 @@ kept because the trap is in how the table is *read*, not in the values.
 ## 7. FORMS AND INPUTS
 
 `num(v)` helper (onboarding + settings): `parseFloat(v.replace(",", "."))`, returns `0` if NaN.
+
+**Its comma branch is unreachable, on both screens, by design (#108).** Every
+numeric input on both the wizard and `/settings` is `type="number"` in the
+reference, and a number input reports `""` for anything that is not a valid
+float — so a pasted `1500,50` arrives as `""` and becomes `0`, never reaching
+the `.replace(",", ".")`.
+
+Do not "fix" the dead branch, and do not remove `type="number"` to make it live.
+Measured both ways on a pasted `1.234,56`: with `type="number"` the field blanks
+and the gate stays shut; without it, the value silently parses to `1.234` —
+wrong by a factor of ~1000 — and passes the gate. A blank field is legible; a
+thousandfold error that validates is not.
+
+`inputMode="decimal"` is **not** uniform: the reference puts it on the wizard's
+salary and expenses only (`OnboardingWizard.tsx:130`, `:176`), not on savings or
+the monthly contribution, which are money too, and not on any settings input.
+That is inconsistent and is reproduced as-is.
 This accepts a comma as decimal separator but not thousands separators.
 
 ### Onboarding / Settings profile fields

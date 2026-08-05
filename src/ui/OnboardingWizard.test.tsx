@@ -847,3 +847,33 @@ describe("OnboardingWizard component parity", () => {
     expect(back).toHaveClass("hover:text-accent-foreground");
   });
 });
+
+/**
+ * `inputMode="decimal"` is on salary and expenses only in the reference
+ * (`OnboardingWizard.tsx:130`, `:176`) — not on savings or the monthly
+ * contribution, which are money too. Inconsistent, and therefore required
+ * (#108, #39's bar).
+ */
+describe("OnboardingWizard decimal keypad hint", () => {
+  it("puts inputMode on salary but not on the hours fields beside it", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    expect(screen.getByLabelText("Net monthly salary")).toHaveAttribute(
+      "inputMode",
+      "decimal",
+    );
+    expect(screen.getByLabelText("Hours per week")).not.toHaveAttribute(
+      "inputMode",
+    );
+  });
+
+  it("types every numeric field as a number input", async () => {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    for (const label of ["Net monthly salary", "Hours per week"]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute("type", "number");
+    }
+  });
+});

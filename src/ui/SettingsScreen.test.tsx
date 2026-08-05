@@ -474,3 +474,35 @@ describe("SettingsScreen — Save persists the draft and confirms with a toast",
     expect(stored.salary).toBe(4000);
   });
 });
+
+/**
+ * The two screens editing the same nine profile fields now agree (#108).
+ */
+describe("SettingsScreen number inputs match the wizard's", () => {
+  it("types every numeric field as a number input, as the reference does", () => {
+    // All seven of the reference's settings inputs are `type="number"`
+    // (`settings.tsx:91` and on). This port had none, so pasting `7,5` into
+    // Hours per day gave `7.5` here and a blank field in the wizard.
+    renderSettings();
+    for (const label of [
+      "Net monthly salary",
+      "Hours per week",
+      "Hours per day",
+      "Payments per year",
+      "Monthly fixed expenses",
+      "Current savings",
+      "Extra monthly savings (optional)",
+    ]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute("type", "number");
+    }
+  });
+
+  it("carries no inputMode, which the reference reserves for the wizard", () => {
+    // The reference's settings inputs have none; its wizard puts
+    // `inputMode="decimal"` on salary and expenses only.
+    renderSettings();
+    expect(screen.getByLabelText("Net monthly salary")).not.toHaveAttribute(
+      "inputMode",
+    );
+  });
+});
