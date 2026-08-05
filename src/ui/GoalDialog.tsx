@@ -159,7 +159,7 @@ export function GoalDialog({
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 opacity-70 transition-opacity hover:opacity-100"
+          className="absolute right-4 top-4 cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100"
         >
           <span aria-hidden="true">✕</span>
           <span className="sr-only">Close</span>
@@ -224,14 +224,14 @@ export function GoalDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent hover:text-accent-foreground"
+              className="cursor-pointer px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!valid}
-              className="rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-none bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save
             </button>

@@ -42,7 +42,7 @@ export interface GoalCardProps {
  * Splitting the constant reproduces the merged result directly.
  */
 const ACTION =
-  "inline-flex h-8 items-center justify-center rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent";
+  "inline-flex h-8 cursor-pointer items-center justify-center rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-accent";
 
 const EDIT_ACTION = `${ACTION} hover:text-accent-foreground`;
 const REMOVE_ACTION = `${ACTION} text-destructive hover:text-destructive`;

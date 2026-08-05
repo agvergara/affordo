@@ -21,15 +21,13 @@
    the two drifted — it set six tokens and never `--background`, so an OS-dark
    visitor read `--ink` cream on a near-white page at 1.10:1 (#121). */
 :root {
-  --canvas: #fbf7f0; /* cream */
-  --ink: #1c1a17; /* ink */
-  --stone: #6b655c; /* muted */
-
   /* Reference oklch palette — the shadcn/new-york semantic token set from
      dossier §3, verbatim light values. This is the token system the rebuild
-     migrates onto (ADR 0014 amendment): the warm-editorial canvas/ink/stone
-     stay above until every component references these names, and the three
-     shared roles (accent/card/border) are given their reference oklch values.
+     migrates onto (ADR 0014 amendment). The warm-editorial canvas/ink/stone
+     tokens that used to sit above are gone: the base layer that painted
+     input/select text with `--ink` and labels with `--stone` went with #135,
+     and nothing else ever referenced them. The three shared roles
+     (accent/card/border) carry their reference oklch values.
      Accent (terracotta→orange) and card (white→white) read essentially as
      before; --border deliberately changes — from opaque warm cream to a
      translucent near-black hairline — the reference's fainter, cooler line on
@@ -84,24 +82,10 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.72 0.19 45);
 
-  /* The legacy warm-editorial tokens, flipped to their dark values. These are
-     not decoration: the base
-     layer paints input/select text with --ink and labels with --stone, so a
-     class-based dark theme that left them at their light values would put dark
-     ink on the near-black --background and make every settings field
-     unreadable. Until the remaining components migrate to the reference token
-     names (ADR 0021's accepted coexistence), the class has to flip both sets
-     or choosing dark breaks whatever still reads the legacy ones. */
-  --canvas: #1c1a17;
-  --ink: #f5efe4;
-  --stone: #a8a093;
 }
 
 @theme inline {
-  --color-canvas: var(--canvas);
-  --color-ink: var(--ink);
   --color-accent: var(--accent);
-  --color-stone: var(--stone);
   --color-card: var(--card);
   --color-border: var(--border);
 
@@ -178,66 +162,24 @@
     color: var(--accent-foreground);
   }
 
-  /* Uniform form controls, styled once at the element level so the existing
-     un-restructured form (ADR 0006 — the staged flow lands in later slices)
-     already looks considered without per-field utility classes. */
-  input,
-  select {
-    width: 100%;
-    box-sizing: border-box;
-    margin-top: 0.25rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 0.625rem;
-    background-color: var(--card);
-    color: var(--ink);
-    font: inherit;
-    transition:
-      border-color 0.15s ease,
-      box-shadow 0.15s ease;
-  }
-  input:focus-visible,
-  select:focus-visible {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
-  }
-  label {
-    display: block;
-    margin-top: 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--stone);
-  }
-  button {
-    padding: 0.375rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 0.625rem;
-    background-color: var(--card);
-    color: var(--ink);
-    font: inherit;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: border-color 0.15s ease;
-  }
-  button:hover:not(:disabled) {
-    border-color: var(--accent);
-  }
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  fieldset {
-    margin-top: 1rem;
-    border: 1px solid var(--border);
-    border-radius: 0.75rem;
-    padding: 1rem;
-  }
-  legend {
-    padding: 0 0.5rem;
-    font-size: 0.875rem;
-    color: var(--stone);
-  }
+  /*
+   * No element-level form or button styling. The reference's entire base layer
+   * is the three rules above — `*` border-color, `body`, `::selection`
+   * (`styles.css:111`) — and every control gets its pixels from its own
+   * classes.
+   *
+   * What stood here was the pre-parity app's, written for the un-restructured
+   * form ADR 0006 describes. #118 deleted those screens; the CSS outlived them
+   * and kept styling every `input`, `select`, `label` and `button` in the
+   * parity rebuild, where nothing asks for it. Element selectors lose to any
+   * utility that names the same property — but only to one that does, so a 1px
+   * border and a 10px radius survived everywhere no `border-*` or `rounded-*`
+   * was written (#135).
+   *
+   * It cost three PRs before it was found: #134's add button, #137's inputs and
+   * Save/Reset, and #138's error button each had to neutralise it per element.
+   * The `fieldset`/`legend` rules had no markup left at all.
+   */
 }
 
 /* Reference motion primitives (dossier §3). `slide-up` re-runs on each staged
