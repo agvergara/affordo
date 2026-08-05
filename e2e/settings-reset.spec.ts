@@ -110,3 +110,44 @@ test("confirming the reset clears profile and goals and returns to onboarding", 
   );
   expect(stored).not.toContain("MacBook Pro");
 });
+
+/**
+ * Reset's focus ring and hit target (#99).
+ *
+ * Tailwind implements `ring` as a box-shadow, and box-shadows follow
+ * `border-radius`. Reset once carried `p-0`, so its box was 15px tall and a
+ * 10px radius clamped to half the height — the focus ring painted as a full
+ * stadium hugging the text rather than the rounded rectangle intended.
+ *
+ * #137 gave it the reference's ghost geometry (`h-9 px-4 py-2 rounded-md`),
+ * which fixes both that and the 112×15 hit target #99 recorded as under WCAG
+ * 2.2 §2.5.8's 24×24 floor.
+ *
+ * This is the assertion #99 asked for and left open: jsdom applies no
+ * stylesheet, so no unit test can see any of it, and the rest of this spec
+ * asserts only roles, URLs and storage. One `getComputedStyle` call pins the
+ * whole class.
+ */
+test("Reset's focus ring is a rounded rectangle, on a target that clears 24px", async ({
+  page,
+}) => {
+  await seedProfileAndGoal(page);
+  await page.goto("/settings");
+  const reset = page.getByRole("button", { name: "Reset everything" });
+  await expect(reset).toBeVisible();
+
+  const box = await reset.boundingBox();
+  const radius = await reset.evaluate(
+    (el) => parseFloat(getComputedStyle(el).borderRadius) || 0,
+  );
+
+  // The stadium test, stated as the geometry rather than as a magic number: a
+  // radius at or above half the height IS a stadium, whatever the values are.
+  expect(radius).toBeGreaterThan(0);
+  expect(radius).toBeLessThan((box?.height ?? 0) / 2);
+
+  // WCAG 2.2 §2.5.8. The reference's `size="sm"` ghost is h-8/32px, so
+  // reproducing the reference and clearing this floor are not in tension here.
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(24);
+});
