@@ -146,17 +146,18 @@ describe("reference oklch color tokens (dossier §3)", () => {
   // `ThemeProvider` and applies the same `.dark` class a chosen dark uses, so
   // there is no second dark palette for this file to miss. (#98 and #121, the
   // two bugs that gap hid, are both fixed.)
-  describe("legacy tokens flip when the .dark class is applied", () => {
-    it("flips the ink the base layer paints input text with", () => {
-      expect(tokenValue(null, "--ink")).toBe("#1c1a17");
-      expect(tokenValue("dark", "--ink")).toBe("#f5efe4");
-    });
-
-    it("flips the canvas and the muted stone the labels use", () => {
-      expect(tokenValue("dark", "--canvas")).toBe("#1c1a17");
-      expect(tokenValue("dark", "--stone")).toBe("#a8a093");
-    });
-  });
+  /*
+   * The `--canvas`/`--ink`/`--stone` flip tests stood here. They pinned that a
+   * chosen dark theme also flipped the legacy palette, because the base layer
+   * painted input text with `--ink` and labels with `--stone` — leaving them at
+   * their light values put dark ink on a near-black background (#121).
+   *
+   * #135 deleted that base layer, which made the three tokens unreferenced by
+   * anything, and this PR deletes the tokens. A test asserting a deleted token
+   * flips between two themes pins nothing; the guard that matters now is
+   * `theme.test.ts`'s "the base layer does not style form controls", which is
+   * what would let them become load-bearing again.
+   */
 });
 
 // The `@layer base` block contains nested `{}` rules, so no single regex can

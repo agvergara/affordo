@@ -63,22 +63,41 @@ describe("motion keyframes and utilities (dossier §3)", () => {
  * nothing in the unit suite can see a base-layer rule reappear.
  */
 describe("the base layer does not style form controls", () => {
-  /** The `@layer base { … }` block, brace-matched rather than regexed. */
-  function baseLayer(): string {
-    const open = css.indexOf("@layer base");
-    expect(open, "theme.css should declare @layer base").toBeGreaterThan(-1);
-    let depth = 0;
-    for (let i = css.indexOf("{", open); i < css.length; i++) {
-      if (css[i] === "{") depth++;
-      else if (css[i] === "}" && --depth === 0) {
-        return css.slice(open, i + 1);
+  /**
+   * **Every** `@layer base { … }` block, brace-matched rather than regexed.
+   *
+   * All of them, not the first: a second block appended anywhere in the file
+   * would be a perfectly ordinary way to reintroduce this, and a guard reading
+   * only `indexOf` would never look at it.
+   */
+  function baseLayers(): string {
+    const blocks: string[] = [];
+    let from = 0;
+    for (;;) {
+      const open = css.indexOf("@layer base", from);
+      if (open === -1) break;
+      let depth = 0;
+      let end = -1;
+      for (let i = css.indexOf("{", open); i < css.length; i++) {
+        if (css[i] === "{") depth++;
+        else if (css[i] === "}" && --depth === 0) {
+          end = i;
+          break;
+        }
       }
+      if (end === -1) throw new Error("unbalanced @layer base");
+      blocks.push(css.slice(open, end + 1));
+      from = end + 1;
     }
-    throw new Error("unbalanced @layer base");
+    expect(
+      blocks.length,
+      "theme.css should declare @layer base",
+    ).toBeGreaterThan(0);
+    return blocks.join("\n");
   }
 
   it("finds a real base layer, so the assertions below cannot pass vacuously", () => {
-    const layer = baseLayer();
+    const layer = baseLayers();
     expect(layer.length).toBeGreaterThan(100);
     // The three rules that SHOULD be there — if these ever go, the guard below
     // would pass on an empty layer and mean nothing.
@@ -87,28 +106,54 @@ describe("the base layer does not style form controls", () => {
     expect(layer).toMatch(/::selection\s*\{/);
   });
 
+  /**
+   * `[\s,}(:]` on the left, not just `[\s,}]`: `:where(button)`, `:is(button)`
+   * and `html>button` are all ordinary ways to write this rule, and a guard
+   * that only understood the shape the last author happened to use would wave
+   * them through. `>` and `+` are in there for the same reason.
+   */
+  const selectorFor = (tag: string) =>
+    new RegExp(`(^|[\\s,}(>+~])${tag}\\s*[,{:)]`);
+
   it.each([
-    ["button", /(^|[\s,}])button\s*[,{:]/],
-    ["input", /(^|[\s,}])input\s*[,{:]/],
-    ["select", /(^|[\s,}])select\s*[,{:]/],
-    ["label", /(^|[\s,}])label\s*[,{:]/],
-    ["fieldset", /(^|[\s,}])fieldset\s*[,{:]/],
-    ["legend", /(^|[\s,}])legend\s*[,{:]/],
+    ["button", selectorFor("button")],
+    ["input", selectorFor("input")],
+    ["select", selectorFor("select")],
+    ["label", selectorFor("label")],
+    ["fieldset", selectorFor("fieldset")],
+    ["legend", selectorFor("legend")],
+    ["textarea", selectorFor("textarea")],
   ])("has no element-level rule for %s", (_name, pattern) => {
     // Comments are stripped: this block is documented in prose that necessarily
     // names the elements it warns about, exactly as the surface-token scan in
     // contrast.test.ts had to handle.
-    const code = baseLayer().replace(/\/\*[\s\S]*?\*\//g, "");
+    const code = baseLayers().replace(/\/\*[\s\S]*?\*\//g, "");
     expect(code).not.toMatch(pattern);
   });
 
-  it("catches an element rule being reintroduced", () => {
-    // Non-vacuity: prove the patterns fire on the shape they guard against,
-    // rather than trusting six negative assertions.
-    const layer = "@layer base { button { border: 1px solid red; } }";
-    expect(layer).toMatch(/(^|[\s,}])button\s*[,{:]/);
-    expect("@layer base { * { border-color: red; } }").not.toMatch(
-      /(^|[\s,}])button\s*[,{:]/,
-    );
+  it.each([
+    ["bare", "button { border: 1px solid red; }"],
+    ["descendant", "html button { border: 1px solid red; }"],
+    ["child combinator", "form>button { border: 1px solid red; }"],
+    [":where()", ":where(button) { border: 1px solid red; }"],
+    [":is()", ":is(button, input) { border: 1px solid red; }"],
+    ["grouped", "a, button { border: 1px solid red; }"],
+    ["pseudo", "button:hover { border-color: red; }"],
+  ])("catches a %s reintroduction", (_shape, rule) => {
+    // Seven shapes, not the one the last author happened to try. Six negative
+    // assertions are worth nothing without proof the pattern fires at all.
+    expect(rule).toMatch(selectorFor("button"));
+  });
+
+  it("does not fire on the three rules that belong there", () => {
+    for (const ok of [
+      "* { border-color: var(--border); }",
+      "body { background-color: var(--background); }",
+      "::selection { background-color: var(--accent); }",
+    ]) {
+      for (const tag of ["button", "input", "select", "label"]) {
+        expect(ok).not.toMatch(selectorFor(tag));
+      }
+    }
   });
 });

@@ -21,15 +21,13 @@
    the two drifted — it set six tokens and never `--background`, so an OS-dark
    visitor read `--ink` cream on a near-white page at 1.10:1 (#121). */
 :root {
-  --canvas: #fbf7f0; /* cream */
-  --ink: #1c1a17; /* ink */
-  --stone: #6b655c; /* muted */
-
   /* Reference oklch palette — the shadcn/new-york semantic token set from
      dossier §3, verbatim light values. This is the token system the rebuild
-     migrates onto (ADR 0014 amendment): the warm-editorial canvas/ink/stone
-     stay above until every component references these names, and the three
-     shared roles (accent/card/border) are given their reference oklch values.
+     migrates onto (ADR 0014 amendment). The warm-editorial canvas/ink/stone
+     tokens that used to sit above are gone: the base layer that painted
+     input/select text with `--ink` and labels with `--stone` went with #135,
+     and nothing else ever referenced them. The three shared roles
+     (accent/card/border) carry their reference oklch values.
      Accent (terracotta→orange) and card (white→white) read essentially as
      before; --border deliberately changes — from opaque warm cream to a
      translucent near-black hairline — the reference's fainter, cooler line on
@@ -84,24 +82,10 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.72 0.19 45);
 
-  /* The legacy warm-editorial tokens, flipped to their dark values. These are
-     not decoration: the base
-     layer paints input/select text with --ink and labels with --stone, so a
-     class-based dark theme that left them at their light values would put dark
-     ink on the near-black --background and make every settings field
-     unreadable. Until the remaining components migrate to the reference token
-     names (ADR 0021's accepted coexistence), the class has to flip both sets
-     or choosing dark breaks whatever still reads the legacy ones. */
-  --canvas: #1c1a17;
-  --ink: #f5efe4;
-  --stone: #a8a093;
 }
 
 @theme inline {
-  --color-canvas: var(--canvas);
-  --color-ink: var(--ink);
   --color-accent: var(--accent);
-  --color-stone: var(--stone);
   --color-card: var(--card);
   --color-border: var(--border);
 

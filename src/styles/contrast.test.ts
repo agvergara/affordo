@@ -129,8 +129,6 @@ const PAIRINGS: ReadonlyArray<[label: string, fg: string, bg: string]> = [
   ["card text", "--card-foreground", "--card"],
   ["destructive surfaces", "--destructive-foreground", "--destructive"],
   ["inverted primary button", "--background", "--foreground"],
-  ["legacy input text", "--ink", "--canvas"],
-  ["legacy muted labels", "--stone", "--canvas"],
 ];
 
 /**
