@@ -31,13 +31,12 @@ are prioritized over brevity. Anything undeterminable is under OPEN QUESTIONS.
 > (#104). When the dossier does not mention an element, do **not** conclude the
 > element does not exist.
 >
-> ⚠️ **The reference is gone.** `agvergara/dream-purchase-planner` was private and
-> has been deleted, so the old advice — "read the reference" — is no longer
-> available to anyone. **This document is now the only record.** Outside the
-> sections marked exhaustive above, silence means *unknown*: not permission to
-> invent a value, and not permission to delete an element the code already has.
-> See `AGENTS.md`, which records what the reference was and the shadcn base
-> classes that turned out to be load-bearing.
+> ⚠️ **The reference repo is deleted — read the archive instead.**
+> `agvergara/dream-purchase-planner` was private and has been removed, so the
+> `gh api` command this document used to recommend no longer works. All 86 source
+> files are archived verbatim at `docs/reference-snapshot/`. That is still the
+> right next step when this document is silent: **silence here is not evidence**,
+> and the snapshot usually answers it. Where the two disagree, the snapshot wins.
 
 ---
 
@@ -568,9 +567,9 @@ unrecorded by default, and #104 is what that cost: a duel reasoned from the
 silence that the `/goals` footer's dimming was invented, removed it, and shipped
 a regression that survived review because the premise looked authoritative.
 
-Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`, while
-that repository still existed. It has since been deleted; these teardowns cannot
-be re-derived.
+Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`. That
+repository has since been deleted; the files are archived at
+`docs/reference-snapshot/src/routes/`, so these teardowns can still be checked.
 
 ### `/` — `index.tsx`
 

@@ -6,12 +6,12 @@ by its own convention rather than duplicating it.
 
 Two things worth knowing before you read it:
 
-- **The reference app is gone.** `agvergara/dream-purchase-planner` was private
-  and has been deleted, so every instruction in this repo's history to `gh api`
-  it is dead. `docs/affordo-context.md` is now the only record — read its
-  coverage table first, and treat silence outside the exhaustive sections as
-  _unknown_ rather than as evidence either way. `AGENTS.md` records what the
-  reference was and the shadcn base classes that proved load-bearing.
+- **The reference repo is deleted, but archived here.** Every instruction in this
+  repo's history to `gh api agvergara/dream-purchase-planner` is dead; read
+  [`docs/reference-snapshot/`](docs/reference-snapshot/) instead — all 86 files,
+  verbatim. `docs/affordo-context.md` is the organised extraction and the better
+  starting point, but the snapshot is what it was derived from and wins where
+  they disagree.
 
 - **The unit suite is blind to anything visual.** jsdom applies no stylesheet, so
   geometry, colour, focus rings and hit targets need a browser measurement or they

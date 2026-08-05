@@ -19,11 +19,18 @@ reference is the authority; this codebase is a reproduction of it.
 
 `agvergara/dream-purchase-planner` was private and has been deleted. **Any
 instruction in this repo's history to `gh api` it is dead** — commit messages, PR
-bodies and older comments say "read the reference", and you cannot.
+bodies and older comments say "read the reference" and give a command that no
+longer works.
 
-**`docs/affordo-context.md` is now the only record.** Treat it as the authority it
-was never quite designed to be, and read its coverage table first: some sections
-are exhaustive, some are samples, and it says which.
+**It is archived at [`docs/reference-snapshot/`](docs/reference-snapshot/)** — all
+86 source files, verbatim, taken while access still held. Read that instead of
+the `gh api` command. It is excluded from `tsc` and `prettier` on purpose: it is
+evidence, and reformatting it would destroy the only property that makes it
+useful.
+
+`docs/affordo-context.md` is still the better _starting_ point — it is organised
+and says which of its sections are exhaustive. But the snapshot is what it was
+derived from, and where the two disagree the snapshot wins.
 
 ### What the reference was
 
@@ -49,12 +56,13 @@ This port differs by construction: **Vite + React 18, a hand-rolled router
 shadcn, no lucide, no sonner, no tailwind-merge.** Every shadcn primitive is
 reimplemented by hand, which is the source of rule 1 below.
 
-### The base layers, recorded because they are load-bearing
+### The base layers, quoted here because they are load-bearing
 
 The reference composed shadcn components; this port writes plain elements. The
 classes those components contributed **do not appear in any route source**, and
-four PRs shipped wrong geometry by copying the route string alone. These are the
-values, captured before the repo went:
+four PRs shipped wrong geometry by copying the route string alone. Quoted here
+for convenience; the files are at
+`docs/reference-snapshot/src/components/ui/`:
 
 ```
 Button base:  inline-flex items-center justify-center gap-2 whitespace-nowrap
@@ -123,12 +131,12 @@ So the rule hardens rather than relaxes:
 - Unknown is not permission to invent, and not permission to delete. An element
   the dossier does not mention and the code already has was put there by someone
   who could still read the reference. Leave it, unless you can show it is wrong.
-- What survives as evidence: the dossier, the ADRs, the measured numbers in
-  commit messages and PR bodies, and this file's recorded base layers. All were
-  written while the reference was readable.
+- **`docs/reference-snapshot/` answers most of it.** The archive is complete, so
+  a question the dossier does not cover is usually still answerable — just from
+  the snapshot rather than a live fetch.
 
-If parity work genuinely needs something nobody recorded, say so and stop.
-Guessing produces a value that looks researched and is not.
+If parity work needs something neither the snapshot nor the dossier records, say
+so and stop. Guessing produces a value that looks researched and is not.
 
 ### 3. The unit suite cannot see anything visual
 
