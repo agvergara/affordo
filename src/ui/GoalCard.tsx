@@ -20,7 +20,7 @@ import { VerdictBadge } from "./VerdictBadge";
  * The date is `toLocaleDateString("en-US")` regardless of the profile currency —
  * a reference quirk reproduced deliberately (dossier §13).
  */
-export interface GoalCardProps {
+interface GoalCardProps {
   goal: Goal;
   /** The user asked to revise this goal. */
   onEdit: () => void;
@@ -176,9 +176,7 @@ export function GoalCard({ goal, onEdit, onRemove }: GoalCardProps) {
           Cut expenses by{" "}
           <b>{formatNumber(verdict.cutPct ?? 0, profile.currency)}%</b> to reach
           it in{" "}
-          <b>
-            {formatNumber(verdict.cutMonths ?? 0, profile.currency)} months
-          </b>
+          <b>{formatNumber(verdict.cutMonths ?? 0, profile.currency)} months</b>
           .
         </p>
       )}

@@ -6,7 +6,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { defaultTheme, loadStoredTheme, saveTheme, type Theme } from "./theme-store";
+import {
+  defaultTheme,
+  loadStoredTheme,
+  saveTheme,
+  type Theme,
+} from "./theme-store";
 
 /**
  * The theme state layer (docs/affordo-context.md §3/§10). Holds the current
@@ -24,7 +29,7 @@ import { defaultTheme, loadStoredTheme, saveTheme, type Theme } from "./theme-st
  * is light — the layout effect is what closes that gap before the pixel hits the
  * screen.) The toggle UI is #72; the system-preference logic below is #73.
  */
-export interface ThemeContextValue {
+interface ThemeContextValue {
   theme: Theme;
   setTheme: (theme: Theme) => void;
 }

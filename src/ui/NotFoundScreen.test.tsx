@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { NotFoundScreen } from "./Placeholder";
+import { NotFoundScreen } from "./NotFoundScreen";
 
 describe("NotFoundScreen", () => {
   it("shows the 404 numeral, Page not found, and a Go home link to /", () => {

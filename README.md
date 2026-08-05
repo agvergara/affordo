@@ -3,30 +3,28 @@
 **Can I afford this?** — and if not, **when could I?** Affordo answers both for any
 purchase and reframes the price as something you actually feel: the **Time Cost**, in
 hours and days of your own working life. A €1.200 laptop isn't an abstract number;
-it's *three weeks of work*.
+it's _three weeks of work_.
 
 It's a privacy-first, client-only web app. You type what you earn and spend — nothing
 ever leaves your browser — name a purchase, and Affordo answers in plain language.
 
 ---
 
-## The three answers
+## The two answers
 
-- **Time Cost** — how many hours / work-days / work-weeks of your life the purchase
-  costs, shown in the most readable unit for its size (a house isn't reported as
-  18,000 hours). A "work day" is built from **your** contracted hours, not a fixed 8.
-- **Affordability Verdict** — **Affordable Now** from your savings, a **Save-Up Date**
-  ("about 4 months if you save your surplus"), or **Not Reachable** at your current
-  rate — with the monthly shortfall and the expense lever that would change it. No
-  ∞, no NaN, no negative dates; always an honest answer.
-- **A think-twice Challenge** — when a purchase crosses your **Significance Threshold**
-  (default 10% of monthly net income, and you can change the percentage and the
-  monthly/annual basis), Affordo challenges you to pause. It challenges the *decision*,
-  never the person, and never nudges you toward spending.
+- **Time Cost** — how many hours and work days of your life the purchase costs. A
+  "work day" is built from **your** contracted hours, not a fixed 8.
+- **A four-way Verdict** — **Afford** it from savings; **Stretch**, reachable within
+  12 months from what you have spare; **Cut to afford**, reachable if you trim
+  expenses, with the percentage and the horizon that buys; or **Cannot**, no route
+  at the current numbers. No ∞, no NaN, no negative durations.
 
-Everything past the basics is an **optional** refinement, never asked upfront: itemized
-expenses each with their own frequency, income paid in 14 instalments, a custom monthly
-contribution, a one-off windfall, and **Saved Goals** you can name and revisit.
+A purchase above your **Significance Threshold** (default 10% of monthly income,
+adjustable) is marked as such on its card.
+
+Income paid in 14 instalments, a custom monthly contribution, and **Saved Goals**
+you can name and revisit are all supported; nothing beyond the basics is asked
+upfront.
 
 ---
 
@@ -42,18 +40,18 @@ either: an embedded key on a client-only app is security theater — see
 
 ## Tech stack
 
-| Piece         | Choice                                   | Why |
-|---------------|------------------------------------------|-----|
-| Language      | TypeScript 5.5                           | The contracts are the spec; correctness is enforced at compile time |
-| UI            | React 18 + Vite 5                        | A form and a few results — a static bundle with instant dev reload |
-| Styling       | Tailwind CSS v4 (CSS-first, `@theme`)    | Utility styling that compiles away at build time — no runtime weight ([ADR 0014](docs/adr/0014-tailwind-v4-utility-styling.md)) |
-| Domain logic  | Pure-TypeScript engine, zero UI imports  | The money lives away from the framework: testable in milliseconds, reusable by a future native app |
-| Money         | Integer cents, everywhere                | No floating-point drift — €0,10 + €0,20 is exactly €0,30 |
-| Persistence   | Versioned `localStorage`, plain JSON     | Client-only, with a `schemaVersion` so future migrations don't hurt |
-| Unit tests    | Vitest + Testing Library                 | Near-exhaustive on the engine, thin on the UI |
-| E2E           | Playwright                               | Real-browser journeys for the paths that matter |
+| Piece        | Choice                                  | Why                                                                                                                                             |
+| ------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language     | TypeScript 5.5                          | The contracts are the spec; correctness is enforced at compile time                                                                             |
+| UI           | React 18 + Vite 5                       | A form and a few results — a static bundle with instant dev reload                                                                              |
+| Styling      | Tailwind CSS v4 (CSS-first, `@theme`)   | Utility styling that compiles away at build time — no runtime weight ([ADR 0014](docs/adr/0014-tailwind-v4-utility-styling.md))                 |
+| Domain logic | Pure-TypeScript engine, zero UI imports | The money lives away from the framework: testable in milliseconds, reusable by a future native app                                              |
+| Money        | Float currency units                    | What the reference computes in; the v1 integer-cents model was superseded ([ADR 0017](docs/adr/0017-money-as-floating-point-currency-units.md)) |
+| Persistence  | Versioned `localStorage`, plain JSON    | Client-only, with a `schemaVersion` so future migrations don't hurt                                                                             |
+| Unit tests   | Vitest + Testing Library                | Near-exhaustive on the engine, thin on the UI                                                                                                   |
+| E2E          | Playwright                              | Real-browser journeys for the paths that matter                                                                                                 |
 
-React stays the only *runtime* dependency — Tailwind is a build-time tool that compiles
+React stays the only _runtime_ dependency — Tailwind is a build-time tool that compiles
 to plain CSS and ships no JavaScript. Its config is deliberately minimal (v4's CSS-first
 `@theme`, no `tailwind.config.js`), and there's still nothing to sign up for. Fonts are
 self-hosted, never loaded from a CDN, so the "no network calls" promise holds.
@@ -84,7 +82,7 @@ Android app untouched ([ADR 0008](docs/adr/0008-isolated-pure-typescript-engine.
 `evaluateReference(profile, goal) → ReferenceVerdict` is the one seam: give it a
 financial profile and a goal, and it hands back the Net Hourly Wage, the Time Cost in
 hours and days, and the four-way verdict. Derived values (Net Hourly Wage, Surplus) are
-computed *inside* — the caller never supplies them.
+computed _inside_ — the caller never supplies them.
 
 ---
 
@@ -110,18 +108,27 @@ npm run preview   # serve the built bundle
 
 Three seams, heaviest where the risk is ([ADR 0013](docs/adr/0013-three-layer-testing-e2e-in-v1.md)):
 
-- **Engine (Vitest), near-exhaustive** — every surfaced case of `evaluate`: all three
-  verdicts, tiny-but-positive surplus, windfalls, custom contribution, 12/14 payments,
-  Significance-Threshold boundaries, the Work-Time Unit ladder, European parsing,
-  integer-cents arithmetic. Wrong money would be the worst bug, so coverage is deepest here.
-- **E2E (Playwright)** — full journeys through the running app: each answer, saving and
-  revisiting Goals, the desktop manual-entry path, unparseable-input recovery.
-- **UI components (Testing Library), thin** — the React glue, kept light because the
-  logic is proven at seam 1.
+- **Engine (Vitest)** — every case `evaluateReference` surfaces: all four verdicts,
+  the 12-month stretch boundary, the expense-cut path, 12/14 payment periods,
+  Significance-Threshold boundaries, and the guards against ∞/NaN. Wrong money would
+  be the worst bug, so coverage is deepest here.
+- **E2E (Playwright)** — journeys through the running app: the onboarding gate,
+  saving/editing/removing goals, reset, and the guards no unit test can see — a
+  privacy check that no request leaves the origin, and a sweep that every
+  interactive target clears 24×24 ([ADR 0022](docs/adr/0022-fidelity-bar-stops-at-the-perceivable.md)).
+- **UI components (Testing Library)** — the React glue and the reference's exact
+  class strings, since jsdom applies no stylesheet and geometry is otherwise
+  invisible to the suite.
+
+**Anything about rendered geometry has to be measured in a browser.** Four separate
+PRs shipped a class string byte-identical to the reference and rendered it at the
+wrong size, because the reference composes shadcn components whose base classes
+survive tailwind-merge and appear in no source. A class-string comparison cannot
+see that; `getBoundingClientRect` can.
 
 ```bash
-npm test          # Vitest — 88 tests
-npm run test:e2e  # Playwright — 11 journeys
+npm test          # Vitest — 454 tests
+npm run test:e2e  # Playwright — 16 journeys
 npm run typecheck # tsc --noEmit
 ```
 
@@ -139,27 +146,40 @@ src/
 e2e/          Playwright journeys
 docs/
   prd/        product requirements (frozen, per release)
-  adr/        21 architecture decision records
+  adr/        22 architecture decision records
 CONTEXT.md    the glossary / ubiquitous language
+AGENTS.md     working agreements for agents on this repo
 ```
 
 ---
 
-## Roadmap
+## Status
 
-- **v1** — *shipped.* Time Cost, the three-way Verdict, the Significance-Threshold
-  Challenge, Saved Goals, hardened European parsing, a personal work day.
-- **v1.1** — mobile camera **Price Scan** via on-device OCR (result always editable).
-- **v1.2** — cross-goal interaction ("buying X delays Y"); Goals are independent in v1.
-- **v2** — variable-income tracking + the Real Hourly Wage refinement; later, durable
-  cross-device storage and an Android app reusing the same engine.
+**v1** shipped, then was **replaced** by a full rebuild to a reference design (PRD
+issue #39, closed). The rebuild changed the product, not just the code: the
+three-way verdict became four-way, the think-twice Challenge went, and money moved
+from integer cents to float currency units. `CONTEXT.md` lists what was retired and
+what replaced it; `docs/prd/v1-affordability-calculator.md` is kept as the frozen
+record of the app this one replaced.
+
+Known and deliberate: the reference palette fails WCAG AA in four places, and those
+failures are reproduced and pinned as expected failures. See
+[ADR 0022](docs/adr/0022-fidelity-bar-stops-at-the-perceivable.md) for what may
+diverge from the reference and what may not.
 
 ---
 
 ## Where the rest lives
 
 - [**`CONTEXT.md`**](CONTEXT.md) — the glossary. The vocabulary here (Time Cost,
-  Surplus, Save-Up Date, Windfall…) is used verbatim in code, tests, and copy.
-- [**`docs/prd/`**](docs/prd) — the product requirements, one frozen PRD per release.
-- [**`docs/adr/`**](docs/adr) — the 13 decisions that shaped the build, and the ones
-  deliberately deferred.
+  Monthly Disposable, Stretch, Cut to afford…) is used verbatim in code, tests and
+  copy, and it lists the v1 terms the rebuild retired.
+- [**`docs/affordo-context.md`**](docs/affordo-context.md) — the reference
+  extraction, and the authority on what the app should look like. Read its coverage
+  table first: some sections are exhaustive and some are samples, and **silence in
+  it is not evidence about the reference.**
+- [**`docs/prd/`**](docs/prd) — frozen PRDs, one per release. v1 describes the app
+  this one replaced.
+- [**`docs/adr/`**](docs/adr) — the 22 decisions that shaped the build, superseded
+  ones kept and marked.
+- [**`AGENTS.md`**](AGENTS.md) — how agents are expected to work in this repo.
