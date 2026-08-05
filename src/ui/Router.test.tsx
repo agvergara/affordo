@@ -310,3 +310,22 @@ describe("Router — the redirect gate keeps the root head (#111)", () => {
     expect(document.title).toBe("Affordo — Audit: Life/Cost");
   });
 });
+
+describe("Router — the hydration gate is legible (#132)", () => {
+  it("paints the loading line with a foreground token, not a surface one", () => {
+    navigateTo("/");
+    render(<Router navigate={vi.fn()} />);
+
+    // `text-muted` is a surface token and rendered this line at ~1.15:1 in both
+    // themes. A class assertion under PR #94's narrow exemption: the colour *is*
+    // the criterion, and jsdom applies no stylesheet, so the class is the only
+    // observable. `contrast.test.ts` proves the token is unusable as text; this
+    // proves nothing uses it here.
+    const line = screen.getByText(/loading/i);
+    expect(line).toHaveClass("text-muted-foreground");
+    // `(?!-)` matters: `-` is a word boundary, so `/\btext-muted\b/` matches
+    // inside `text-muted-foreground` and the assertion would fail on correct
+    // code. Same trap as the quote-sensitive `manifest` assertion in #128.
+    expect(line.className).not.toMatch(/\btext-muted(?!-)/);
+  });
+});

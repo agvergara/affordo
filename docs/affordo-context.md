@@ -556,6 +556,13 @@ No head. Renders a hydration gate only:
 
 Then `<Navigate to={hasProfile ? "/goals" : "/onboarding"} />`.
 
+**Divergences:**
+
+| element | reference | ours |
+| --- | --- | --- |
+| container | `<div className="flex min-h-dvh items-center justify-center bg-background">` | `<main className="grid min-h-screen place-items-center">` — no `bg-background` |
+| loading line | `text-muted-foreground` | was `text-muted`, a *surface* token at ~1.15:1 — invisible in both themes. Fixed in #132 |
+
 ### `/onboarding` — `onboarding.tsx`
 
 A head (§1) plus `component: OnboardingWizard`. **No body of its own** — all markup
