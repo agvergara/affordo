@@ -131,8 +131,14 @@ export function GoalsDashboard() {
         {/*
           Divider and add-button are two stacked blocks in the reference
           (`goals.tsx:108` and `:118`), not the one `justify-between` row we
-          had. The label is centred in a ruled line rather than left-aligned,
-          and the button sits right-aligned on its own below.
+          had, and the button sits right-aligned on its own below.
+
+          The two `h-px flex-1` rules render 0px wide and leave the label
+          left-aligned — an empty `flex-1` with no basis contributes nothing to
+          max-content inside a shrink-to-fit flex child. The reference has the
+          same quirk, so this reproduces markup rather than a visible divider.
+          Giving them a width would be inventing a rule the reference does not
+          draw.
         */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -147,11 +153,37 @@ export function GoalsDashboard() {
           </div>
         </div>
 
+        {/*
+          `h-9` is the load-bearing class here, and it is why copying the
+          reference's `className` alone is not fidelity. The reference renders a
+          shadcn `<Button>` whose default size is `h-9 px-4 py-2`; `cn()` merges
+          `px-5 py-5` over the padding but *keeps* `h-9`, since height and
+          padding are separate conflict groups in tailwind-merge. So the
+          reference button is 36px tall and its `py-5` never grows it.
+
+          Ours is a bare `<button>` with no base layer, so the same string
+          rendered at 58.5px — the class string got closer to the reference
+          while the pixels moved further from it (#134's duel). The surviving
+          base classes are inlined, exactly as `GoalDialog` already does for
+          shadcn's `Input`.
+
+          `border-0` is the other half. `theme.css`'s base layer still carries
+          the pre-parity app's global `button` rule, which puts `1px solid` on
+          every button here; the reference's base layer has no `button` rule at
+          all (`styles.css:111` is three rules). That is a systemic divergence
+          affecting every screen, so it is filed separately rather than fixed
+          from inside a `/goals` PR — this neutralises it for one button.
+
+          Measured in Chromium: reference and ours both **40px**. Not 36px —
+          `h-9` is 36, but border-box clamps height up to padding, and `py-5`
+          (20px each side) survives the merge over the size variant's `py-2`.
+          `h-9 px-4 py-2` is 36px; `h-9 px-5 py-5` is 40px.
+        */}
         <div className="mb-8 flex justify-end">
           <button
             type="button"
             onClick={openAdd}
-            className="flex items-center gap-2 rounded-none bg-foreground px-5 py-5 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex h-9 cursor-pointer items-center border-0 justify-center gap-2 whitespace-nowrap rounded-none bg-foreground px-5 py-5 font-mono text-[11px] font-bold uppercase tracking-widest text-background shadow transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:size-4 [&_svg]:shrink-0"
           >
             <PlusIcon />
             Add goal

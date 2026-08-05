@@ -20,7 +20,7 @@ are prioritized over brevity. Anything undeterminable is under OPEN QUESTIONS.
 > | --- | --- |
 > | §5 components, §16 wizard steps | **exhaustive** — character-perfect teardowns |
 > | §6 copy, §1 head | **exhaustive** for the keys listed |
-> | §6b route bodies | **exhaustive** for the five routes, as of the extraction |
+> | §6b route bodies | the **rendered** body of each of the five routes; guard and loading branches are **not** covered — see the note under §6b |
 > | §3 tokens, §4 typography | **exhaustive** for the token set |
 > | everything else | **sample** — assume nothing from omission |
 >
@@ -729,6 +729,13 @@ Two things not to collapse here:
   `Go home` is outline (`text-foreground`, no `bg-`) hovering to solid. Each
   inverts into the other. The 404's `Link` is the solid variant again, plus
   `inline-flex items-center`.
+
+**Not covered by the teardowns above:** each route's pre-render branches — the
+`!hydrated` loading gate and the profile guard that precede the body (reference
+`goals.tsx:30-36`, and the equivalents on `/settings` and `/onboarding`). §6b
+records what a route paints once it has data. The markup for `/`'s gate *is*
+recorded, which makes the omission easy to misread as completeness (#134's
+duel). Read a route's guard from the reference, never from here.
 
 ### Known divergences at time of extraction
 

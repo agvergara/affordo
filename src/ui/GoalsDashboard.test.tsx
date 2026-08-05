@@ -163,9 +163,16 @@ describe("GoalsDashboard route-body parity", () => {
     expect(screen.getByTestId("snapshot-grid")).toHaveClass("mt-6");
   });
 
-  it("flanks the saved-goals label with hairline rules", () => {
-    // `h-px flex-1 bg-border` either side (`goals.tsx:110/114`) — the label sits
-    // in the middle of a ruled line, it is not left-aligned text.
+  it("reproduces the reference's two hairline elements around the label", () => {
+    // `h-px flex-1 bg-border` either side (`goals.tsx:110/114`).
+    //
+    // Measured in Chromium, both render **0px wide** and the label stays
+    // left-aligned — an empty `flex-1` with no basis contributes nothing to
+    // max-content inside a shrink-to-fit flex child. That is true of the
+    // reference too, so reproducing the markup is right and reproducing a
+    // *visible* divider would be inventing one. This asserts the elements
+    // exist with the reference's classes, and deliberately claims nothing
+    // about a rule anyone can see (#134's duel).
     renderDashboard();
     expect(screen.getAllByTestId("divider-rule")).toHaveLength(2);
     for (const rule of screen.getAllByTestId("divider-rule")) {
@@ -200,6 +207,14 @@ describe("GoalsDashboard route-body parity", () => {
     const button = screen.getByRole("button", { name: /add goal/i });
     expect(button).toHaveClass("gap-2", "px-5", "py-5", "text-[11px]");
     expect(button).not.toHaveClass("px-4", "py-2", "text-[10px]");
+    // `h-9` and `border-0` are why the *pixels* match, not just the string.
+    // The reference renders a shadcn `<Button>` whose size variant contributes
+    // `h-9`, which survives tailwind-merge against `px-5 py-5` (height and
+    // padding are separate conflict groups). Without it this button rendered
+    // 58.5px against the reference's 40px. `border-0` cancels `theme.css`'s
+    // legacy global `button` border, which the reference's base layer has no
+    // equivalent of. Both measured in Chromium (#134's duel).
+    expect(button).toHaveClass("h-9", "border-0");
     expect(within(button).getByTestId("add-goal-plus")).toBeInTheDocument();
   });
 
