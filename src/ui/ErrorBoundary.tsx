@@ -26,27 +26,48 @@ export class ErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background px-4 py-16 text-center text-foreground">
-          <h1 className="font-display text-6xl uppercase leading-none tracking-tight sm:text-8xl">
-            Something broke
-          </h1>
-          <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            The audit could not load.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={this.reset}
-              className="inline-flex items-center border border-border bg-foreground px-6 py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground"
-            >
-              Try again
-            </button>
-            <a
-              href="/"
-              className="inline-flex items-center border border-border px-6 py-3 font-mono text-[11px] font-bold uppercase tracking-widest hover:bg-foreground hover:text-background"
-            >
-              Go home
-            </a>
+        /*
+         * The reference's `ErrorComponent` (`__root.tsx:45`): the same centred
+         * `max-w-md` column the 404 uses, but a `text-4xl` heading against the
+         * 404's `text-8xl` — the error screen is deliberately the quieter of
+         * the two. Ours had them the same size, and larger than either.
+         *
+         * The two controls are a matched pair: `Try again` is solid and hovers
+         * to outline, `Go home` is outline and hovers to solid. Ours had both
+         * bordered at `border-border` with `Try again` hovering to accent, so
+         * the inversion between them was lost.
+         *
+         * `rounded-none` on the `<button>` is #135: this port's base layer
+         * gives every button a 10px radius that the reference, which has no
+         * global button rule, does not. The `<a>` is unaffected — the rule
+         * targets `button` only, which is why only one of the pair carries it.
+         */
+        <main
+          data-testid="error-shell"
+          className="flex min-h-screen items-center justify-center bg-background px-4"
+        >
+          <div data-testid="error-column" className="max-w-md text-center">
+            <h1 className="font-display text-4xl uppercase tracking-tight">
+              Something broke
+            </h1>
+            <p className="mt-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              The audit could not load.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={this.reset}
+                className="rounded-none border-2 border-foreground bg-foreground px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-transparent hover:text-foreground"
+              >
+                Try again
+              </button>
+              <a
+                href="/"
+                className="border-2 border-foreground px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-foreground hover:text-background"
+              >
+                Go home
+              </a>
+            </div>
           </div>
         </main>
       );
