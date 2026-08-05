@@ -3,7 +3,7 @@
 The v1 UI shipped as an unstyled HTML form. The redesign styles it with **Tailwind
 CSS v4** (CSS-first: a single `@import "tailwindcss"`, design tokens declared in
 `@theme`, the Vite plugin — **no `tailwind.config.js`**). This is recorded because it
-was chosen *deliberately against* the project's stated ethos, and unwinding it later
+was chosen _deliberately against_ the project's stated ethos, and unwinding it later
 would be costly.
 
 ## The tension
@@ -13,7 +13,7 @@ alternatives honored that literally:
 
 - **Plain CSS + custom-property tokens (CSS Modules)** — zero dependencies, zero
   config, full control. The recommended option for a one-screen app.
-- **A component library (MUI/Chakra)** — rejected outright: it adds *runtime* weight
+- **A component library (MUI/Chakra)** — rejected outright: it adds _runtime_ weight
   and breaks the "React is the only runtime dep" promise.
 
 We picked Tailwind anyway.
@@ -25,7 +25,7 @@ We picked Tailwind anyway.
   dependency — the README claim is preserved, reworded.
 - **v4 minimizes the config we traded away.** CSS-first means no `tailwind.config.js`
   and no PostCSS hand-wiring; tokens live in one `@theme` block and double as
-  utilities *and* CSS variables, which fits the warm-editorial token set
+  utilities _and_ CSS variables, which fits the warm-editorial token set
   (`--color-*`, `--space-*`, type scale) the redesign needs.
 - **Velocity on a growing surface.** The redesign decomposes the monolith into staged
   components (income, savings, expenses, the Time Cost hero, verdict/challenge cards);
@@ -45,6 +45,13 @@ spirit of [ADR 0011](0011-plain-versioned-localstorage-no-encryption.md)'s priva
 stance). Therefore every face is **self-hosted** — subsetted `woff2` files bundled into
 the static build and served from our own origin. No font is ever loaded from a CDN.
 
+**Amended by [ADR 0025](0025-vercel-analytics-and-speed-insights.md).** "No network
+calls at all" is no longer the pitch — analytics beacons ship. **This constraint
+survives unchanged**, because the premise it actually rests on is narrower than the
+sentence quoted above: no request to a **third-party origin**. The beacons are
+same-origin (`/_vercel/…`); a Google Fonts `<link>` is not. So the reasoning holds
+under the amended claim, and self-hosted fonts remain mandatory.
+
 **Amendment (reference parity, issue #43).** Reproducing the reference design replaces
 the single display face + system body stack with three named faces the reference loads
 from Google Fonts: **Anton** (display, single weight 400), **Inter** (body, 400/500/600/700),
@@ -60,7 +67,7 @@ reference's `font-feature-settings: "ss01", "cv11"`.
 
 The parity rebuild (#39) migrates onto a shadcn/new-york **oklch semantic token
 set** (`--background`/`--foreground`/`--card`/`--muted`/`--accent`/`--border`/… with
-light `:root` and latent `.dark` twins). Issue #44 lands that palette *additively*:
+light `:root` and latent `.dark` twins). Issue #44 lands that palette _additively_:
 
 - The reference tokens and their `@theme inline` `--color-*` aliases now back the
   standard utilities (`bg-background`, `text-foreground`, `border-border`, `bg-card`,

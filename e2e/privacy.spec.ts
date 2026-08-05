@@ -66,11 +66,13 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
   const salary = 133337;
   const savings = 424242;
   const price = 987654;
+  const expenses = 24681;
+  const contribution = 1357;
   const goalName = "Zzyzx Telescope";
   const note = "Nqxlptrz";
 
   await page.addInitScript(
-    ([salary, savings, price, goalName, note]) => {
+    ([salary, savings, price, expenses, contribution, goalName, note]) => {
       window.localStorage.setItem(
         "affordo.profile",
         JSON.stringify({
@@ -81,10 +83,10 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
             hoursPerWeek: 40,
             hoursPerDay: 8,
             paymentsPerYear: 12,
-            expenses: 24681,
+            expenses,
             threshold: 10,
             savings,
-            monthlyContribution: 1357,
+            monthlyContribution: contribution,
           },
         }),
       );
@@ -104,7 +106,7 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
         }),
       );
     },
-    [salary, savings, price, goalName, note] as const,
+    [salary, savings, price, expenses, contribution, goalName, note] as const,
   );
 
   const ownOrigin = new URL(baseURL!).origin;
@@ -118,6 +120,14 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
     await page.waitForLoadState("networkidle");
   }
 
+  // The seed actually reached the screen. Without this the whole test goes
+  // vacuous the day the stored shape changes: an invalid profile redirects to
+  // /onboarding, which renders no financial value at all, and every assertion
+  // below then passes by having nothing to find.
+  await page.goto("/goals");
+  await expect(page.getByText(goalName)).toBeVisible();
+  await page.waitForLoadState("networkidle");
+
   // The feature is actually wired, and to our own origin.
   const beacons = seen.filter((entry) => entry.includes("/_vercel/"));
   expect(
@@ -128,18 +138,36 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
     expect(new URL(beacon.split("\n")[0]).origin).toBe(ownOrigin);
   }
 
-  // Nothing the user typed about their money appears in anything we send.
-  const needles = [
-    String(salary),
-    String(savings),
-    String(price),
-    "24681",
-    "1357",
-    goalName,
-    note,
-  ];
+  // Everything the app hands to analytics, whether or not it can be sent.
+  //
+  // The network is the wrong place to look for a leak here, and believing
+  // otherwise is how this test shipped useless the first time. Under `vite
+  // preview` both `/_vercel/*/script.js` 404, so no beacon ever POSTs — the
+  // libraries fall back to a queue stub (`window.va` pushes to `vaq`,
+  // `window.si` to `siq`) and hold everything there. A request-body sweep sees
+  // documents, static assets and two 404s, so a genuine `track()` leak passes
+  // it untouched.
+  //
+  // Those queues ARE the complete leak surface: pageviews and events alike go
+  // through `window.va(...)` before any transport exists. Reading them proves
+  // what the app handed over, which is the thing we actually control, and it
+  // holds whether or not the beacons are reachable.
+  const queued = await page.evaluate(() =>
+    JSON.stringify([
+      (window as unknown as { vaq?: unknown[] }).vaq ?? [],
+      (window as unknown as { siq?: unknown[] }).siq ?? [],
+    ]),
+  );
+
+  // Derived from the seeded values, never hand-copied — a transcribed literal
+  // silently stops matching the day the seed above is edited.
+  const needles = [salary, savings, price, expenses, contribution]
+    .map(String)
+    .concat(goalName, note);
+
+  const haystacks = [...seen, `analytics queue: ${queued}`];
   for (const needle of needles) {
-    const leaks = seen.filter((entry) => entry.includes(needle));
+    const leaks = haystacks.filter((entry) => entry.includes(needle));
     expect(leaks, `"${needle}" appeared in:\n${leaks.join("\n---\n")}`).toEqual(
       [],
     );

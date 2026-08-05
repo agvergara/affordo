@@ -30,11 +30,20 @@ upfront.
 
 ## Privacy is the point
 
-There's no backend. No accounts, no bank connection, no analytics, no network calls at
-all. Your salary and savings live in your browser's `localStorage` and nowhere else —
-and the app says so, out loud, because that's the whole pitch. (No at-rest encryption
-either: an embedded key on a client-only app is security theater — see
+There's no backend. No accounts, no bank connection. Your salary and savings live in
+your browser's `localStorage` and nowhere else — and the app says so, out loud, because
+that's the whole pitch. (No at-rest encryption either: an embedded key on a client-only
+app is security theater — see
 [ADR 0011](docs/adr/0011-plain-versioned-localstorage-no-encryption.md).)
+
+This section used to end "no analytics, no network calls at all". That is no longer
+true, and the honest version is narrower: **Affordo counts page views and measures
+performance, and nothing else leaves.** Vercel Web Analytics and Speed Insights ship
+with the app ([ADR 0025](docs/adr/0025-vercel-analytics-and-speed-insights.md)). They
+carry paths and timings, they beacon to this app's own origin rather than a
+third-party host, and **no figure you type ever reaches them** — a browser test
+asserts that on every run, against the queue the app hands data to rather than against
+the network, so it holds whether or not the beacons are reachable.
 
 ---
 
@@ -54,7 +63,8 @@ either: an embedded key on a client-only app is security theater — see
 React stays the only _runtime_ dependency — Tailwind is a build-time tool that compiles
 to plain CSS and ships no JavaScript. Its config is deliberately minimal (v4's CSS-first
 `@theme`, no `tailwind.config.js`), and there's still nothing to sign up for. Fonts are
-self-hosted, never loaded from a CDN, so the "no network calls" promise holds.
+self-hosted, never loaded from a CDN, so no third-party origin is ever contacted — the
+part of the promise that survived ADR 0025 intact.
 
 ---
 
