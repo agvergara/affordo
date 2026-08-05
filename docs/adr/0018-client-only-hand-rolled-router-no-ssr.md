@@ -59,19 +59,22 @@ under a 6× CPU throttle, and **1.9s** on a 400ms/400kbps link. Not a flicker.
 head, setting `document.title` from the pathname before the parser reaches the
 body, shortens it to ~0.1–0.4ms.
 
-We do not do that today, and the cost is smaller than an earlier draft of this
-section claimed. That draft priced it at "a second copy of the route→title map in
-`index.html`, kept in step by hand" — which is the expensive shape, not the
-cheapest one. A ~12-line `transformIndexHtml` Vite plugin generates the map from
-`ROUTE_HEADS` at build time: `index.html` stays untouched in source, there is no
-second copy, and drift is impossible by construction. Measured at 0.1–0.3ms across
-the three routes. Even hand-written it would not drift *silently*, since
-`index-html-head.test.ts` already reads `index.html?raw` and `documentHead.ts`
-exports `ROUTE_HEADS`, so cross-asserting them is about five lines.
+**We now do that** (#129). `vite-plugin-inline-title.ts` generates the map from
+`ROUTE_HEADS` at build time via `transformIndexHtml`, so `index.html` stays
+untouched in source, there is no second copy, and drift is impossible by
+construction.
 
-So this is a live option priced at roughly a dozen lines, not a burden — recorded
-that way because the decision to decline it should be made against the real cost.
-See #129.
+The cost was smaller than an earlier draft of this section claimed. That draft
+priced it at "a second copy of the route→title map in `index.html`, kept in step
+by hand" — the expensive shape, not the cheapest one. Declining an option at its
+most expensive framing is how a cheap fix stays undone for three releases.
+
+Two things the implementation pinned that the prose above only asserts. The
+script goes **after** `</title>`, not before: the earlier placement also closes
+the window, but only because setting `document.title` on a titleless document
+*creates* a `<title>`, leaving two in the document. And it must stay
+synchronous — `defer`, `async` or `type="module"` all put it back behind the
+same barrier as `main.tsx`, which is the entire problem.
 
 **Shares are different**, and are the part genuinely closed off: an unfurler that
 runs no JavaScript cannot be reached by any client-side technique, inline script
