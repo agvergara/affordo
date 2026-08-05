@@ -28,9 +28,15 @@ are prioritized over brevity. Anything undeterminable is under OPEN QUESTIONS.
 > reasoned from this document's silence that the `/goals` footer's `opacity-50`
 > was invented, removed it, and shipped a regression that survived a full duel
 > because the premise looked authoritative. The reference had it all along
-> (#104). When the dossier does not mention an element, the correct next step is
-> to read `agvergara/dream-purchase-planner` — reachable via `gh api` — not to
-> conclude the element does not exist.
+> (#104). When the dossier does not mention an element, do **not** conclude the
+> element does not exist.
+>
+> ⚠️ **The reference repo is deleted — read the archive instead.**
+> `agvergara/dream-purchase-planner` was private and has been removed, so the
+> `gh api` command this document used to recommend no longer works. All 86 source
+> files are archived verbatim at `docs/reference-snapshot/`. That is still the
+> right next step when this document is silent: **silence here is not evidence**,
+> and the snapshot usually answers it. Where the two disagree, the snapshot wins.
 
 ---
 
@@ -561,7 +567,9 @@ unrecorded by default, and #104 is what that cost: a duel reasoned from the
 silence that the `/goals` footer's dimming was invented, removed it, and shipped
 a regression that survived review because the premise looked authoritative.
 
-Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`.
+Extracted from `agvergara/dream-purchase-planner` at `src/routes/*.tsx`. That
+repository has since been deleted; the files are archived at
+`docs/reference-snapshot/src/routes/`, so these teardowns can still be checked.
 
 ### `/` — `index.tsx`
 

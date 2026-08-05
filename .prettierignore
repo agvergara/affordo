@@ -1,0 +1,10 @@
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# The reference snapshot is a verbatim archive of a deleted repository. It is
+# evidence, not source: reformatting it would destroy the one property that
+# makes it useful — that it is byte-identical to what the port was built
+# against. See docs/reference-snapshot/README.md.
+docs/reference-snapshot/

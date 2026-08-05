@@ -9,17 +9,93 @@ named so you can judge whether it still applies.
 A client-only rebuild of a reference design to a strict fidelity bar. The
 reference is the authority; this codebase is a reproduction of it.
 
-- **The reference is readable.** `agvergara/dream-purchase-planner`, via
-  `gh api repos/agvergara/dream-purchase-planner/contents/<path> --jq '.content' | base64 -d`.
-  If a question is about what the app should do or look like, read the reference
-  rather than reasoning about it.
 - **The fidelity bar** is in PRD issue #39, amended by
   [ADR 0022](docs/adr/0022-fidelity-bar-stops-at-the-perceivable.md): pixel-for-pixel
   and behaviour-for-behaviour, _"if it looks like a mistake, it is a requirement"_ —
   governing everything a sighted mouse user can perceive. Accessibility semantics
   may diverge; interactive targets meet 24×24 regardless.
-- **`docs/affordo-context.md`** is the extraction of the reference. Read its
-  coverage table before relying on it.
+
+## ⚠️ The reference no longer exists
+
+`agvergara/dream-purchase-planner` was private and has been deleted. **Any
+instruction in this repo's history to `gh api` it is dead** — commit messages, PR
+bodies and older comments say "read the reference" and give a command that no
+longer works.
+
+**It is archived at [`docs/reference-snapshot/`](docs/reference-snapshot/)** — all
+86 source files, verbatim, taken while access still held. Read that instead of
+the `gh api` command. It is excluded from `tsc` and `prettier` on purpose: it is
+evidence, and reformatting it would destroy the only property that makes it
+useful.
+
+`docs/affordo-context.md` is still the better _starting_ point — it is organised
+and says which of its sections are exhaustive. But the snapshot is what it was
+derived from, and where the two disagree the snapshot wins.
+
+### What the reference was
+
+A Lovable-generated template, read-only, at `~/lovable/affordo_template/dream-purchase-planner`.
+
+|             |                                                                          |
+| ----------- | ------------------------------------------------------------------------ |
+| Framework   | **TanStack Start** (file-based routing), React 19, TypeScript            |
+| Styling     | Tailwind CSS **v4** (CSS-first `@theme`, no config file)                 |
+| Components  | **shadcn/ui**, `new-york` style, with `cn()` = `clsx` + `tailwind-merge` |
+| Toasts      | `sonner`                                                                 |
+| Icons       | `lucide-react`                                                           |
+| Persistence | `localStorage`, no backend                                               |
+
+Five routes — `__root.tsx` (404 + error screens), `index.tsx` (redirect gate),
+`onboarding.tsx`, `goals.tsx`, `settings.tsx` — and five components under
+`components/affordo/`: `AppHeader`, `GoalCard`, `GoalDialog`, `OnboardingWizard`,
+`VerdictBadge`. The `onboarding` and `index` routes are thin shims; their screens
+live in the components.
+
+This port differs by construction: **Vite + React 18, a hand-rolled router
+([ADR 0018](docs/adr/0018-client-only-hand-rolled-router-no-ssr.md)), and no
+shadcn, no lucide, no sonner, no tailwind-merge.** Every shadcn primitive is
+reimplemented by hand, which is the source of rule 1 below.
+
+### The base layers, quoted here because they are load-bearing
+
+The reference composed shadcn components; this port writes plain elements. The
+classes those components contributed **do not appear in any route source**, and
+four PRs shipped wrong geometry by copying the route string alone. Quoted here
+for convenience; the files are at
+`docs/reference-snapshot/src/components/ui/`:
+
+```
+Button base:  inline-flex items-center justify-center gap-2 whitespace-nowrap
+              rounded-md text-sm font-medium cursor-pointer transition-colors
+              focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring
+              disabled:pointer-events-none disabled:opacity-50
+              disabled:cursor-not-allowed
+              [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0
+Button size:  default "h-9 px-4 py-2" · sm "h-8 rounded-md px-3 text-xs"
+              lg "h-10 rounded-md px-8" · icon "h-9 w-9"
+Button ghost: hover:bg-accent hover:text-accent-foreground
+Button dflt:  bg-primary text-primary-foreground shadow hover:bg-primary/90
+
+Input:        flex h-9 w-full rounded-md border border-input bg-transparent
+              px-3 py-1 text-base shadow-sm transition-colors
+              placeholder:text-muted-foreground focus-visible:outline-none
+              focus-visible:ring-1 focus-visible:ring-ring
+              disabled:cursor-not-allowed disabled:opacity-50 md:text-sm
+
+Textarea:     flex min-h-[60px] w-full rounded-md border border-input
+              bg-transparent px-3 py-2 text-base shadow-sm
+              placeholder:text-muted-foreground focus-visible:outline-none
+              focus-visible:ring-1 focus-visible:ring-ring
+              disabled:cursor-not-allowed disabled:opacity-50 md:text-sm
+
+Label:        text-sm font-medium leading-none
+              peer-disabled:cursor-not-allowed peer-disabled:opacity-70
+```
+
+`cn()` merges a route's `className` **over** these, so a class only disappears if
+the route names the same property. `h-9` survives a route that sets padding but no
+height; `md:text-sm` survives `text-2xl`, because a `md:` variant is a different
+key. That is the whole of rule 1.
 
 ## The five rules that were learned the hard way
 
@@ -41,14 +117,26 @@ string and measure both in a browser.** `h-9` and `md:text-sm` are the usual
 culprits: a route string that sets padding but no height keeps the base's `h-9`,
 and `text-2xl` displaces `text-base` but not `md:text-sm`.
 
-### 2. Silence in the extraction is not evidence about the reference
+### 2. Silence in the extraction is not evidence — and is now unresolvable
 
 PR #102's review reasoned from the dossier's silence that a footer's `opacity-50`
 was invented, removed it, and shipped a regression that survived a full review
 because the premise looked authoritative. The reference had it all along (#104).
 
-When the dossier does not mention something, **read the reference**. Do not
-conclude it does not exist.
+The fix then was "read the reference". **That escape hatch is gone** — see above.
+So the rule hardens rather than relaxes:
+
+- The dossier's coverage table tells you which sections are exhaustive. Inside
+  those, silence _is_ meaningful. Outside them, it means **unknown**.
+- Unknown is not permission to invent, and not permission to delete. An element
+  the dossier does not mention and the code already has was put there by someone
+  who could still read the reference. Leave it, unless you can show it is wrong.
+- **`docs/reference-snapshot/` answers most of it.** The archive is complete, so
+  a question the dossier does not cover is usually still answerable — just from
+  the snapshot rather than a live fetch.
+
+If parity work needs something neither the snapshot nor the dossier records, say
+so and stop. Guessing produces a value that looks researched and is not.
 
 ### 3. The unit suite cannot see anything visual
 
