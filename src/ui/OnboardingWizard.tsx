@@ -155,7 +155,7 @@ function WizardBody({
             type="button"
             disabled={isFirst}
             onClick={() => setStep((s) => Math.max(0, s - 1))}
-            className="border-0 bg-transparent p-0 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             {"← Back"}
           </button>
@@ -163,7 +163,7 @@ function WizardBody({
             type="button"
             onClick={next}
             disabled={!canContinue}
-            className="rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
+            className="cursor-pointer rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
           >
             {primaryLabel}
           </button>

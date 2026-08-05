@@ -309,14 +309,14 @@ function SettingsForm({
             // global `button` rule, which paints every bare button as a
             // bordered, --card-filled pill. The reference has no such rule
             // (#135).
-            className="inline-flex h-9 items-center justify-center rounded-md border-0 bg-transparent px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:bg-accent hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:bg-accent hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Reset everything
           </button>
           <button
             type="button"
             onClick={save}
-            className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-none border-0 bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background shadow transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap rounded-none border-0 bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background shadow transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Save
           </button>
