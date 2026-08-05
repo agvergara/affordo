@@ -206,7 +206,9 @@ describe("GoalsDashboard route-body parity", () => {
     renderDashboard();
     const button = screen.getByRole("button", { name: /add goal/i });
     expect(button).toHaveClass("gap-2", "px-5", "py-5", "text-[11px]");
-    expect(button).not.toHaveClass("px-4", "py-2", "text-[10px]");
+    expect(button).not.toHaveClass("px-4");
+    expect(button).not.toHaveClass("py-2");
+    expect(button).not.toHaveClass("text-[10px]");
     // `h-9` and `border-0` are why the *pixels* match, not just the string.
     // The reference renders a shadcn `<Button>` whose size variant contributes
     // `h-9`, which survives tailwind-merge against `px-5 py-5` (height and

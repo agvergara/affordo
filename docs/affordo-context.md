@@ -847,23 +847,44 @@ merely looks like an oversight, and #115/#116/#99 are genuinely open on it.
 
 **`__root.tsx` (404 / error):**
 
-| element | reference | ours |
-| --- | --- | --- |
-| container (both screens) | `min-h-screen items-center justify-center … px-4` + inner `max-w-md text-center` | `min-h-dvh flex-col … gap-6 px-4 py-16 text-center`, no inner wrapper |
-| error `<h1>` | `text-4xl` | `text-6xl sm:text-8xl` |
-| 404 `<h1>` | `text-8xl … text-foreground` | `text-8xl`, no `text-foreground` |
-| caption | `mt-4` (404) / `mt-2` (error), `text-xs` | `text-[11px]`, no `mt-*` |
-| error `Try again` | **solid**: `border-2 border-foreground bg-foreground px-4 py-2 … text-background`, hovering to outline | **solid**: `border border-border bg-foreground px-6 py-3 … text-background`, hovering to accent |
-| error `Go home` | **outline**: `border-2 border-foreground … text-foreground`, hovering to solid | **outline**: `border border-border px-6 py-3`, hovering to solid |
-| 404 `Go home` | **solid**, as `Try again` above, plus `inline-flex items-center` | **outline** — byte-identical to our error `Go home` |
+**All reconciled** except the `<main>`/`<div>` row, which is a landmark and so
+belongs with the accessibility questions rather than being settled here.
+
+| element | reference | ours (before) | status |
+| --- | --- | --- | --- |
+| container (both screens) | `min-h-screen items-center justify-center … px-4` + inner `max-w-md text-center` | `min-h-dvh flex-col … gap-6 px-4 py-16 text-center`, no inner wrapper | fixed |
+| error `<h1>` | `text-4xl` | `text-6xl sm:text-8xl` | fixed |
+| 404 `<h1>` | `text-8xl … text-foreground` | `text-8xl`, no `text-foreground` | fixed |
+| caption | `mt-4` (404) / `mt-2` (error), `text-xs` | `text-[11px]`, no `mt-*` | fixed |
+| error `Try again` | **solid**: `border-2 border-foreground bg-foreground px-4 py-2 … text-background`, hovering to outline | **solid**: `border border-border bg-foreground px-6 py-3 … text-background`, hovering to accent | fixed |
+| error `Go home` | **outline**: `border-2 border-foreground … text-foreground`, hovering to solid | **outline**: `border border-border px-6 py-3`, hovering to solid | fixed |
+| 404 `Go home` | **solid**, as `Try again` above, plus `inline-flex items-center` | **outline** — byte-identical to our error `Go home` | fixed |
+| container element | `<div>` (both screens) | `<main>` | **deferred** |
+
+Unlike `/goals` and `/settings`, both controls here are plain `<button>`/`<a>`
+in the reference, not shadcn components — so no base layer contributes classes
+and the route string really is the whole story. The one port artifact is
+`rounded-none` on the error screen's `<button>`: this port's global `button`
+rule gives it a 10px radius the reference has none of (#135). The `<a>` beside
+it needs nothing, because that rule targets `button` only — which is why exactly
+one of a visually matched pair carries the class.
+
+The `<main>`/`<div>` row is deferred for the reason the `/goals` `<ul>` row is:
+it is the only landmark on either screen, so removing it is an accessibility
+regression rather than a geometry difference. **That is now the second such
+deferral, and they should be decided together** (#115/#116/#99). Note it is
+*not* the same kind of question as `/settings`' Save-disabled state, which was
+deferred and should not have been — #39's bar covers behaviour explicitly, and
+#136 was closed by reproducing the reference.
 
 **Read that per control, not per screen.** The reference ships **two solid and one
-outline**; we ship **one solid and two outline**, because our two `Go home` links
-are byte-identical to each other while the reference's 404 `Go home` is a filled
-CTA and its error `Go home` is not. A row grouping controls by their *reference*
-treatment hides that, since the grouping does not hold on our side — which is how
-an earlier draft of this table came to assert three classes our 404 button does
-not have.
+outline**. Before reconciliation this port shipped **one solid and two outline**,
+because our two `Go home` links were byte-identical to each other while the
+reference's 404 `Go home` is a filled CTA and its error `Go home` is not. A row
+grouping controls by their *reference* treatment hid that, since the grouping did
+not hold on our side — which is how an earlier draft of this table came to assert
+three classes our 404 button did not have. The counts match now; the warning is
+kept because the trap is in how the table is *read*, not in the values.
 
 ## 7. FORMS AND INPUTS
 
