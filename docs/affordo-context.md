@@ -768,10 +768,13 @@ these rows were checked rather than never examined.
 | divider / add-button | two blocks: `mb-6` divider, then `mb-8 flex justify-end` | merged into one `justify-between` row | fixed |
 | list element | `<div className="space-y-5">` | `<ul>` / `<li>` | **deferred** |
 
-The last row is deliberately not reconciled. Reproducing it would delete the
-list semantics a screen reader uses to announce "list, 3 items", which makes it
-the accessibility-versus-fidelity call that #115/#116/#99 are waiting on the
-product owner to settle. Every other row here is geometry, so none of them turn
+The last row is deliberately not reconciled, and that is now **decided, not
+deferred**: [ADR 0022](adr/0022-fidelity-bar-stops-at-the-perceivable.md) rules
+that the fidelity bar governs what a sighted mouse user can perceive, and this
+is not that. Reproducing it would delete the list semantics a screen reader uses
+to announce "list, 3 items" — verified against the compiled CSS, `<ul>` and
+`<div>` render byte-identically here, because the preflight zeroes margin and
+padding and sets `list-style: none`. Every other row here is geometry, so none of them turn
 on that question and all were fixed. The `Plus` glyph is inlined at lucide's
 geometry rather than adding the dependency, following `AppHeader`'s precedent.
 
@@ -869,10 +872,11 @@ rule gives it a 10px radius the reference has none of (#135). The `<a>` beside
 it needs nothing, because that rule targets `button` only — which is why exactly
 one of a visually matched pair carries the class.
 
-The `<main>`/`<div>` row is deferred for the reason the `/goals` `<ul>` row is:
+The `<main>`/`<div>` row diverges for the reason the `/goals` `<ul>` row does:
 it is the only landmark on either screen, so removing it is an accessibility
-regression rather than a geometry difference. **That is now the second such
-deferral, and they should be decided together** (#115/#116/#99). Note it is
+regression rather than a geometry difference. Both are now settled by
+[ADR 0022](adr/0022-fidelity-bar-stops-at-the-perceivable.md) rather than left
+open. Note it is
 *not* the same kind of question as `/settings`' Save-disabled state, which was
 deferred and should not have been — #39's bar covers behaviour explicitly, and
 #136 was closed by reproducing the reference.
