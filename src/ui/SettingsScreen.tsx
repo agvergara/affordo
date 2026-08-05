@@ -336,8 +336,22 @@ interface NumberFieldProps {
 /**
  * A settings number field in the reference "big audit" style. Binds
  * `value={value || ""}` so a `0` renders as an empty field with the `0`
- * placeholder visible (dossier §7), and `inputMode="decimal"` for a numeric
- * mobile keypad while still accepting a decimal comma.
+ * placeholder visible (dossier §7).
+ *
+ * `type="number"`, as all seven of the reference's settings inputs are
+ * (`settings.tsx:91` and on). This port had none, so the two screens editing
+ * the same nine profile fields disagreed: pasting `7,5` into Hours per day gave
+ * `7.5` here and a blank field in the wizard (#108).
+ *
+ * A number input reports `""` for anything that is not a valid float, so
+ * `num()`'s `.replace(",", ".")` never sees a comma from this screen either.
+ * That branch is unreachable on both screens now, and deliberately so — the
+ * alternative is `1.234,56` silently parsing to `1.234`, wrong by ~1000× and
+ * through the gate. Do not "fix" the dead branch, and do not remove
+ * `type="number"` to make it live.
+ *
+ * No `inputMode`: the reference's settings inputs carry none, and its wizard
+ * puts it on salary and expenses only.
  */
 function NumberField({ id, label, value, onChange }: NumberFieldProps) {
   return (
@@ -351,7 +365,7 @@ function NumberField({ id, label, value, onChange }: NumberFieldProps) {
       </label>
       <input
         id={id}
-        inputMode="decimal"
+        type="number"
         placeholder="0"
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
