@@ -34,8 +34,23 @@ describe("NotFoundScreen route-body parity", () => {
     // constrained the text width.
     render(<NotFoundScreen />);
     const shell = screen.getByTestId("notfound-shell");
-    expect(shell).toHaveClass("flex", "min-h-screen", "items-center", "px-4");
-    expect(shell).not.toHaveClass("min-h-dvh", "flex-col", "gap-6", "py-16");
+    // `justify-center` and `bg-background` are asserted because they are the
+    // classes doing the work: without the first the column sits flush left
+    // (measured x=16 against x=572), and without the second the screen renders
+    // transparent. An earlier revision asserted neither, so a test named
+    // "centres a max-w-md column" passed with nothing centred (#138's duel).
+    expect(shell).toHaveClass(
+      "flex",
+      "min-h-screen",
+      "items-center",
+      "justify-center",
+      "bg-background",
+      "px-4",
+    );
+    expect(shell).not.toHaveClass("min-h-dvh");
+    expect(shell).not.toHaveClass("flex-col");
+    expect(shell).not.toHaveClass("gap-6");
+    expect(shell).not.toHaveClass("py-16");
     expect(screen.getByTestId("notfound-column")).toHaveClass(
       "max-w-md",
       "text-center",
@@ -64,6 +79,8 @@ describe("NotFoundScreen route-body parity", () => {
     render(<NotFoundScreen />);
     const link = screen.getByRole("link", { name: "Go home" });
     expect(link).toHaveClass(
+      "inline-flex",
+      "items-center",
       "border-2",
       "border-foreground",
       "bg-foreground",
@@ -73,6 +90,8 @@ describe("NotFoundScreen route-body parity", () => {
       "hover:bg-transparent",
       "hover:text-foreground",
     );
-    expect(link).not.toHaveClass("border-border", "px-6", "py-3");
+    expect(link).not.toHaveClass("border-border");
+    expect(link).not.toHaveClass("px-6");
+    expect(link).not.toHaveClass("py-3");
   });
 });

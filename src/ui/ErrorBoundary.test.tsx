@@ -98,8 +98,23 @@ describe("ErrorBoundary route-body parity", () => {
   it("centres a max-w-md column on a full-height flex container", () => {
     renderBoundary();
     const shell = screen.getByTestId("error-shell");
-    expect(shell).toHaveClass("flex", "min-h-screen", "items-center", "px-4");
-    expect(shell).not.toHaveClass("min-h-dvh", "flex-col", "gap-6", "py-16");
+    // `justify-center` and `bg-background` are asserted because they are the
+    // classes doing the work: without the first the column sits flush left
+    // (measured x=16 against x=572), and without the second the screen renders
+    // transparent. An earlier revision asserted neither, so a test named
+    // "centres a max-w-md column" passed with nothing centred (#138's duel).
+    expect(shell).toHaveClass(
+      "flex",
+      "min-h-screen",
+      "items-center",
+      "justify-center",
+      "bg-background",
+      "px-4",
+    );
+    expect(shell).not.toHaveClass("min-h-dvh");
+    expect(shell).not.toHaveClass("flex-col");
+    expect(shell).not.toHaveClass("gap-6");
+    expect(shell).not.toHaveClass("py-16");
     expect(screen.getByTestId("error-column")).toHaveClass(
       "max-w-md",
       "text-center",
@@ -112,7 +127,8 @@ describe("ErrorBoundary route-body parity", () => {
     renderBoundary();
     const heading = screen.getByRole("heading", { name: "Something broke" });
     expect(heading).toHaveClass("text-4xl");
-    expect(heading).not.toHaveClass("text-6xl", "sm:text-8xl");
+    expect(heading).not.toHaveClass("text-6xl");
+    expect(heading).not.toHaveClass("sm:text-8xl");
   });
 
   it("sets the caption at text-xs with the reference's top margin", () => {
@@ -140,7 +156,8 @@ describe("ErrorBoundary route-body parity", () => {
     // the reference has no equivalent of. The `<a>` beside it needs no such
     // class, because that rule targets `button` only.
     expect(tryAgain).toHaveClass("rounded-none");
-    expect(tryAgain).not.toHaveClass("hover:bg-accent", "border-border");
+    expect(tryAgain).not.toHaveClass("hover:bg-accent");
+    expect(tryAgain).not.toHaveClass("border-border");
 
     const goHome = screen.getByRole("link", { name: "Go home" });
     expect(goHome).toHaveClass(
@@ -150,7 +167,8 @@ describe("ErrorBoundary route-body parity", () => {
       "hover:bg-foreground",
       "hover:text-background",
     );
-    expect(goHome).not.toHaveClass("bg-foreground", "border-border");
+    expect(goHome).not.toHaveClass("bg-foreground");
+    expect(goHome).not.toHaveClass("border-border");
   });
 
   it("sizes both controls at the reference's px-4 py-2", () => {
@@ -160,7 +178,8 @@ describe("ErrorBoundary route-body parity", () => {
       screen.getByRole("link", { name: "Go home" }),
     ]) {
       expect(el).toHaveClass("px-4", "py-2");
-      expect(el).not.toHaveClass("px-6", "py-3");
+      expect(el).not.toHaveClass("px-6");
+      expect(el).not.toHaveClass("py-3");
     }
   });
 });

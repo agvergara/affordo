@@ -859,7 +859,6 @@ belongs with the accessibility questions rather than being settled here.
 | error `Try again` | **solid**: `border-2 border-foreground bg-foreground px-4 py-2 … text-background`, hovering to outline | **solid**: `border border-border bg-foreground px-6 py-3 … text-background`, hovering to accent | fixed |
 | error `Go home` | **outline**: `border-2 border-foreground … text-foreground`, hovering to solid | **outline**: `border border-border px-6 py-3`, hovering to solid | fixed |
 | 404 `Go home` | **solid**, as `Try again` above, plus `inline-flex items-center` | **outline** — byte-identical to our error `Go home` | fixed |
-
 | container element | `<div>` (both screens) | `<main>` | **deferred** |
 
 Unlike `/goals` and `/settings`, both controls here are plain `<button>`/`<a>`
@@ -879,12 +878,13 @@ deferred and should not have been — #39's bar covers behaviour explicitly, and
 #136 was closed by reproducing the reference.
 
 **Read that per control, not per screen.** The reference ships **two solid and one
-outline**; we ship **one solid and two outline**, because our two `Go home` links
-are byte-identical to each other while the reference's 404 `Go home` is a filled
-CTA and its error `Go home` is not. A row grouping controls by their *reference*
-treatment hides that, since the grouping does not hold on our side — which is how
-an earlier draft of this table came to assert three classes our 404 button does
-not have.
+outline**. Before reconciliation this port shipped **one solid and two outline**,
+because our two `Go home` links were byte-identical to each other while the
+reference's 404 `Go home` is a filled CTA and its error `Go home` is not. A row
+grouping controls by their *reference* treatment hid that, since the grouping did
+not hold on our side — which is how an earlier draft of this table came to assert
+three classes our 404 button did not have. The counts match now; the warning is
+kept because the trap is in how the table is *read*, not in the values.
 
 ## 7. FORMS AND INPUTS
 
