@@ -779,6 +779,21 @@ Note the reference's `<Plus>` sits inside a button whose text already says "Add
 goal", so ours is `aria-hidden` — that is not a divergence from the reference's
 rendering, which produces an SVG with no accessible name either way.
 
+**Copying a reference `className` is not fidelity when the reference element is a
+component with a base layer.** The add button needs `h-9` and `border-0` beyond
+the reference's own string to render at the reference's height. `h-9` comes from
+the shadcn `<Button>` size variant the route composes with — it survives
+tailwind-merge against `px-5 py-5`, since height and padding are separate
+conflict groups, so `py-5` never grows that button. `border-0` cancels a legacy
+global `button` border this port carries and the reference has no equivalent of
+(#135).
+
+Measured in Chromium, because none of this is visible to jsdom: `h-9` alone
+36px, `h-9 px-4 py-2` (the bare size variant) 36px, `h-9 px-5 py-5` (what the
+route actually merges to) **40px** — border-box clamps height up to the padding.
+40px is the reference's height and ours. Reading 36px off the size variant alone
+is the easy mistake here; #134's duel made it.
+
 **`/settings`:**
 
 | element | reference | ours |
