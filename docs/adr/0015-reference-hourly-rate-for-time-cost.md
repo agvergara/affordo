@@ -31,6 +31,6 @@ daysOfWork  = hoursPerDay > 0 ? hoursOfWork / hoursPerDay : Infinity
 
 The reference engine is introduced **additively** as
 `src/engine/reference-evaluate.ts` (exported as `evaluateReference`). The legacy
-three-way engine in `src/engine/evaluate.ts` still backs the current UI and keeps
-compiling; it — and this ADR's superseded predecessor — is removed only when the
-last consumer migrates to the reference engine in a later slice.
+three-way engine in `src/engine/evaluate.ts` was deleted in #119 once its last
+consumer was gone, so `evaluateReference` is now the only engine — this ADR
+describes what ships rather than one of two coexisting models.

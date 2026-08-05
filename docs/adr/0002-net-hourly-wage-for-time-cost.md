@@ -1,8 +1,10 @@
 # Time Cost uses Net Hourly Wage, not Real Hourly Wage
 
 **Status:** Superseded by [ADR 0015](0015-reference-hourly-rate-for-time-cost.md).
-The reference-hourly-rate formula is introduced additively; this ADR remains in
-force for the legacy engine until its last consumer migrates in a later slice.
+The reference-hourly-rate formula was introduced additively; the legacy engine
+this ADR governed was deleted in #119, so it is now **historical**. Note the
+decision it records — net rather than *Your Money or Your Life*'s real hourly
+wage — survives the deletion: ADR 0015's formula is also net-based.
 
 Affordo's core "Time Cost" number (hours of work per purchase) is computed from
 Net Hourly Wage — take-home pay divided by contracted hours. This deviates from

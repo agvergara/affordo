@@ -65,6 +65,25 @@ describe("reference evaluate — Infinity / zero guards", () => {
     expect(v.daysOfWork).toBe(Infinity);
   });
 
+  it("extra pay periods raise the hourly rate", () => {
+    // PRD #39 story 55 and its Seam 1 both name the 12-vs-14 normalisation, and
+    // the factory fixes `paymentsPerYear: 12` everywhere else — so before this,
+    // hardcoding the multiplier to 12 left all 390 tests green. The deleted
+    // `evaluate.test.ts` was the repo's only exercise of the concept (#119).
+    const twelve = evaluate(profile({ paymentsPerYear: 12 }), { price: 0 });
+    const fourteen = evaluate(profile({ paymentsPerYear: 14 }), { price: 0 });
+    expect(fourteen.hourlyRate).toBeCloseTo(twelve.hourlyRate * (14 / 12), 10);
+  });
+
+  it("a shorter working day costs more days for the same price", () => {
+    // Same shape: every fixture used `hoursPerDay: 8` except the Infinity
+    // guard, so hardcoding the divisor to 8 also survived the whole suite.
+    const eight = evaluate(profile({ hoursPerDay: 8 }), { price: 1000 });
+    const six = evaluate(profile({ hoursPerDay: 6 }), { price: 1000 });
+    expect(eight.hoursOfWork).toBeCloseTo(six.hoursOfWork, 10);
+    expect(six.daysOfWork).toBeCloseTo(eight.daysOfWork * (8 / 6), 10);
+  });
+
   it("daysOfWork is Infinity when hoursPerDay is 0", () => {
     const v = evaluate(profile({ hoursPerDay: 0 }), { price: 500 });
     expect(v.daysOfWork).toBe(Infinity);

@@ -45,6 +45,5 @@ Non-chosen numeric fields (`monthsToSave`, `cutPct`, `cutMonths`) are `null`.
 
 The reference verdict ships **additively** in `src/engine/reference-evaluate.ts`
 (`evaluateReference`, returning `ReferenceVerdict`). The legacy three-way
-`evaluate` still backs the current UI and keeps compiling; it — and this ADR's
-superseded predecessor — is removed when the last consumer migrates in a later
-slice.
+`evaluate` was deleted in #119, so the four-way verdict is no longer additive to
+anything — it is the only verdict the app computes.
