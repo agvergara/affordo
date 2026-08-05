@@ -5,8 +5,19 @@ The four-way reference verdict was introduced additively, and the legacy engine
 this ADR governed was deleted in #119 — but the projection assumptions below are
 **not** historical, because the reference engine makes the same ones. It computes
 `monthsToSave = remaining / monthlyDisposable` with no compounding (point 2), and
-evaluates one goal at a time against the full disposable figure (point 3), so the
-optimism point 3 warns about is live behaviour today. What did not survive: the
+evaluates one goal at a time against the full disposable figure (point 3).
+
+Point 3's optimism is **still live on `/goals`, now deliberately rather than for
+want of an alternative.** [ADR 0024](0024-cross-goal-contention-opt-in-shares.md)
+builds the cross-goal model this ADR called v1.2 work, but confines it to
+`/compare`: a goal's own verdict remains the alone-figure described here, and
+`evaluate` is untouched. So point 3 is no longer the whole story, and its closing
+instruction — "do not fix independent per-goal dates; word results so the
+optimism is visible" — is now **binding on `/goals` specifically**, not on the
+app. Note also that point 3 understates the problem: savings are double-counted
+as well as surplus, which ADR 0024 records.
+
+What did not survive: the
 reference reports a **duration in months**, never a calendar date, and has no
 Windfalls — so the "Windfalls to Savings" half of point 1 describes nothing
 shipped. The custom monthly Contribution half is live, folded into

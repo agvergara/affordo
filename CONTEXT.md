@@ -89,10 +89,48 @@ _Avoid_: unaffordable, impossible, denied
 **Goal**:
 A saved purchase: `id`, `name`, `price`, `note` (a string, empty when unused), `createdAt`. The
 verdict is **recomputed on render**, never stored — editing the profile
-re-verdicts every goal at once. Goals are independent; the model does not
-account for funding two at the same time (see [ADR 0007](docs/adr/0007-save-up-date-projection-assumptions.md),
-whose points 2 and 3 still describe the shipped engine).
+re-verdicts every goal at once. A goal's own verdict is computed **alone**,
+against the whole of savings and the whole Monthly Disposable, as though it were
+the only goal (see [ADR 0007](docs/adr/0007-save-up-date-projection-assumptions.md),
+whose points 2 and 3 still describe that computation). What happens when goals
+compete for the same money is the separate concern below.
 _Avoid_: target, wishlist item, plan
+
+### Competing goals
+
+Goals compete for one pot of money. These terms describe that competition; none
+of them changes a goal's own verdict, which stays the alone-figure above.
+
+**Comparison**:
+Every saved goal, the Share each one carries, and the timeline that follows from
+dividing one Monthly Disposable between them. Lives on its own screen; a goal's
+own verdict is not part of it.
+_Avoid_: plan (taken — see Goal), scenario, budget
+
+**Share**:
+The monthly amount a user assigns to one goal out of the shared Monthly
+Disposable. A goal's share of the monthly also fixes its share of existing
+savings — assign a goal two thirds of the monthly and it opens with two thirds
+of what is already saved.
+_Avoid_: allocation (taken — see Contribution), budget, split, stake
+
+**Unassigned**:
+A goal carrying no Share. It is not a slow goal, it is a goal outside the
+competition: it draws nothing, releases nothing, and changes no other goal's
+Delay.
+_Avoid_: zero share, infinite, unreachable, never
+
+**Delay**:
+The months a goal takes beyond what it would take alone, because it is sharing
+the Monthly Disposable rather than commanding all of it. The number behind
+"buying X delays Y".
+_Avoid_: slippage, penalty, setback
+
+**Overdrawn**:
+The state in which the Shares assigned across goals total more than the Monthly
+Disposable. Permitted and computed, never blocked — the dates it produces assume
+money the user does not have, and say so.
+_Avoid_: over-allocated, over-budget, invalid, error
 
 ### Presentation
 
@@ -130,7 +168,7 @@ be resolved, not because anything still implements them.
 
 ## Where the rest lives
 
-- **Decisions** — `docs/adr/`, 22 records. Superseded ones are kept and marked.
+- **Decisions** — `docs/adr/`, 24 records. Superseded ones are kept and marked.
 - **The reference extraction** — `docs/affordo-context.md`. The authority on what
   the app should look like, including which of its own sections are exhaustive.
 - **Frozen product specs** — `docs/prd/`. The v1 PRD describes the app this one
