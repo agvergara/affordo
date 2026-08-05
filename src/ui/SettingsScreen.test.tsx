@@ -183,7 +183,11 @@ describe("SettingsScreen route-body parity", () => {
     renderSettings({ salary: 2500 });
     const save = screen.getByRole("button", { name: /save/i });
     expect(save).toHaveClass("rounded-none", "px-6", "py-6", "font-bold");
-    expect(save).not.toHaveClass("rounded-md", "py-3");
+    // One assertion per class: `.not.toHaveClass(a, b)` passes when *either*
+    // is absent, so negating both together would have passed on a button that
+    // still carried `rounded-md` (#138's duel found this class of defect).
+    expect(save).not.toHaveClass("rounded-md");
+    expect(save).not.toHaveClass("py-3");
     expect(save).toHaveClass("h-9", "border-0");
   });
 
