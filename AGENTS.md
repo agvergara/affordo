@@ -200,8 +200,26 @@ and #147 carry that caveat.
 npm run typecheck   # tsc --noEmit
 npm test            # Vitest
 npm run test:e2e    # Playwright
+npm run test:bdd    # Cucumber — the .feature files
 npm run build       # the inline-title plugin runs here and can fail the build
 ```
+
+### Which suite does a change belong in?
+
+Three suites, and putting a test in the wrong one is how it ends up asserting
+nothing.
+
+| suite                        | for                                                                                         | never                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `src/**/*.test.tsx` (Vitest) | logic, state, and the reference's exact class strings                                       | anything about rendered geometry — jsdom applies no stylesheet |
+| `e2e/` (Playwright)          | measured geometry, contrast, hit targets, privacy — the invariants a user never articulates | user journeys, which read better as features                   |
+| `features/` (Cucumber)       | journeys a stakeholder could confirm, in their language                                     | pixels, class names, or storage shapes                         |
+
+The split is deliberate. `features/settings.feature` says _"Affordo no longer
+considers me set up"_, not _"localStorage key `affordo.profile` is null"_ — and
+that distinction caught a real thing: `clearProfile` writes a zeroed default
+back rather than removing the key, so the storage-shaped assertion would have
+failed against a correct app. **Write the behaviour, not the mechanism.**
 
 A PR body says what the change does, the acceptance criteria with the test that
 proves each, and — most usefully — what a reviewer should attack. Point at the
