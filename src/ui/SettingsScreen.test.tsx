@@ -126,6 +126,11 @@ describe("SettingsScreen route-body parity", () => {
     const input = screen.getByLabelText("Net monthly salary");
     expect(input).toHaveClass("border-0", "border-b-2", "px-0", "rounded-none");
     expect(input).not.toHaveClass("border-b");
+    // `h-9` and `md:text-sm` come from shadcn's `<Input>` base, not from the
+    // route's string, and both survive tailwind-merge against it. Without them
+    // these inputs rendered 50px tall at 24px type against the reference's 36px
+    // at 14px from 768px up (#137's duel). Measured, not inferred.
+    expect(input).toHaveClass("h-9", "md:text-sm");
   });
 
   it("puts the significance threshold last, after the savings pair", () => {
@@ -136,19 +141,42 @@ describe("SettingsScreen route-body parity", () => {
     const order = screen
       .getAllByTestId("settings-field-label")
       .map((el) => el.textContent ?? "");
-    const threshold = order.findIndex((t) => t.startsWith("Significance"));
-    const savings = order.findIndex((t) => t.startsWith("Current savings"));
-    expect(savings).toBeGreaterThan(-1);
-    expect(threshold).toBeGreaterThan(savings);
+    // Asserted as *last*, not merely after the savings field — an earlier
+    // revision checked only the ordering against `Current savings`, so moving
+    // the threshold between the two savings fields passed (#137's duel).
+    expect(order[order.length - 1]).toMatch(/^Significance threshold/);
+    expect(order).toEqual([
+      "Currency",
+      "Net monthly salary",
+      "Hours per week",
+      "Hours per day",
+      "Payments per year",
+      "Monthly fixed expenses",
+      "Current savings",
+      "Extra monthly savings (optional)",
+      `Significance threshold — 10%`,
+    ]);
   });
 
   it("renders no hint paragraphs on this screen", () => {
     // The reference's settings route renders labels and controls only. Ours
     // carried four hints borrowed from the wizard, where they do belong (§16).
     renderSettings();
-    expect(screen.queryAllByTestId("settings-hint")).toHaveLength(0);
-    expect(screen.queryByText(/Spanish-style extra payments/)).toBeNull();
-    expect(screen.queryByText(/Rent, groceries, subscriptions/)).toBeNull();
+    // Asserted on the strings, all four of them. An earlier revision queried a
+    // `settings-hint` testid that has never existed in this repo, so it read
+    // `[].length === 0` and would have passed with every hint still rendered
+    // (#137's duel).
+    for (const hint of [
+      /Use 14 for Spanish-style extra payments/,
+      /Rent, groceries, subscriptions, transport, utilities/,
+      /Money you consistently set aside on top of expenses/,
+      /Purchases above this % of your monthly income are flagged/,
+    ]) {
+      expect(screen.queryByText(hint)).toBeNull();
+    }
+    // Non-vacuous: the labels those hints sat under are still here, so an empty
+    // render could not make the four assertions above pass.
+    expect(screen.getAllByTestId("settings-field-label").length).toBe(9);
   });
 
   it("sizes Save as the reference's primary CTA", () => {
@@ -167,6 +195,12 @@ describe("SettingsScreen route-body parity", () => {
     const reset = screen.getByRole("button", { name: "Reset everything" });
     expect(reset).toHaveClass("h-9", "px-4", "py-2", "hover:bg-accent");
     expect(reset).not.toHaveClass("p-0");
+    // `rounded-md` survives from the Button base: the ghost variant carries no
+    // `rounded-*`, and neither does the route's className, so there is nothing
+    // for tailwind-merge to displace it with. An earlier revision wrote
+    // `rounded-none` here, which was invented (#137's duel).
+    expect(reset).toHaveClass("rounded-md");
+    expect(reset).not.toHaveClass("rounded-none");
   });
 });
 
@@ -396,22 +430,29 @@ describe("SettingsScreen — Save persists the draft and confirms with a toast",
     expect(await screen.findByRole("status")).toHaveTextContent("Save");
   });
 
-  it("disables Save while the draft has no positive salary, so a save can never eject the guard", async () => {
+  it("never disables Save, even when the draft would fail the profile guard", async () => {
     const user = userEvent.setup();
-    // Seed a valid profile, then clear salary to 0 in the draft.
     renderSettings({ salary: 2500 });
     await user.clear(screen.getByLabelText("Net monthly salary"));
 
-    // With salary at 0 the profile would be guard-invalid (hasProfile false),
-    // so Save is disabled — the dossier's "save → stays" can't be violated,
-    // matching the reference idiom of expressing validation by disabling the
-    // primary action (dossier §7).
-    expect(screen.getByRole("button", { name: /save/i })).toBeDisabled();
+    // The reference's Save has no disabled state (`settings.tsx:155`). An
+    // earlier revision added one here to stop a zero-salary save ejecting the
+    // user via the `/settings` guard — but that eject is the reference's own
+    // behaviour, and #39's bar is behaviour-for-behaviour with no carve-out for
+    // behaviour that looks like a mistake (#136).
+    expect(screen.getByRole("button", { name: /save/i })).toBeEnabled();
   });
 
-  it("enables Save once the draft has a positive salary", () => {
+  it("persists a zero salary, which is what makes the guard eject", async () => {
+    const user = userEvent.setup();
     renderSettings({ salary: 2500 });
-    expect(screen.getByRole("button", { name: /save/i })).toBeEnabled();
+    await user.clear(screen.getByLabelText("Net monthly salary"));
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    // Pins the consequence rather than leaving it incidental: the write really
+    // does happen, so `hasProfile` really does go false. `Router`'s guard is
+    // what acts on it, and its own tests cover the redirect.
+    expect(loadProfile().salary).toBe(0);
   });
 
   it("persists every edited field together — not just the last one touched", async () => {
