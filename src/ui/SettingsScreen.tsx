@@ -309,6 +309,19 @@ function SettingsForm({
             // global `button` rule, which paints every bare button as a
             // bordered, --card-filled pill. The reference has no such rule
             // (#135).
+            //
+            // The geometry is also what fixes #99, and the reasoning that
+            // issue exists to correct is worth keeping visible: this button
+            // once kept a 10px radius on the grounds that with `p-0` there was
+            // "no box to round". That is wrong. Tailwind implements `ring` as a
+            // box-shadow and box-shadows follow `border-radius`, so on keyboard
+            // focus a 10px radius against a 15px-tall box clamped to half the
+            // height and painted a full stadium hugging the text.
+            //
+            // The `← Back` precedent cited in its defence did not transfer:
+            // Back carries no `focus-visible:ring` at all, so nothing ever
+            // traced its residual radius. Pinned by an e2e assertion, since
+            // jsdom applies no stylesheet — see `e2e/settings-reset.spec.ts`.
             className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive transition-colors hover:bg-accent hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Reset everything
