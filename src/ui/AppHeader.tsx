@@ -26,9 +26,15 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
   return (
     <nav className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
+        {/*
+          `py-2` is a hit-area fix, not a layout one (ADR 0022). The row is
+          `h-14` with `items-center`, so padding on a child changes nothing
+          visible — the link stays the same size and in the same place, and its
+          target grows from 54x17 to clear WCAG 2.2 §2.5.8's 24x24 floor.
+        */}
         <a
           href="/goals"
-          className="font-mono text-[11px] font-bold uppercase tracking-widest"
+          className="-my-2 inline-flex items-center py-2 font-mono text-[11px] font-bold uppercase tracking-widest"
         >
           Affordo
         </a>
@@ -47,7 +53,9 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
           {hasProfile && (
             <a
               href="/settings"
-              className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              // `-my-2 py-2` as on the brand link: pure hit area, no layout
+              // change inside the `h-14` row (ADR 0022).
+              className="-my-2 inline-flex items-center py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
             >
               Settings
             </a>

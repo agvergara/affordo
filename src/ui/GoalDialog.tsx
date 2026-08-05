@@ -159,7 +159,17 @@ export function GoalDialog({
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100"
+          /*
+           * 24x24 hit area (ADR 0022), with the glyph landing exactly where the
+           * reference centres its own.
+           *
+           * The reference wraps a 16x16 `<X>` with no padding at `right-4
+           * top-4`, so its glyph centre sits 24px from each edge — and its
+           * button is 16x16, itself under the floor. Ours was 12x24. A 24x24
+           * box at `right-3 top-3` centres at 24px from each edge too: same
+           * glyph position as the reference, bigger target than either.
+           */
+          className="absolute right-3 top-3 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100"
         >
           <span aria-hidden="true">✕</span>
           <span className="sr-only">Close</span>
