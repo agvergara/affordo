@@ -101,7 +101,9 @@ function WizardBody({
     (isFirst ? "Start" : isLast ? "Finish setup" : "Continue") + " →";
 
   const counter =
-    String(step + 1).padStart(2, "0") + " / " + String(steps.length).padStart(2, "0");
+    String(step + 1).padStart(2, "0") +
+    " / " +
+    String(steps.length).padStart(2, "0");
 
   return (
     <div className="min-h-dvh bg-background">
@@ -124,7 +126,11 @@ function WizardBody({
           </span>
         </div>
 
-        <div className="mb-10 flex gap-1.5" data-testid="progress-bar" aria-hidden>
+        <div
+          className="mb-10 flex gap-1.5"
+          data-testid="progress-bar"
+          aria-hidden
+        >
           {steps.map((_, i) => (
             <span
               key={i}
@@ -155,7 +161,19 @@ function WizardBody({
             type="button"
             disabled={isFirst}
             onClick={() => setStep((s) => Math.max(0, s - 1))}
-            className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+            /*
+             * The reference's Back is `variant="ghost"` with a className of
+             * only `font-mono text-[11px] font-bold uppercase tracking-widest`
+             * — no colour. So it inherits `--foreground` and takes its hover
+             * from the ghost variant, and the base gives it `h-9 px-4 py-2
+             * rounded-md`.
+             *
+             * Ours had `p-0` (no hit area beyond the text) and painted it
+             * `text-muted-foreground hover:text-foreground`, which inverts the
+             * pair: the reference's Back is the stronger state at rest and
+             * gains a filled accent box on hover, not the other way round.
+             */
+            className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             {"← Back"}
           </button>
@@ -163,7 +181,14 @@ function WizardBody({
             type="button"
             onClick={next}
             disabled={!canContinue}
-            className="cursor-pointer rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
+            /*
+             * `h-9` and `shadow` come from the reference's `<Button>` base and
+             * default variant. Without `h-9` this rendered 65px against the
+             * reference's 48px — `py-6` gives 24px a side and border-box clamps
+             * height up to the padding, so `h-9` loses on height but the box is
+             * still the reference's (#139).
+             */
+            className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap rounded-none bg-foreground px-6 py-6 font-mono text-[11px] font-bold uppercase tracking-widest text-background shadow transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
           >
             {primaryLabel}
           </button>
@@ -377,9 +402,16 @@ function RulesStep({
  * `bigInputClass` (dossier §5) verbatim — the onboarding/settings big-input
  * treatment. Onboarding's is `text-3xl` against settings' `text-2xl` (§4),
  * which is why this is not shared with `SettingsScreen`'s field.
+ *
+ * Plus the two classes the reference's shadcn `<Input>` contributes and its
+ * route source never shows (#139, and #137 for the identical finding on
+ * `/settings`): `h-9`, because this string sets padding but no height, and
+ * `md:text-sm`, because `text-3xl` displaces the base's `text-base` but not its
+ * `md:` variant — different keys, so the reference's fields are 30px type on
+ * mobile and 14px from 768px up.
  */
 const bigInputClass =
-  "w-full border-0 border-b-2 border-border bg-transparent px-0 py-2 text-3xl font-bold outline-none transition-colors focus-visible:border-accent focus-visible:ring-0 rounded-none shadow-none";
+  "flex h-9 w-full border-0 border-b-2 border-border bg-transparent px-0 py-2 text-3xl font-bold outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-accent focus-visible:ring-0 rounded-none shadow-none md:text-sm";
 
 /**
  * The onboarding `Field` wrapper (dossier §5): label, the control itself, and

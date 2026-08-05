@@ -391,7 +391,9 @@ describe("OnboardingWizard — step 1 gating", () => {
   it("says nothing about why — the gate is quiet, not explanatory", async () => {
     await reachIncome();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.queryByText(/required|must be|invalid/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/required|must be|invalid/i),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -477,7 +479,9 @@ describe("OnboardingWizard — step 2 Expenses", () => {
     // those conditions stacks two steps on one screen, which nothing else here
     // can see. Same mutation class as #106's "drops the welcome copy once the
     // user starts", one step later.
-    expect(screen.queryByLabelText("Net monthly salary")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Net monthly salary"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Hours per week")).not.toBeInTheDocument();
   });
@@ -622,7 +626,9 @@ describe("OnboardingWizard — step 3 Rules", () => {
     expect(
       screen.queryByLabelText("Monthly fixed expenses"),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Net monthly salary")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Net monthly salary"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not leak its own fields back onto earlier steps", async () => {
@@ -768,5 +774,76 @@ describe("OnboardingWizard — slide-up between steps", () => {
     // ancestor is the way the counter actually ends up moving.
     expect(head).not.toHaveClass("animate-slide-up");
     expect(screen.getByText("01 / 04")).not.toHaveClass("animate-slide-up");
+  });
+});
+
+/**
+ * Component parity for the wizard (#139).
+ *
+ * `/onboarding`'s route file is a 14-line shim in the reference — the screen
+ * lives in `components/affordo/OnboardingWizard.tsx`. That is why #127's
+ * route-body pass covered five routes and still missed this one: there was no
+ * route body to tear down.
+ *
+ * The class *strings* here were already faithful. What was missing is what
+ * #134, #137 and #138 each found the hard way: the classes the reference's
+ * shadcn `<Button>`/`<Input>` contribute, which survive tailwind-merge and
+ * never appear in the route's own source.
+ */
+describe("OnboardingWizard component parity", () => {
+  /** Step 0 is the welcome copy; the fields start on step 1. */
+  async function reachFields() {
+    renderWizard();
+    const user = userEvent.setup();
+    await advance(user, "Start →");
+    return user;
+  }
+
+  it("gives the inputs the height and desktop type size <Input> contributes", async () => {
+    // `h-9` and `md:text-sm` survive tailwind-merge against `bigInputClass`:
+    // it sets padding but no height, and `text-3xl` displaces the base's
+    // `text-base` but not its `md:` variant. Identical to what #137 found on
+    // /settings, where the string was also already correct.
+    await reachFields();
+    const input = screen.getByLabelText("Net monthly salary");
+    expect(input).toHaveClass("h-9");
+    expect(input).toHaveClass("md:text-sm");
+  });
+
+  it("gives the primary CTA the button base's height and shadow", () => {
+    // Measured 65px before this; the reference merges to `h-9 px-6 py-6` = 48px.
+    renderWizard();
+    const cta = screen.getByRole("button", { name: /Start/ });
+    expect(cta).toHaveClass("h-9");
+    expect(cta).toHaveClass("shadow");
+    expect(cta).toHaveClass("inline-flex");
+    expect(cta).toHaveClass("justify-center");
+  });
+
+  it("gives Back the ghost button's geometry rather than no box at all", () => {
+    // `variant="ghost"` contributes `h-9 px-4 py-2 rounded-md`. Ours had `p-0`,
+    // so it had no hit area beyond its own text.
+    renderWizard();
+    const back = screen.getByRole("button", { name: /Back/ });
+    expect(back).toHaveClass("h-9");
+    expect(back).toHaveClass("px-4");
+    expect(back).toHaveClass("py-2");
+    expect(back).toHaveClass("rounded-md");
+    expect(back).not.toHaveClass("p-0");
+  });
+
+  it("leaves Back at the inherited foreground, not muted", () => {
+    // The reference's Back className is `font-mono text-[11px] font-bold
+    // uppercase tracking-widest` — no colour at all, so it inherits
+    // `--foreground`, and the ghost variant supplies the hover. Ours painted it
+    // `text-muted-foreground` and hovered to foreground, which inverts the
+    // relationship: the reference's Back is the *stronger* of the two states at
+    // rest.
+    renderWizard();
+    const back = screen.getByRole("button", { name: /Back/ });
+    expect(back).not.toHaveClass("text-muted-foreground");
+    expect(back).not.toHaveClass("hover:text-foreground");
+    expect(back).toHaveClass("hover:bg-accent");
+    expect(back).toHaveClass("hover:text-accent-foreground");
   });
 });
