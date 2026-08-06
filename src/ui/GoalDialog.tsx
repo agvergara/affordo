@@ -127,7 +127,15 @@ export function GoalDialog({
     // An edit carries the original `id` and `createdAt` straight back out: the
     // goal is revised, not replaced, so it keeps its identity and its stamped
     // creation date (dossier §5, PRD story 51). Only a new goal mints them.
+    //
+    // `...initial` first, and it is load-bearing. This dialog owns three fields;
+    // it does not own the whole Goal. Rebuilding the record from a literal of
+    // only the fields it knows silently destroyed every other one — #155 added
+    // `share` and editing an assigned goal from /goals wiped it, with nothing
+    // failing. Spreading the original means a field this dialog has never heard
+    // of survives an edit, which is the property that was actually missing.
     onSave({
+      ...(initial ?? {}),
       id: initial?.id ?? crypto.randomUUID(),
       name: name.trim().slice(0, 80),
       price: parseFloat(price),

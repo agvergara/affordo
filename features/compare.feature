@@ -20,7 +20,7 @@ Feature: Splitting my surplus between competing goals
     And I assign 100 a month to "MacBook"
     Then the goal "MacBook" takes 12 months
 
-  Scenario: A smaller amount each month means a longer wait
+  Scenario: A bigger amount each month means a shorter wait
     When I open the comparison
     And I assign 300 a month to "MacBook"
     Then the goal "MacBook" takes 4 months

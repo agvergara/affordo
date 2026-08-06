@@ -91,7 +91,9 @@ describe("Editing a goal — opening the dialog", () => {
 
     expect(screen.getByLabelText("Name")).toHaveValue("Down payment");
     expect(screen.getByLabelText("Price")).toHaveValue(5000);
-    expect(screen.getByLabelText("Note (optional)")).toHaveValue("Two-bed flat");
+    expect(screen.getByLabelText("Note (optional)")).toHaveValue(
+      "Two-bed flat",
+    );
   });
 
   it("opens on the goal whose own Edit was pressed, not the first one", async () => {
@@ -209,6 +211,40 @@ describe("Editing a goal — the goal keeps its identity", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0]?.id).toBe("goal-1");
     expect(stored[0]?.name).toBe("House deposit");
+  });
+
+  // Found by the duel on #164. The dialog owns three fields but was rebuilding
+  // the whole record from a literal of only the fields it knew, so every other
+  // one was destroyed on save. `share` was the first casualty; the next field
+  // added would have been the second. Asserted on a field the dialog has never
+  // heard of as well, because the defect is the rebuild, not the Share.
+  it("keeps a Share the dialog does not know about", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1", share: 200 })]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(loadGoals()[0]?.share).toBe(200);
+  });
+
+  it("keeps a Share when the price is what changed", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1", share: 200 })]);
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Price"));
+    await user.type(screen.getByLabelText("Price"), "1300");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const stored = loadGoals();
+    expect(stored[0]?.price).toBe(1300);
+    expect(stored[0]?.share).toBe(200);
+  });
+
+  it("does not invent a Share on a goal that never had one", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1" })]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(loadGoals()[0]).not.toHaveProperty("share");
   });
 
   it("keeps the goal's original creation date rather than re-stamping it", async () => {

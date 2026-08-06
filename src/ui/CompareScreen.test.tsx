@@ -215,6 +215,18 @@ describe("clearing a Share", () => {
     expect(monthsFor("MacBook")).toBe("— not assigned");
   });
 
+  // Found by the duel on #164. Clear unmounts itself, so activating it dropped
+  // focus to <body> and a keyboard user had to tab in from the top of the
+  // document to carry on.
+  it("moves focus to the field it just emptied rather than to the body", async () => {
+    const user = userEvent.setup();
+    renderCompare(undefined, [makeGoal({ name: "MacBook", share: 200 })]);
+
+    await user.click(screen.getByRole("button", { name: /clear/i }));
+
+    expect(document.activeElement).toBe(shareInputFor("MacBook"));
+  });
+
   it("removes the stored Share entirely rather than storing a zero", async () => {
     // A cleared goal must be byte-identical to one saved before the feature
     // existed, so an older bundle reads it the same way.
@@ -246,6 +258,30 @@ describe("the totals", () => {
   it("counts nothing when every goal is Unassigned", () => {
     renderCompare(undefined, [makeGoal({ name: "MacBook" })]);
     expect(screen.getByTestId("compare-assigned").textContent).toContain("0");
+  });
+
+  // Found by the duel on #164: this counted every saved goal, so it read
+  // "Sharing · 2" directly above "Nothing is assigned yet".
+  it("counts goals that are in the plan, not goals that exist", () => {
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook", share: 200 }),
+      makeGoal({ name: "Holiday" }),
+      makeGoal({ name: "Bike" }),
+    ]);
+    expect(screen.getByTestId("compare-divider")).toHaveTextContent(
+      "Sharing · 1",
+    );
+  });
+
+  it("counts none while nothing is assigned, agreeing with the line below it", () => {
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook" }),
+      makeGoal({ name: "Holiday" }),
+    ]);
+    expect(screen.getByTestId("compare-divider")).toHaveTextContent(
+      "Sharing · 0",
+    );
+    expect(screen.getByTestId("compare-none-assigned")).toBeInTheDocument();
   });
 });
 

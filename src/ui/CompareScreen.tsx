@@ -64,6 +64,12 @@ export function CompareScreen() {
   const clearShare = (goal: Goal) => {
     setDrafts((d) => ({ ...d, [goal.id]: "" }));
     writeShare(goal, undefined);
+    // Clear unmounts itself — the button only exists while a Share does — so
+    // without this the keyboard user is dropped to <body> and has to tab back
+    // in from the top of the document. Focus moves to the field they just
+    // emptied, which is both the nearest survivor and where they would go next
+    // to type a new amount.
+    document.getElementById(`share-${goal.id}`)?.focus();
   };
 
   const valueFor = (goal: Goal) =>
@@ -114,11 +120,19 @@ export function CompareScreen() {
 
         <div className="mb-6 flex items-center gap-4">
           <div className="h-px flex-1 bg-border" />
+          {/*
+            Counts goals actually IN the plan, not goals that exist. Counting
+            every saved goal made this read "Sharing · 2" directly above
+            "Nothing is assigned yet" — two labels on one screen disagreeing
+            about the same thing. The dashboard's "Saved goals · n" counts what
+            is saved because that is what it is about; this counts what is
+            sharing, for the same reason.
+          */}
           <span
             data-testid="compare-divider"
             className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground"
           >
-            Sharing · {goals.length}
+            Sharing · {comparison.rows.filter((r) => r.share !== null).length}
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
