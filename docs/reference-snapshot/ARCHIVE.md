@@ -58,8 +58,29 @@ rule 1.
 ## What was not copied
 
 - `bun.lock` — 169K, regenerable, says nothing about the design.
-- `public/favicon.ico` — already in this repo at `public/favicon.ico`, verified
-  byte-identical when it was ported (#128).
+
+### `public/favicon.ico` — copied late, and only just in time
+
+This entry used to read "already in this repo at `public/favicon.ico`, verified
+byte-identical when it was ported (#128)", and that was true until the app
+stopped shipping it.
+
+The reference favicon is Lovable's own logo. Affordo has no licence to it, so it
+was replaced with an Affordo mark
+([ADR 0026](../adr/0026-affordo-favicon-replaces-the-reference-logo.md)) — and
+because this file had been *deliberately not copied* on the grounds that a copy
+already existed in `public/`, overwriting `public/` would have destroyed the last
+one. The reference asset is now archived here properly, at
+`public/favicon.ico`, before the replacement landed.
+
+The general lesson, for anyone extending this archive: **"already in the repo" is
+not a preservation strategy.** It holds only until the repo changes its mind, and
+nothing warns you when it does. The `bun.lock` entry above is safe for a
+different reason — it is regenerable — which is the only reason an omission here
+is ever safe.
+
+SHA-256 `dd821076a9b03adc2173c93956226aea3d92482d7578fc4339c5d3a2e9c24586`,
+20,373 bytes, matching what `main` shipped up to that point.
 
 Everything else in the repository is here, including config, the generated
 `routeTree.gen.ts`, and Lovable's own `.lovable/` metadata.
