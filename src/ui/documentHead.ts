@@ -57,6 +57,17 @@ export const ROUTE_HEADS: Readonly<Record<string, DocumentHead>> = {
     title: "Settings · Affordo",
     description: "Edit your financial profile and preferences.",
   },
+  /*
+   * `/compare` has no reference original — the reference has no such route
+   * (#155, ADR 0024). Unlike its neighbours above, this entry is therefore not
+   * verbatim from §1; it follows their form (middle dot, one sentence) because
+   * ADR 0023 says new surface composes the reference's patterns rather than
+   * inventing its own.
+   */
+  "/compare": {
+    title: "Compare · Affordo",
+    description: "Split your monthly surplus between goals and see the cost.",
+  },
 };
 
 /** The head for a path, falling back to the root set (§1: `/` has no `head()`). */

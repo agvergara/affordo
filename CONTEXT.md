@@ -168,7 +168,10 @@ be resolved, not because anything still implements them.
 
 ## Where the rest lives
 
-- **Decisions** — `docs/adr/`, 24 records. Superseded ones are kept and marked.
+- **Decisions** — `docs/adr/`. Superseded ones are kept and marked. (This line
+  used to carry a count. It was wrong within a day of every ADR that landed, and
+  wrong by four across three branches at once, so the number is gone rather
+  than corrected — nothing here needs it, and `ls docs/adr` is never stale.)
 - **The reference extraction** — `docs/affordo-context.md`. The authority on what
   the app should look like, including which of its own sections are exhaustive.
 - **Frozen product specs** — `docs/prd/`. The v1 PRD describes the app this one

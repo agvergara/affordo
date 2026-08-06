@@ -74,6 +74,28 @@ describe("Router — per-route guards", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/onboarding"));
   });
 
+  it("redirects /compare to /onboarding when there is no profile", async () => {
+    // Guarded like /goals (#155): the Comparison divides a Monthly Disposable,
+    // so it is meaningless without a profile and must never paint without one.
+    navigateTo("/compare");
+    const navigate = vi.fn();
+    render(<Router navigate={navigate} />);
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/onboarding"));
+  });
+
+  it("renders the Comparison when a profile is present", async () => {
+    seedProfile();
+    navigateTo("/compare");
+    const navigate = vi.fn();
+    render(<Router navigate={navigate} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("compare-masthead")).toBeInTheDocument(),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("renders the goals dashboard when a profile is present", async () => {
     seedProfile();
     navigateTo("/goals");

@@ -329,7 +329,87 @@ Then("I am still on the settings screen", async function (this: AffordoWorld) {
   expect(new URL(this.page.url()).pathname).toBe("/settings");
 });
 
+// ------------------------------------------------- the comparison (#155)
+
+// Deliberately worded as the user experiences it. "The goal is not in the
+// plan", never "share is null"; "already paid for", never "months === 0".
+// The mechanism is `e2e/`'s and the unit suite's business — see AGENTS.md.
+
+When("I open the comparison", async function (this: AffordoWorld) {
+  await this.page.goto("/compare");
+  await expect(
+    this.page.getByRole("heading", { name: "Compare" }),
+  ).toBeVisible();
+});
+
+When(
+  "I assign {int} a month to {string}",
+  async function (this: AffordoWorld, amount: number, name: string) {
+    await shareRow(this, name)
+      .getByLabel(/monthly share/i)
+      .fill(String(amount));
+  },
+);
+
+When(
+  "I take {string} back out of the plan",
+  async function (this: AffordoWorld, name: string) {
+    await shareRow(this, name).getByRole("button", { name: /clear/i }).click();
+  },
+);
+
+When("I come back later", async function (this: AffordoWorld) {
+  // A reload, not a re-render: the point is that the split outlived the tab.
+  await this.page.reload();
+});
+
+When("I go back to my goals dashboard", async function (this: AffordoWorld) {
+  await this.page.goto("/goals");
+});
+
+Then(
+  "the goal {string} takes {int} months",
+  async function (this: AffordoWorld, name: string, months: number) {
+    await expect(shareRow(this, name)).toContainText(`${months} months`);
+  },
+);
+
+Then(
+  "the goal {string} is not in the plan",
+  async function (this: AffordoWorld, name: string) {
+    await expect(shareRow(this, name)).toContainText("not assigned");
+  },
+);
+
+Then(
+  "the goal {string} is already paid for",
+  async function (this: AffordoWorld, name: string) {
+    await expect(shareRow(this, name)).toContainText("Funded now");
+  },
+);
+
+Then(
+  "Affordo says I have assigned {int} a month",
+  async function (this: AffordoWorld, amount: number) {
+    await expect(this.page.getByTestId("compare-assigned")).toContainText(
+      String(amount),
+    );
+  },
+);
+
+Then(
+  "I still have a goal named {string}",
+  async function (this: AffordoWorld, name: string) {
+    await expect(this.page.getByTestId("compare-list")).toContainText(name);
+  },
+);
+
 // ---------------------------------------------------------------- helpers
+
+/** The comparison row for a named goal. */
+function shareRow(world: AffordoWorld, name: string) {
+  return world.page.getByTestId("compare-item").filter({ hasText: name });
+}
 
 /** Add a goal through the dialog, as a user would. */
 async function addGoal(
