@@ -239,12 +239,28 @@ describe("Editing a goal — the goal keeps its identity", () => {
     expect(stored[0]?.share).toBe(200);
   });
 
-  it("does not invent a Share on a goal that never had one", async () => {
-    const user = renderDashboard([makeGoal({ id: "goal-1" })]);
+  // The general property, and the only one that actually guards the defect.
+  //
+  // The two tests above name `share`, so both stay green if the spread is
+  // swapped back for a literal that happens to list `share` — which re-arms the
+  // trap for whatever field is added next, which is precisely how `share`
+  // itself was destroyed. Only a field the dialog has never heard of can tell
+  // "preserves the record" apart from "preserves the one field we remembered".
+  //
+  // This replaces an assertion that a goal without a Share does not gain one.
+  // That test could not fail: `saveGoals` round-trips through `JSON.stringify`,
+  // which drops an `undefined` value before it reaches storage, so it asserted
+  // a guarantee of JSON rather than anything about this dialog.
+  it("keeps a field this dialog has never heard of", async () => {
+    const fromTheFuture = {
+      ...makeGoal({ id: "goal-1" }),
+      somethingFromTheFuture: "keep me",
+    } as Goal;
+    const user = renderDashboard([fromTheFuture]);
 
     await renameFirstGoal(user, "House deposit");
 
-    expect(loadGoals()[0]).not.toHaveProperty("share");
+    expect(loadGoals()[0]).toHaveProperty("somethingFromTheFuture", "keep me");
   });
 
   it("keeps the goal's original creation date rather than re-stamping it", async () => {
