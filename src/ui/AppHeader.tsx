@@ -50,6 +50,23 @@ export function AppHeader({ showTimeValue = true }: AppHeaderProps) {
               </span>
             </span>
           )}
+          {/*
+            The Comparison link (#155). The reference has no such route, so
+            there is no verbatim string to reproduce — ADR 0023 says compose,
+            and the nearest existing analogue governs, so this is the Settings
+            link's treatment exactly, down to the `-my-2 py-2` hit area. That is
+            the same move ADR 0021's theme toggle made for the same reason, and
+            it is why the header still reads as one group rather than as two
+            links and a newcomer.
+          */}
+          {hasProfile && (
+            <a
+              href="/compare"
+              className="-my-2 inline-flex items-center py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            >
+              Compare
+            </a>
+          )}
           {hasProfile && (
             <a
               href="/settings"

@@ -21,14 +21,33 @@ import { expect, test } from "@playwright/test";
 const PROFILE = {
   schemaVersion: 1,
   profile: {
-    currency: "EUR", salary: 2000, hoursPerWeek: 40, hoursPerDay: 8,
-    paymentsPerYear: 12, expenses: 500, threshold: 10, savings: 0,
+    currency: "EUR",
+    salary: 2000,
+    hoursPerWeek: 40,
+    hoursPerDay: 8,
+    paymentsPerYear: 12,
+    expenses: 500,
+    threshold: 10,
+    savings: 0,
     monthlyContribution: 0,
   },
 };
 const GOALS = {
   schemaVersion: 1,
-  goals: [{ id: "g1", name: "MacBook", price: 2500, note: "n", createdAt: 1 }],
+  goals: [
+    // `share` puts this goal in the Comparison, so /compare's sweep sees its
+    // Clear button. Without it that control never renders and the route would
+    // be swept with one fewer control than it actually has (#155).
+    {
+      id: "g1",
+      name: "MacBook",
+      price: 2500,
+      note: "n",
+      createdAt: 1,
+      share: 200,
+    },
+    { id: "g2", name: "Holiday", price: 900, note: "", createdAt: 2 },
+  ],
 };
 
 /** Everything a pointer or keyboard can activate. */
@@ -39,33 +58,46 @@ async function undersizedOn(
   page: import("@playwright/test").Page,
 ): Promise<string[]> {
   return page.evaluate((selector) => {
-    return Array.from(document.querySelectorAll(selector))
-      .map((el) => {
-        const r = el.getBoundingClientRect();
-        const name = (
-          el.getAttribute("aria-label") ||
-          el.textContent ||
-          (el as HTMLInputElement).id ||
-          el.tagName
+    return (
+      Array.from(document.querySelectorAll(selector))
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          const name = (
+            el.getAttribute("aria-label") ||
+            el.textContent ||
+            (el as HTMLInputElement).id ||
+            el.tagName
+          )
+            .trim()
+            .slice(0, 30);
+          return { name, tag: el.tagName, w: r.width, h: r.height };
+        })
+        // A zero-size element is hidden, not undersized.
+        .filter((t) => t.w > 0 && t.h > 0)
+        .filter((t) => t.w < 24 || t.h < 24)
+        .map(
+          (t) => `${t.tag} "${t.name}" ${Math.round(t.w)}x${Math.round(t.h)}`,
         )
-          .trim()
-          .slice(0, 30);
-        return { name, tag: el.tagName, w: r.width, h: r.height };
-      })
-      // A zero-size element is hidden, not undersized.
-      .filter((t) => t.w > 0 && t.h > 0)
-      .filter((t) => t.w < 24 || t.h < 24)
-      .map((t) => `${t.tag} "${t.name}" ${Math.round(t.w)}x${Math.round(t.h)}`);
+    );
   }, INTERACTIVE);
 }
 
 test("every interactive target clears 24x24", async ({ page }) => {
-  await page.addInitScript((d) => {
-    window.localStorage.setItem("affordo.profile", JSON.stringify(d.p));
-    window.localStorage.setItem("affordo.goals", JSON.stringify(d.g));
-  }, { p: PROFILE, g: GOALS });
+  await page.addInitScript(
+    (d) => {
+      window.localStorage.setItem("affordo.profile", JSON.stringify(d.p));
+      window.localStorage.setItem("affordo.goals", JSON.stringify(d.g));
+    },
+    { p: PROFILE, g: GOALS },
+  );
 
-  for (const route of ["/goals", "/settings", "/onboarding", "/no-such-page"]) {
+  for (const route of [
+    "/goals",
+    "/compare",
+    "/settings",
+    "/onboarding",
+    "/no-such-page",
+  ]) {
     await page.goto(route);
     await expect(page.locator("body")).toBeVisible();
     expect(await undersizedOn(page), `undersized targets on ${route}`).toEqual(
@@ -89,10 +121,13 @@ test("the sweep sees the controls it claims to, so it cannot pass vacuously", as
   // Without this, a selector that matched nothing would make every assertion
   // above trivially true — the failure mode the retirement guard in
   // contrast.test.ts was rewritten to avoid.
-  await page.addInitScript((d) => {
-    window.localStorage.setItem("affordo.profile", JSON.stringify(d.p));
-    window.localStorage.setItem("affordo.goals", JSON.stringify(d.g));
-  }, { p: PROFILE, g: GOALS });
+  await page.addInitScript(
+    (d) => {
+      window.localStorage.setItem("affordo.profile", JSON.stringify(d.p));
+      window.localStorage.setItem("affordo.goals", JSON.stringify(d.g));
+    },
+    { p: PROFILE, g: GOALS },
+  );
   await page.goto("/settings");
   const count = await page.evaluate(
     (s) => document.querySelectorAll(s).length,

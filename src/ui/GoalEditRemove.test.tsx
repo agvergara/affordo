@@ -91,7 +91,9 @@ describe("Editing a goal — opening the dialog", () => {
 
     expect(screen.getByLabelText("Name")).toHaveValue("Down payment");
     expect(screen.getByLabelText("Price")).toHaveValue(5000);
-    expect(screen.getByLabelText("Note (optional)")).toHaveValue("Two-bed flat");
+    expect(screen.getByLabelText("Note (optional)")).toHaveValue(
+      "Two-bed flat",
+    );
   });
 
   it("opens on the goal whose own Edit was pressed, not the first one", async () => {
@@ -209,6 +211,77 @@ describe("Editing a goal — the goal keeps its identity", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0]?.id).toBe("goal-1");
     expect(stored[0]?.name).toBe("House deposit");
+  });
+
+  // Found by the duel on #164. The dialog owns three fields but was rebuilding
+  // the whole record from a literal of only the fields it knew, so every other
+  // one was destroyed on save. `share` was the first casualty; the next field
+  // added would have been the second. Asserted on a field the dialog has never
+  // heard of as well, because the defect is the rebuild, not the Share.
+  it("keeps a Share the dialog does not know about", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1", share: 200 })]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(loadGoals()[0]?.share).toBe(200);
+  });
+
+  it("keeps a Share when the price is what changed", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1", share: 200 })]);
+
+    await user.click(within(card()).getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Price"));
+    await user.type(screen.getByLabelText("Price"), "1300");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const stored = loadGoals();
+    expect(stored[0]?.price).toBe(1300);
+    expect(stored[0]?.share).toBe(200);
+  });
+
+  // The general property, and the only one that actually guards the defect.
+  //
+  // The two tests above name `share`, so both stay green if the spread is
+  // swapped back for a literal that happens to list `share` — which re-arms the
+  // trap for whatever field is added next, which is precisely how `share`
+  // itself was destroyed. Only a field the dialog has never heard of can tell
+  // "preserves the record" apart from "preserves the one field we remembered".
+  //
+  it("keeps a field this dialog has never heard of", async () => {
+    const fromTheFuture = {
+      ...makeGoal({ id: "goal-1" }),
+      somethingFromTheFuture: "keep me",
+    } as Goal;
+    const user = renderDashboard([fromTheFuture]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(loadGoals()[0]).toHaveProperty("somethingFromTheFuture", "keep me");
+    // The seeded record already carries that field before the dialog opens, so
+    // the assertion above cannot by itself tell "preserved" from "never
+    // written". Nine other tests here would go red on a save that does nothing,
+    // but this makes the case airtight without leaning on them.
+    expect(loadGoals()[0]?.name).toBe("House deposit");
+  });
+
+  // Restored after being deleted in 684ef3a on reasoning that was too broad.
+  //
+  // The claim was that it could never fail, because `saveGoals` round-trips
+  // through `JSON.stringify` and an `undefined` value is dropped before it
+  // reaches storage. True for `share: undefined` — and false for a DEFINED
+  // invention such as `share: initial?.share ?? 0`, which survives the
+  // serialiser intact and would land a Share on a goal the user never assigned
+  // one to. That mutation is unlikely, not impossible, and the sliver of
+  // coverage costs three lines.
+  //
+  // It is a weaker test than the one above and is not a substitute for it: it
+  // pins that nothing is invented, while that one pins that nothing is lost.
+  it("does not invent a Share on a goal that never had one", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1" })]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(loadGoals()[0]).not.toHaveProperty("share");
   });
 
   it("keeps the goal's original creation date rather than re-stamping it", async () => {

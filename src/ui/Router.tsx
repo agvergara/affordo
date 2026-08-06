@@ -4,6 +4,7 @@ import { applyDocumentHead, headForPath } from "./documentHead";
 import { NotFoundScreen } from "./NotFoundScreen";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { GoalsDashboard } from "./GoalsDashboard";
+import { CompareScreen } from "./CompareScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { ToastProvider } from "./Toast";
 import { AffordoProvider, useAffordo } from "../state/AffordoProvider";
@@ -139,6 +140,15 @@ export function Router({
     screen = (
       <Guard navigate={navigate} whileHydrating={<Loading />}>
         <GoalsDashboard />
+      </Guard>
+    );
+  } else if (path === "/compare") {
+    // Guarded like /goals, and with the same loading line: the Comparison
+    // divides a Monthly Disposable, so it is meaningless without a profile
+    // (#155). It needs no `navigate` of its own — nothing on it leaves.
+    screen = (
+      <Guard navigate={navigate} whileHydrating={<Loading />}>
+        <CompareScreen />
       </Guard>
     );
   } else if (path === "/settings") {

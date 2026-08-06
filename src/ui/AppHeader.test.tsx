@@ -60,6 +60,40 @@ describe("AppHeader settings link", () => {
   });
 });
 
+describe("AppHeader compare link", () => {
+  it("shows a Compare link to /compare when a profile exists", () => {
+    renderHeader({}, { salary: 2000 });
+    expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute(
+      "href",
+      "/compare",
+    );
+  });
+
+  it("hides the Compare link when there is no profile", () => {
+    // The Comparison divides a Monthly Disposable, so it means nothing without
+    // a profile — it hides on exactly the condition Settings does.
+    renderHeader();
+    expect(screen.queryByRole("link", { name: "Compare" })).toBeNull();
+  });
+
+  it("comes before Settings in reading order", () => {
+    renderHeader({}, { salary: 2000 });
+    const links = screen.getAllByRole("link").map((a) => a.textContent?.trim());
+    expect(links.indexOf("Compare")).toBeLessThan(links.indexOf("Settings"));
+  });
+
+  // Class assertion under the narrow exception (working agreements, rule 3):
+  // ADR 0023 requires new surface to take the nearest existing analogue's
+  // treatment rather than invent one, and the class string IS that requirement
+  // — jsdom applies no stylesheet, so nothing else here can observe it.
+  it("wears the Settings link's treatment exactly, per ADR 0023", () => {
+    renderHeader({}, { salary: 2000 });
+    const compare = screen.getByRole("link", { name: "Compare" });
+    const settings = screen.getByRole("link", { name: "Settings" });
+    expect(compare.className).toBe(settings.className);
+  });
+});
+
 describe("AppHeader time-value chip", () => {
   it("shows the formatted hourly rate when a profile exists", () => {
     // 2000/mo × 12 payments ÷ (52 × 40h) = 11.538…/hour → de-DE EUR formatting.

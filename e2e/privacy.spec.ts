@@ -68,11 +68,22 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
   const price = 987654;
   const expenses = 24681;
   const contribution = 1357;
+  // The Share is financial data the user typed, exactly like the rest (#155).
+  const share = 31415;
   const goalName = "Zzyzx Telescope";
   const note = "Nqxlptrz";
 
   await page.addInitScript(
-    ([salary, savings, price, expenses, contribution, goalName, note]) => {
+    ([
+      salary,
+      savings,
+      price,
+      expenses,
+      contribution,
+      share,
+      goalName,
+      note,
+    ]) => {
       window.localStorage.setItem(
         "affordo.profile",
         JSON.stringify({
@@ -100,13 +111,23 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
               name: goalName,
               price,
               note,
+              share,
               createdAt: 1700000000000,
             },
           ],
         }),
       );
     },
-    [salary, savings, price, expenses, contribution, goalName, note] as const,
+    [
+      salary,
+      savings,
+      price,
+      expenses,
+      contribution,
+      share,
+      goalName,
+      note,
+    ] as const,
   );
 
   const ownOrigin = new URL(baseURL!).origin;
@@ -115,7 +136,7 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
     seen.push(`${req.url()}\n${req.postData() ?? ""}`);
   });
 
-  for (const path of ["/goals", "/settings"]) {
+  for (const path of ["/goals", "/compare", "/settings"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
   }
@@ -161,7 +182,7 @@ test("the Vercel beacons are same-origin and carry no financial value", async ({
 
   // Derived from the seeded values, never hand-copied — a transcribed literal
   // silently stops matching the day the seed above is edited.
-  const needles = [salary, savings, price, expenses, contribution]
+  const needles = [salary, savings, price, expenses, contribution, share]
     .map(String)
     .concat(goalName, note);
 

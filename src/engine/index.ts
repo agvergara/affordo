@@ -19,3 +19,13 @@ export type {
   ReferenceVerdict,
   ReferenceVerdictKind,
 } from "./reference-types";
+
+/**
+ * The Comparison seam (ADR 0024, issue #155) — the second and last entry point.
+ *
+ * It sits beside `evaluateReference` rather than wrapping it: the two answer
+ * different questions, and a Comparison must never be able to change what a
+ * goal's own Verdict says.
+ */
+export { compare, type ComparableGoal } from "./comparison";
+export type { Comparison, ComparisonRow } from "./comparison-types";

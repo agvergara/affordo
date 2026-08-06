@@ -1,0 +1,57 @@
+Feature: Splitting my surplus between competing goals
+  My goals compete for the same money. Affordo lets me say how much of each
+  month goes to which goal, and tells me how long each one then takes.
+
+  Background:
+    Given I have a saved profile
+    And I have a goal "MacBook" priced 1200
+    And I have a goal "Holiday" priced 900
+
+  Scenario: A goal I have not assigned anything to is simply not in the plan
+    When I open the comparison
+    Then the goal "MacBook" is not in the plan
+
+  Scenario: Affordo tells me nothing is assigned yet
+    When I open the comparison
+    Then I see "Nothing is assigned yet."
+
+  Scenario: Assigning an amount tells me how long that goal takes
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    Then the goal "MacBook" takes 12 months
+
+  Scenario: A bigger amount each month means a shorter wait
+    When I open the comparison
+    And I assign 300 a month to "MacBook"
+    Then the goal "MacBook" takes 4 months
+
+  Scenario: Affordo totals what I have committed against what I have
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    And I assign 200 a month to "Holiday"
+    Then Affordo says I have assigned 300 a month
+
+  Scenario: Money I already have counts towards the goal
+    Given my savings are 900
+    When I open the comparison
+    And I assign 100 a month to "Holiday"
+    Then the goal "Holiday" is already paid for
+
+  Scenario: Taking a goal back out of the plan
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    And I take "MacBook" back out of the plan
+    Then the goal "MacBook" is not in the plan
+    And I still have a goal named "MacBook"
+
+  Scenario: My split is remembered
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    And I come back later
+    Then the goal "MacBook" takes 12 months
+
+  Scenario: Comparing goals does not change what a goal on its own says
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    And I go back to my goals dashboard
+    Then the goal "MacBook" shows the verdict "Stretch"
