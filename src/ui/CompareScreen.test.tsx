@@ -285,17 +285,65 @@ describe("the totals", () => {
   });
 });
 
-describe("what this slice deliberately does not show", () => {
-  // Delay (#156) and the Overdrawn warning (#158) are later slices. Pinning
-  // their absence keeps a half-built version of either from arriving unnoticed.
-  it("shows no Delay figure yet", () => {
+describe("the Delay", () => {
+  /** The Delay line for the row whose goal name is `name`, or null. */
+  function delayFor(name: string): string | null {
+    const item = screen
+      .getAllByTestId("compare-item")
+      .find((el) => within(el).queryByText(name) !== null);
+    if (!item) throw new Error(`no compare row for "${name}"`);
+    return within(item).queryByTestId("compare-delay")?.textContent ?? null;
+  }
+
+  it("says how much longer a Shared goal takes than it would alone", () => {
+    // 1200 at 100/mo = 12 months; alone at the whole 2500 surplus = 0.48.
     renderCompare(undefined, [
       makeGoal({ name: "MacBook", price: 1200, share: 100 }),
-      makeGoal({ name: "Holiday", price: 900, share: 300 }),
     ]);
-    expect(screen.queryByText(/vs\. alone/i)).toBeNull();
+    expect(delayFor("MacBook")).toContain("vs. alone");
   });
 
+  it("shows nothing for an Unassigned goal", () => {
+    renderCompare(undefined, [makeGoal({ name: "Holiday" })]);
+    expect(delayFor("Holiday")).toBeNull();
+  });
+
+  it("shows nothing for a goal commanding the whole surplus", () => {
+    // Delay is exactly zero here, and "+0 months vs. alone" would tell a goal
+    // that is not late that it is.
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook", price: 5000, share: 2500 }),
+    ]);
+    expect(delayFor("MacBook")).toBeNull();
+  });
+
+  it("shows nothing for a goal savings already cover", () => {
+    renderCompare({ savings: 9000 }, [
+      makeGoal({ name: "Headphones", price: 300, share: 100 }),
+    ]);
+    expect(delayFor("Headphones")).toBeNull();
+  });
+
+  it("words a negative Delay plainly rather than going quiet", () => {
+    // Only reachable on an Overdrawn plan. Hiding it would leave the screen
+    // silent in the one state that most needs explaining.
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook", price: 5000, share: 5000 }),
+    ]);
+    expect(delayFor("MacBook")).toContain("sooner than alone");
+  });
+
+  it("delays both goals when two of them split the surplus", () => {
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook", price: 5000, share: 1250 }),
+      makeGoal({ name: "Holiday", price: 5000, share: 1250 }),
+    ]);
+    expect(delayFor("MacBook")).toContain("vs. alone");
+    expect(delayFor("Holiday")).toContain("vs. alone");
+  });
+});
+
+describe("what this slice deliberately does not show", () => {
   it("shows no Overdrawn warning yet, even when the Shares overrun", () => {
     renderCompare({ salary: 1000, expenses: 900 }, [
       makeGoal({ name: "MacBook", price: 1200, share: 500 }),

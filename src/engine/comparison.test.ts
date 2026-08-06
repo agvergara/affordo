@@ -225,11 +225,105 @@ describe("Overdrawn", () => {
   });
 });
 
-describe("the Delay slice has not landed yet", () => {
-  it("leaves the solo baseline and the Delay unset on every row", () => {
+describe("the solo baseline and the Delay", () => {
+  it("measures alone against the whole disposable and the whole savings pot", () => {
+    // 2500 disposable. Alone, a 5000 goal takes 2 months; nothing else is
+    // taking a cut of either resource, which is what "alone" means.
+    const [row] = compare(profile, [goal("a", 5000, 500)]).rows;
+    expect(row?.monthsAlone).toBe(2);
+  });
+
+  it("counts savings in full against the solo baseline", () => {
+    const saved = { ...profile, savings: 2500 };
+    const [row] = compare(saved, [goal("a", 5000, 500)]).rows;
+    // 5000 − 2500 saved = 2500 remaining ÷ 2500 disposable = 1 month.
+    expect(row?.monthsAlone).toBe(1);
+  });
+
+  it("is the difference between the shared months and the solo months", () => {
+    // 1200 at 100/mo = 12 months; alone at 2500/mo = 0.48 months.
+    const [row] = compare(profile, [goal("a", 1200, 100)]).rows;
+    expect(row?.months).toBe(12);
+    expect(row?.monthsAlone).toBe(0.48);
+    expect(row?.delay).toBeCloseTo(11.52, 10);
+  });
+
+  it("is zero when a goal's Share is the whole disposable", () => {
+    // Not "when it is the only Shared goal" — the baseline is the whole
+    // disposable, so a goal commanding all of it is not late at all.
+    const [row] = compare(profile, [goal("a", 5000, 2500)]).rows;
+    expect(row?.delay).toBe(0);
+  });
+
+  it("is positive for a lone goal assigned less than the whole disposable", () => {
+    // The contradictory bullet in #156 claimed this was zero. One goal given
+    // 100 of a 2500 surplus is not commanding all of it, and the Delay says so.
+    const [row] = compare(profile, [goal("a", 5000, 100)]).rows;
+    expect(row?.delay).toBeGreaterThan(0);
+  });
+
+  it("grows for both goals when two of them split the disposable", () => {
+    // The headline case: each goal is later than it would be on its own.
+    const result = compare(profile, [
+      goal("a", 5000, 1250),
+      goal("b", 5000, 1250),
+    ]);
+    expect(result.rows[0]?.delay).toBeGreaterThan(0);
+    expect(result.rows[1]?.delay).toBeGreaterThan(0);
+  });
+
+  it("is defined for a goal the verdict engine reports no months for", () => {
+    // The reason the baseline is computed here. Alone this takes 40 months, so
+    // `evaluateReference` returns monthsToSave: null and the card renders the
+    // cut horizon instead — the figure Delay needs is not in the verdict.
+    const [row] = compare(profile, [goal("a", 100000, 1000)]).rows;
+    expect(row?.monthsAlone).toBe(40);
+    expect(row?.delay).toBeCloseTo(60, 10);
+  });
+
+  it("has none for an Unassigned goal — not a Delay of zero", () => {
     const result = compare(profile, [goal("a", 1200, 100), goal("b", 900)]);
-    expect(result.rows.map((r) => r.monthsAlone)).toEqual([null, null]);
-    expect(result.rows.map((r) => r.delay)).toEqual([null, null]);
+    expect(result.rows[1]?.monthsAlone).toBeNull();
+    expect(result.rows[1]?.delay).toBeNull();
+  });
+
+  it("has none when the goal is unreachable even alone", () => {
+    // No surplus and savings that do not cover it: there is no baseline to be
+    // late against, and inventing Infinity would make the subtraction NaN.
+    const overspent = { ...profile, salary: 1000, expenses: 1500 };
+    const [row] = compare(overspent, [goal("a", 5000, 100)]).rows;
+    expect(row?.monthsAlone).toBeNull();
+    expect(row?.delay).toBeNull();
+  });
+
+  it("is zero for a goal savings already cover, which is late by nothing", () => {
+    const saved = { ...profile, savings: 9000 };
+    const [row] = compare(saved, [goal("a", 800, 100)]).rows;
+    expect(row?.months).toBe(0);
+    expect(row?.monthsAlone).toBe(0);
+    expect(row?.delay).toBe(0);
+  });
+
+  it("is never negative while the plan is affordable", () => {
+    // A Share is at most the whole disposable unless the Shares Overdraw it,
+    // so months >= monthsAlone holds in every honest plan.
+    const result = compare(profile, [
+      goal("a", 4000, 900),
+      goal("b", 7000, 1600),
+    ]);
+    expect(result.overdrawn).toBe(false);
+    for (const row of result.rows) {
+      expect(row.delay ?? 0).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("goes negative only on an Overdrawn plan, where it is the signature", () => {
+    // Assigned more than exists, so the goal appears to arrive sooner than it
+    // could. That is not nonsense — it is what spending absent money looks
+    // like, and #158 is where the screen says so.
+    const result = compare(profile, [goal("a", 5000, 5000)]);
+    expect(result.overdrawn).toBe(true);
+    expect(result.rows[0]?.delay).toBeLessThan(0);
   });
 });
 
@@ -294,6 +388,19 @@ describe("no output is ever ill-formed", () => {
         expect(Number.isFinite(row.months)).toBe(true);
         expect(row.months).toBeGreaterThanOrEqual(0);
       }
+      if (row.monthsAlone !== null) {
+        expect(Number.isFinite(row.monthsAlone)).toBe(true);
+        expect(row.monthsAlone).toBeGreaterThanOrEqual(0);
+      }
+      // Delay is checked for finiteness but NOT for sign: it is legitimately
+      // negative on an Overdrawn plan. NaN is the failure this catches, and
+      // it is one subtraction away in every branch where a baseline is absent.
+      if (row.delay !== null) {
+        expect(Number.isFinite(row.delay)).toBe(true);
+      }
+      // The two travel together: a Delay without a baseline is a subtraction
+      // from nothing, and a baseline without a Delay is a figure nobody uses.
+      expect(row.delay === null).toBe(row.monthsAlone === null);
     }
   });
 });

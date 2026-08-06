@@ -84,16 +84,47 @@ export function compare(
     // so the division cannot produce NaN.
     const openingBalance = savings * (share / assigned);
     const remaining = Math.max(0, goal.price - openingBalance);
+    // Already covered by the opening balance funds at month zero, which is
+    // the honest answer and keeps the figure off Infinity for a free goal.
+    const months = remaining === 0 ? 0 : remaining / share;
+
+    // The solo baseline: this goal alone, commanding the whole Monthly
+    // Disposable and the whole savings pot, because alone means nothing else
+    // is taking a cut of either.
+    //
+    // Computed here rather than read off `evaluateReference`, and that is a
+    // requirement rather than a preference. The verdict engine reports
+    // `monthsToSave` only on its `stretch` path; past twelve months it reports
+    // null and the goal card falls back to rendering `cutMonths` as
+    // "12 months *". So the figure Delay needs does not exist in the verdict
+    // output for exactly the goals that need it most — and populating it
+    // unconditionally would silently change what every cut-to-afford card on
+    // /goals displays, which is a fidelity regression wearing a cleanup's
+    // clothes (ADR 0024).
+    const remainingAlone = Math.max(0, goal.price - savings);
+    const monthsAlone =
+      remainingAlone === 0
+        ? 0
+        : monthlyDisposable > 0
+          ? remainingAlone / monthlyDisposable
+          : // Unreachable even alone, so there is no baseline to be late
+            // against. A duration cannot be compared to one that does not
+            // exist, and inventing Infinity here would make Delay NaN.
+            null;
 
     return {
       goalId: goal.id,
       share,
       openingBalance,
-      // Already covered by the opening balance funds at month zero, which is
-      // the honest answer and keeps the figure off Infinity for a free goal.
-      months: remaining === 0 ? 0 : remaining / share,
-      monthsAlone: null,
-      delay: null,
+      months,
+      monthsAlone,
+      // Non-negative whenever the plan is affordable: a Share can only be at
+      // most the whole disposable unless the Shares Overdraw it, so
+      // `months >= monthsAlone` holds in every honest plan. A NEGATIVE Delay
+      // is therefore not nonsense — it is the precise signature of an
+      // Overdrawn plan, where a goal appears to arrive sooner than it could
+      // because the plan spends money that is not there.
+      delay: monthsAlone === null ? null : months - monthsAlone,
     };
   });
 

@@ -25,6 +25,23 @@ Feature: Splitting my surplus between competing goals
     And I assign 300 a month to "MacBook"
     Then the goal "MacBook" takes 4 months
 
+  Scenario: Affordo tells me what wanting both costs me
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    And I assign 200 a month to "Holiday"
+    Then Affordo tells me "MacBook" is later than it would be on its own
+    And Affordo tells me "Holiday" is later than it would be on its own
+
+  Scenario: A goal I put my whole surplus behind is not held up by anything
+    When I open the comparison
+    And I assign 1500 a month to "MacBook"
+    Then Affordo does not say "MacBook" is held up
+
+  Scenario: A goal I have not assigned anything to is not held up either
+    When I open the comparison
+    And I assign 100 a month to "Holiday"
+    Then Affordo does not say "MacBook" is held up
+
   Scenario: Affordo totals what I have committed against what I have
     When I open the comparison
     And I assign 100 a month to "MacBook"
