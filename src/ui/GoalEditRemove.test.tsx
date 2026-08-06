@@ -247,10 +247,6 @@ describe("Editing a goal — the goal keeps its identity", () => {
   // itself was destroyed. Only a field the dialog has never heard of can tell
   // "preserves the record" apart from "preserves the one field we remembered".
   //
-  // This replaces an assertion that a goal without a Share does not gain one.
-  // That test could not fail: `saveGoals` round-trips through `JSON.stringify`,
-  // which drops an `undefined` value before it reaches storage, so it asserted
-  // a guarantee of JSON rather than anything about this dialog.
   it("keeps a field this dialog has never heard of", async () => {
     const fromTheFuture = {
       ...makeGoal({ id: "goal-1" }),
@@ -261,6 +257,31 @@ describe("Editing a goal — the goal keeps its identity", () => {
     await renameFirstGoal(user, "House deposit");
 
     expect(loadGoals()[0]).toHaveProperty("somethingFromTheFuture", "keep me");
+    // The seeded record already carries that field before the dialog opens, so
+    // the assertion above cannot by itself tell "preserved" from "never
+    // written". Nine other tests here would go red on a save that does nothing,
+    // but this makes the case airtight without leaning on them.
+    expect(loadGoals()[0]?.name).toBe("House deposit");
+  });
+
+  // Restored after being deleted in 684ef3a on reasoning that was too broad.
+  //
+  // The claim was that it could never fail, because `saveGoals` round-trips
+  // through `JSON.stringify` and an `undefined` value is dropped before it
+  // reaches storage. True for `share: undefined` — and false for a DEFINED
+  // invention such as `share: initial?.share ?? 0`, which survives the
+  // serialiser intact and would land a Share on a goal the user never assigned
+  // one to. That mutation is unlikely, not impossible, and the sliver of
+  // coverage costs three lines.
+  //
+  // It is a weaker test than the one above and is not a substitute for it: it
+  // pins that nothing is invented, while that one pins that nothing is lost.
+  it("does not invent a Share on a goal that never had one", async () => {
+    const user = renderDashboard([makeGoal({ id: "goal-1" })]);
+
+    await renameFirstGoal(user, "House deposit");
+
+    expect(loadGoals()[0]).not.toHaveProperty("share");
   });
 
   it("keeps the goal's original creation date rather than re-stamping it", async () => {
