@@ -337,6 +337,65 @@ describe("reflow", () => {
   });
 });
 
+describe("no surplus", () => {
+  /** Expenses exceed income: −500 a month. */
+  const overspent: ReferenceProfile = {
+    ...profile,
+    salary: 1000,
+    expenses: 1500,
+  };
+
+  it("still divides the savings by Share", () => {
+    const saved = { ...overspent, savings: 3000 };
+    const result = compare(saved, [goal("a", 800, 100), goal("b", 6000, 200)]);
+    expect(result.rows[0]?.openingBalance).toBeCloseTo(800, 6);
+    expect(result.rows[1]?.openingBalance).toBeCloseTo(2200, 6);
+  });
+
+  it("shows a goal the savings cover as funded, not as unreachable", () => {
+    // Withholding this would hide something true and useful the user has
+    // already earned.
+    const saved = { ...overspent, savings: 3000 };
+    const [row] = compare(saved, [goal("a", 800, 100)]).rows;
+    expect(row?.months).toBe(0);
+  });
+
+  it("gives every other goal no months rather than a date built on absent money", () => {
+    const saved = { ...overspent, savings: 3000 };
+    const result = compare(saved, [goal("a", 800, 100), goal("b", 6000, 200)]);
+    expect(result.rows[1]?.months).toBeNull();
+  });
+
+  it("gives those goals no Delay either — nothing was ever arriving", () => {
+    const saved = { ...overspent, savings: 3000 };
+    const result = compare(saved, [goal("a", 800, 100), goal("b", 6000, 200)]);
+    expect(result.rows[1]?.delay).toBeNull();
+  });
+
+  it("reports no Delay for a goal savings would cover alone but not once split", () => {
+    // The case that would have coerced `null - 0` into a Delay of zero: alone
+    // this goal is instant, in the plan it is unreachable, and the distance
+    // between those is not a number.
+    const saved = { ...overspent, savings: 5000 };
+    const result = compare(saved, [goal("a", 3000, 100), goal("b", 3000, 100)]);
+    expect(result.rows[0]?.monthsAlone).toBe(0);
+    expect(result.rows[0]?.months).toBeNull();
+    expect(result.rows[0]?.delay).toBeNull();
+  });
+
+  it("treats a disposable of exactly zero as no surplus", () => {
+    // The boundary: nothing left over is nothing to divide, however the Shares
+    // are set.
+    const broke = { ...profile, salary: 500, expenses: 500 };
+    const [row] = compare(broke, [goal("a", 1000, 100)]).rows;
+    expect(row?.months).toBeNull();
+  });
+
+  it("is Overdrawn as soon as anything is assigned against no surplus", () => {
+    expect(compare(overspent, [goal("a", 100, 50)]).overdrawn).toBe(true);
+  });
+});
+
 describe("the solo baseline and the Delay", () => {
   it("measures alone against the whole disposable and the whole savings pot", () => {
     // 2500 disposable. Alone, a 5000 goal takes 2 months; nothing else is
@@ -510,9 +569,14 @@ describe("no output is ever ill-formed", () => {
       if (row.delay !== null) {
         expect(Number.isFinite(row.delay)).toBe(true);
       }
-      // The two travel together: a Delay without a baseline is a subtraction
-      // from nothing, and a baseline without a Delay is a figure nobody uses.
-      expect(row.delay === null).toBe(row.monthsAlone === null);
+      // A Delay is a subtraction, so it exists only when both sides do. This
+      // was `delay === null ⟺ monthsAlone === null` until the no-surplus rule
+      // made `months` nullable too — and JS would have coerced `null - 4` into
+      // a goal that can never be funded reporting that it arrives four months
+      // EARLY.
+      expect(row.delay === null).toBe(
+        row.months === null || row.monthsAlone === null,
+      );
     }
   });
 });

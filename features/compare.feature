@@ -72,3 +72,16 @@ Feature: Splitting my surplus between competing goals
     And I assign 100 a month to "MacBook"
     And I go back to my goals dashboard
     Then the goal "MacBook" shows the verdict "Stretch"
+
+  Scenario: Affordo tells me when I have committed more than I have
+    Given my monthly expenses leave me 200 a month
+    When I open the comparison
+    And I assign 500 a month to "MacBook"
+    Then Affordo warns me the plan needs money I do not have
+
+  Scenario: With nothing left over each month, Affordo says so
+    Given my expenses meet my income
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    Then Affordo tells me there is no monthly surplus to share
+    And the goal "MacBook" cannot be reached

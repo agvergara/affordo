@@ -205,7 +205,15 @@ export function compare(
   const savings = Math.max(0, profile.savings);
 
   const opened = allocateSavings(goals, shares, savings);
-  const funded = solveTimeline(goals, shares, opened, assigned);
+  // With no surplus there is no monthly money to schedule, whatever the Shares
+  // say (#158). Savings still divide — a goal its opening balance covers is
+  // genuinely bought — but nothing else is ever funded, so the solve is not run
+  // and those goals carry no months rather than a figure built on money that
+  // does not exist.
+  const hasSurplus = monthlyDisposable > 0;
+  const funded = hasSurplus
+    ? solveTimeline(goals, shares, opened, assigned)
+    : goals.map(() => 0);
 
   const rows: ComparisonRow[] = goals.map((goal, index) => {
     const share = shares[index] ?? null;
@@ -222,7 +230,11 @@ export function compare(
     }
 
     const openingBalance = opened[index] ?? 0;
-    const months = funded[index] ?? 0;
+    const covered = openingBalance >= goal.price - SETTLED;
+    // Funded from savings alone is true regardless of surplus. Everything else
+    // needs monthly money, so with no surplus it is unreachable rather than
+    // slow, and `null` says that without inventing a duration (#158).
+    const months = hasSurplus ? (funded[index] ?? 0) : covered ? 0 : null;
 
     // The solo baseline: this goal alone, commanding the whole Monthly
     // Disposable and the whole savings pot, because alone means nothing else
@@ -254,13 +266,21 @@ export function compare(
       openingBalance,
       months,
       monthsAlone,
-      // Non-negative whenever the plan is affordable: a Share can only be at
-      // most the whole disposable unless the Shares Overdraw it, so
-      // `months >= monthsAlone` holds in every honest plan. A NEGATIVE Delay
-      // is therefore not nonsense — it is the precise signature of an
+      // Both sides must exist. `months` became nullable with the no-surplus
+      // rule (#158), and JS would have coerced `null - 4` to -4 — a goal that
+      // can never be funded reporting that it arrives four months EARLY. The
+      // reachable case is a goal savings would cover on its own but not once
+      // they are split, on a profile with no surplus: alone it is instant, in
+      // the plan it is unreachable, and the distance between those is not a
+      // number.
+      //
+      // Otherwise: non-negative whenever the plan is affordable, since a Share
+      // can only be at most the whole disposable unless the Shares Overdraw it.
+      // A NEGATIVE Delay is not nonsense — it is the precise signature of an
       // Overdrawn plan, where a goal appears to arrive sooner than it could
       // because the plan spends money that is not there.
-      delay: monthsAlone === null ? null : months - monthsAlone,
+      delay:
+        months === null || monthsAlone === null ? null : months - monthsAlone,
     };
   });
 
