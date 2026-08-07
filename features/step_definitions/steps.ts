@@ -389,6 +389,20 @@ Then(
 );
 
 Then(
+  "Affordo tells me {string} is later than it would be on its own",
+  async function (this: AffordoWorld, name: string) {
+    await expect(shareRow(this, name)).toContainText("vs. alone");
+  },
+);
+
+Then(
+  "Affordo does not say {string} is held up",
+  async function (this: AffordoWorld, name: string) {
+    await expect(shareRow(this, name)).not.toContainText("vs. alone");
+  },
+);
+
+Then(
   "Affordo says I have assigned {int} a month",
   async function (this: AffordoWorld, amount: number) {
     await expect(this.page.getByTestId("compare-assigned")).toContainText(

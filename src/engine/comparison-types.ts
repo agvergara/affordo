@@ -40,13 +40,26 @@ export interface ComparisonRow {
    */
   months: number | null;
   /**
-   * What this goal would take alone, commanding the whole Monthly Disposable.
-   * Always `null` until the Delay slice fills it in.
+   * What this goal would take **alone** — commanding the whole Monthly
+   * Disposable and the whole savings pot, because alone means nothing else is
+   * taking a cut of either.
+   *
+   * `null` when Unassigned, and `null` when the goal is unreachable even alone
+   * (a non-positive disposable and a price savings do not cover): there is no
+   * baseline to be late against.
    */
   monthsAlone: number | null;
   /**
    * Months this goal takes beyond what it would take alone — the number behind
-   * "buying X delays Y". Always `null` until the Delay slice fills it in.
+   * "buying X delays Y". `null` whenever `monthsAlone` is.
+   *
+   * Zero when a goal's Share is the whole Monthly Disposable, not merely when
+   * it is the only Shared goal: one goal assigned €100 of a €2500 surplus is
+   * not commanding all of it, and says so.
+   *
+   * May be **negative**, and only when the plan is Overdrawn — a goal cannot
+   * arrive sooner than it would alone unless the plan spends money that is not
+   * there.
    */
   delay: number | null;
 }

@@ -212,12 +212,22 @@ export function CompareScreen() {
                       </button>
                     )}
 
-                    <p
-                      data-testid="compare-months"
-                      className="ml-auto font-mono text-xs"
-                    >
-                      {describeMonths(row?.months ?? null, profile.currency)}
-                    </p>
+                    <div className="ml-auto text-right">
+                      <p
+                        data-testid="compare-months"
+                        className="font-mono text-xs"
+                      >
+                        {describeMonths(row?.months ?? null, profile.currency)}
+                      </p>
+                      {describeDelay(row?.delay ?? null, profile.currency) && (
+                        <p
+                          data-testid="compare-delay"
+                          className="font-mono text-[10px] text-muted-foreground"
+                        >
+                          {describeDelay(row?.delay ?? null, profile.currency)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </li>
               );
@@ -252,4 +262,38 @@ function describeMonths(
   if (months === null) return "— not assigned";
   if (months === 0) return "Funded now";
   return `${formatNumber(months, currency)} months`;
+}
+
+/**
+ * The Delay line — the number the whole feature exists to produce.
+ *
+ * Silent in three cases, each for its own reason rather than to tidy the row:
+ * `null` is an Unassigned goal or one unreachable even alone, so there is no
+ * baseline to be late against; and exactly zero is a goal commanding the whole
+ * Monthly Disposable, which is not delayed and should not be told it is by a
+ * line reading "+0".
+ *
+ * A negative Delay can only happen on an Overdrawn plan — a goal cannot really
+ * arrive sooner than it would alone. It is worded plainly rather than hidden,
+ * because the alternative is a screen that goes quiet in the one state the user
+ * most needs explaining. #158 adds the warning that says why.
+ */
+function describeDelay(
+  delay: number | null,
+  currency: Parameters<typeof formatNumber>[1],
+): string | null {
+  if (delay === null) return null;
+  // Suppressed on what would be DISPLAYED, not on what was computed.
+  //
+  // Testing `delay === 0` looks equivalent and is not. A Share exactly equal to
+  // the disposable does give exactly zero — the two expressions reduce to the
+  // same arithmetic — but a Share a hair under it gives ~6e-11, which is not
+  // zero and renders as "+0 months vs. alone": a goal being told it is late by
+  // nothing. `formatNumber` defaults to one fraction digit, so 0.05 is the
+  // threshold below which the sentence stops carrying information.
+  if (Math.abs(delay) < 0.05) return null;
+  if (delay < 0) {
+    return `${formatNumber(-delay, currency)} months sooner than alone`;
+  }
+  return `+${formatNumber(delay, currency)} months vs. alone`;
 }
