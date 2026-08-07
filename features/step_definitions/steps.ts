@@ -384,7 +384,7 @@ Then(
 Then(
   "the goal {string} is already paid for",
   async function (this: AffordoWorld, name: string) {
-    await expect(shareRow(this, name)).toContainText("Funded now");
+    await expect(shareRow(this, name)).toContainText("Funded through savings");
   },
 );
 
