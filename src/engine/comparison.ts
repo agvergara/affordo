@@ -118,8 +118,13 @@ function solveTimeline(
   shares: readonly (number | null)[],
   opened: readonly number[],
   assigned: number,
-): number[] {
-  const months = goals.map(() => 0);
+): (number | null)[] {
+  // `null`, not `0`. An unsolved goal must never be indistinguishable from one
+  // funded at month zero: zero is the single most wrong value available here,
+  // because the screen renders it as "Funded through savings". Seeding the
+  // array with it turned a scheduling failure into an affirmative false
+  // statement about money the user does not have.
+  const months: (number | null)[] = goals.map(() => null);
   const owed = goals.map((goal, i) => {
     const share = shares[i];
     if (share === null || share === undefined) return 0;
@@ -128,36 +133,62 @@ function solveTimeline(
 
   const active = new Set<number>();
   for (let i = 0; i < goals.length; i += 1) {
-    if ((owed[i] ?? 0) > SETTLED) active.add(i);
+    if (shares[i] === null || shares[i] === undefined) continue;
+    // Already covered by its opening balance: funded before the clock starts.
+    if ((owed[i] ?? 0) <= SETTLED) months[i] = 0;
+    else active.add(i);
   }
   if (assigned <= 0) return months;
 
   let clock = 0;
-  // One round per completion at most; the guard is belt-and-braces against a
-  // rounding pathology leaving a goal permanently 1e-13 short.
+  // Exactly one round per goal is now sufficient, because every round retires
+  // the goal it solved for — see below. The bound is a real guarantee rather
+  // than the "belt and braces" it used to claim to be.
   for (let round = 0; round < goals.length && active.size > 0; round += 1) {
     let activeShare = 0;
     for (const i of active) activeShare += shares[i] ?? 0;
     if (activeShare <= 0) break;
 
-    // Time until each active goal is funded at its current effective rate; the
-    // earliest is the next event.
+    // Time until each active goal is funded at its current effective rate. The
+    // earliest is the next event, and we keep WHICH goal it was.
     let step = Infinity;
+    let next = -1;
     for (const i of active) {
       const rate = ((shares[i] ?? 0) * assigned) / activeShare;
       if (rate <= 0) continue;
-      step = Math.min(step, (owed[i] ?? 0) / rate);
+      const due = (owed[i] ?? 0) / rate;
+      if (due < step) {
+        step = due;
+        next = i;
+      }
     }
-    if (!Number.isFinite(step)) break;
+    if (!Number.isFinite(step) || next < 0) break;
 
     clock += step;
     for (const i of active) {
       const rate = ((shares[i] ?? 0) * assigned) / activeShare;
       owed[i] = (owed[i] ?? 0) - rate * step;
     }
-    // Everything settled at this instant retires together — two goals can
-    // genuinely land in the same month, and retiring only one would hand its
-    // Share to a goal that is already bought.
+
+    // Retire `next` because we SOLVED for it, not because the subtraction
+    // happened to land under an epsilon.
+    //
+    // Trusting the epsilon was a real bug. `SETTLED` is 1e-9, but one ulp of a
+    // balance near 1e7 is already larger than that — so `owed - rate * step`
+    // could leave ~2e-9 behind on the very goal the step was computed to
+    // finish. It stayed active, the round was spent moving the clock nowhere,
+    // and with the loop bounded by the goal count a later goal was never
+    // solved at all. It then reported month zero.
+    //
+    // By construction `next` is the goal whose remaining balance the step was
+    // sized to clear, so retiring it is exact regardless of what the floating
+    // point subtraction left behind.
+    months[next] = clock;
+    active.delete(next);
+
+    // Anything else that genuinely landed at the same instant retires with it —
+    // two goals can be funded in the same month, and leaving one active would
+    // hand it a Share it no longer needs.
     for (const i of [...active]) {
       if ((owed[i] ?? 0) <= SETTLED) {
         months[i] = clock;
@@ -211,9 +242,9 @@ export function compare(
   // and those goals carry no months rather than a figure built on money that
   // does not exist.
   const hasSurplus = monthlyDisposable > 0;
-  const funded = hasSurplus
+  const funded: (number | null)[] = hasSurplus
     ? solveTimeline(goals, shares, opened, assigned)
-    : goals.map(() => 0);
+    : goals.map(() => null);
 
   const rows: ComparisonRow[] = goals.map((goal, index) => {
     const share = shares[index] ?? null;
@@ -251,7 +282,10 @@ export function compare(
     // Funded from savings alone is true regardless of surplus. Everything else
     // needs monthly money, so with no surplus it is unreachable rather than
     // slow, and `null` says that without inventing a duration (#158).
-    const months = hasSurplus ? (funded[index] ?? 0) : covered ? 0 : null;
+    // `?? null`, never `?? 0`. A goal the solve did not reach has no answer,
+    // and defaulting it to zero is what let an unfundable goal report itself
+    // funded from savings it never had.
+    const months = hasSurplus ? (funded[index] ?? null) : covered ? 0 : null;
 
     return {
       goalId: goal.id,

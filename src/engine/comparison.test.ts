@@ -668,3 +668,116 @@ describe("what the plan takes out of savings", () => {
     expect(result.savingsDrawn + result.savingsLeft).toBeCloseTo(5000, 6);
   });
 });
+
+describe("the solve is exact at scales where the epsilon is not", () => {
+  // Every case here comes from the review of #165–#173 (the range that shipped
+  // without one). They are regression tests, not exploration.
+
+  it("solves every goal when a balance is larger than the epsilon can resolve", () => {
+    // One ulp of a balance near 1e7 already exceeds SETTLED, so subtracting
+    // rate * step left ~2e-9 on the very goal the step was sized to clear. It
+    // stayed active, the round moved the clock nowhere, and — with the loop
+    // bounded by the goal count — the second goal was never solved. It then
+    // reported month ZERO, which the screen renders as "Funded through
+    // savings" against a balance of nothing.
+    const result = compare(profile, [
+      goal("house", 9749645.13, 288),
+      goal("boat", 2992148.29, 49),
+    ]);
+    expect(result.rows[1]?.months).toBeCloseTo(37809.476, 3);
+    expect(result.rows[1]?.months).not.toBe(0);
+  });
+
+  it("keeps Delay non-negative on that plan, since it is not Overdrawn", () => {
+    // The same bug broke a contract this file asserts elsewhere: a negative
+    // Delay is supposed to be the exclusive signature of an Overdrawn plan.
+    const result = compare(profile, [
+      goal("house", 9749645.13, 288),
+      goal("boat", 2992148.29, 49),
+    ]);
+    expect(result.overdrawn).toBe(false);
+    for (const row of result.rows) {
+      expect(row.delay ?? 0).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("funds every goal it can, at any scale", () => {
+    // A sweep across the magnitudes where the epsilon stops resolving a cent.
+    for (const scale of [1e3, 1e5, 1e6, 1e7, 1e8, 1e9]) {
+      const result = compare(profile, [
+        goal("a", scale * 3.13, 288),
+        goal("b", scale * 0.97, 49),
+        goal("c", scale * 1.41, 137),
+      ]);
+      for (const row of result.rows) {
+        expect(row.months, `scale ${scale}, goal ${row.goalId}`).not.toBeNull();
+        expect(Number.isFinite(row.months ?? 0)).toBe(true);
+      }
+      // Only the goal savings covered may read zero, and savings here are nil.
+      expect(result.rows.every((r) => (r.months ?? 1) > 0)).toBe(true);
+    }
+  });
+
+  it("orders completions by how long each goal actually takes", () => {
+    // The strongest cheap check that the schedule is a schedule: a goal owed
+    // less at a bigger Share cannot finish after one owed more at a smaller.
+    const result = compare(profile, [
+      goal("slow", 8000000, 50),
+      goal("fast", 100000, 900),
+    ]);
+    expect(result.rows[1]!.months!).toBeLessThan(result.rows[0]!.months!);
+  });
+
+  it("pins the settling epsilon itself", () => {
+    // Setting SETTLED to 0 left all 620 tests green while changing 1307
+    // results in a 60k-case corpus. The epsilon was load-bearing and entirely
+    // untested.
+    //
+    // The first attempt at this test did not discriminate either: it used
+    // savings that covered the price through an EXACT division, so `owed` was
+    // exactly 0 and `<= 0` decided it just as well as `<= 1e-9`. Only a case
+    // that leaves a genuine sub-epsilon crumb can tell the two apart.
+    //
+    // These savings cover all three prices exactly, but the proportional
+    // allocation leaves the first goal 4.5e-13 short. That is settled money by
+    // any human measure; carrying it into the schedule would report a goal the
+    // user has fully paid for as still saving.
+    const saved = { ...profile, savings: 7688 };
+    const result = compare(saved, [
+      goal("a", 1801, 74),
+      goal("b", 1779, 198),
+      goal("c", 4108, 265),
+    ]);
+    expect(result.rows.map((r) => r.months)).toEqual([0, 0, 0]);
+    expect(result.savingsLeft).toBeCloseTo(0, 6);
+  });
+
+  it("never reports a goal funded that the schedule did not reach", () => {
+    // The invariant behind the blocking bug, stated directly: months of zero
+    // means savings covered it, and nothing else.
+    const result = compare(profile, [
+      goal("a", 5000000, 100),
+      goal("b", 5000000, 100),
+      goal("c", 5000000, 100),
+      goal("d", 5000000, 100),
+    ]);
+    // No savings at all, so nothing can be funded at month zero.
+    for (const row of result.rows) expect(row.months).not.toBe(0);
+  });
+
+  it("leaves the savings clamp standing", () => {
+    // Removing Math.max(0, …) left 620 green. This input drives
+    // savings - savingsDrawn to about -7e-12, which renders "-0,00 €".
+    const saved = { ...profile, savings: 29251.33 };
+    const result = compare(saved, [
+      goal("a", 15625.69, 538.57),
+      goal("b", 6308.53, 422.79),
+      goal("c", 3627.85, 611.16),
+      goal("d", 10743.62, 741.32),
+      goal("e", 9162.38, 493.28),
+      goal("f", 17835.42, 744.08),
+    ]);
+    expect(result.savingsLeft).toBeGreaterThanOrEqual(0);
+    expect(Object.is(result.savingsLeft, -0)).toBe(false);
+  });
+});
