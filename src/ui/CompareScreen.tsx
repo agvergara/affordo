@@ -282,7 +282,16 @@ function describeDelay(
   delay: number | null,
   currency: Parameters<typeof formatNumber>[1],
 ): string | null {
-  if (delay === null || delay === 0) return null;
+  if (delay === null) return null;
+  // Suppressed on what would be DISPLAYED, not on what was computed.
+  //
+  // Testing `delay === 0` looks equivalent and is not. A Share exactly equal to
+  // the disposable does give exactly zero — the two expressions reduce to the
+  // same arithmetic — but a Share a hair under it gives ~6e-11, which is not
+  // zero and renders as "+0 months vs. alone": a goal being told it is late by
+  // nothing. `formatNumber` defaults to one fraction digit, so 0.05 is the
+  // threshold below which the sentence stops carrying information.
+  if (Math.abs(delay) < 0.05) return null;
   if (delay < 0) {
     return `${formatNumber(-delay, currency)} months sooner than alone`;
   }

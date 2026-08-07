@@ -324,6 +324,26 @@ describe("the Delay", () => {
     expect(delayFor("Headphones")).toBeNull();
   });
 
+  it("shows nothing when the Delay would round to zero on screen", () => {
+    // Found by probing rather than by review. A Share exactly equal to the
+    // disposable gives a delay of exactly 0, but a Share a hair under it gives
+    // ~6e-11 — not zero, and rendered "+0 months vs. alone", telling a goal it
+    // is late by nothing. The guard is on the displayed value for that reason.
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook", price: 5000, share: 2499.9999999 }),
+    ]);
+    expect(delayFor("MacBook")).toBeNull();
+  });
+
+  it("still shows a Delay large enough to read", () => {
+    // The other side of that threshold: suppressing on the rendered value must
+    // not start swallowing real figures.
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook", price: 5000, share: 1000 }),
+    ]);
+    expect(delayFor("MacBook")).toContain("vs. alone");
+  });
+
   it("words a negative Delay plainly rather than going quiet", () => {
     // Only reachable on an Overdrawn plan. Hiding it would leave the screen
     // silent in the one state that most needs explaining.
