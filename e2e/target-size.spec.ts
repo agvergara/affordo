@@ -46,7 +46,16 @@ const GOALS = {
       createdAt: 1,
       share: 200,
     },
-    { id: "g2", name: "Holiday", price: 900, note: "", createdAt: 2 },
+    // A SECOND shared goal so /goals renders the sharing line at all —
+    // it only appears when something else is competing (#159).
+    {
+      id: "g2",
+      name: "Holiday",
+      price: 900,
+      note: "",
+      createdAt: 2,
+      share: 150,
+    },
   ],
 };
 

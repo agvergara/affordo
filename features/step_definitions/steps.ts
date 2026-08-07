@@ -452,6 +452,14 @@ Then(
 );
 
 Then(
+  "the goal {string} says it is sharing with {int} other goal",
+  async function (this: AffordoWorld, name: string, others: number) {
+    const card = this.page.getByRole("article").filter({ hasText: name });
+    await expect(card).toContainText(`Sharing with ${others} goal`);
+  },
+);
+
+Then(
   "the goal {string} cannot be reached",
   async function (this: AffordoWorld, name: string) {
     await expect(shareRow(this, name)).toContainText("unreachable");

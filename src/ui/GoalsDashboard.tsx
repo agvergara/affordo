@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { evaluateReference } from "../engine";
+import { compare, evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
 import { AppHeader } from "./AppHeader";
@@ -58,6 +58,39 @@ export function GoalsDashboard() {
   };
 
   const hourly = evaluateReference(profile, { price: 0 }).hourlyRate;
+
+  /*
+   * The Comparison, computed ONCE for the whole list (#159).
+   *
+   * Not once per card, and not inside `GoalCard`. Two reasons, and the second
+   * is the one that matters: a Comparison is a property of the whole plan, so
+   * a card cannot compute its own without being handed every other goal
+   * anyway; and a card that derived its own Delay could agree with a broken
+   * engine, which is the failure the working agreements' rule 5 records.
+   *
+   * The cards' verdicts stay per-card and untouched. A goal's own Verdict is a
+   * different question from what the other goals cost it, and keeping /goals
+   * showing the alone-figure is the whole reason the Comparison is elsewhere
+   * (ADR 0024).
+   */
+  const comparison = compare(profile, goals);
+  const sharedCount = comparison.rows.filter((r) => r.share !== null).length;
+
+  /**
+   * What to tell a card about the others, or nothing.
+   *
+   * Silent unless the goal is genuinely held up: it must be Shared, something
+   * else must be Sharing too, and the Delay must be large enough to read. The
+   * 0.05 floor is the same one `/compare` uses and for the same reason — below
+   * one decimal place the sentence renders "+0 months" and tells a goal that is
+   * not late that it is.
+   */
+  const sharingFor = (goalId: string) => {
+    const row = comparison.rows.find((r) => r.goalId === goalId);
+    if (!row || row.share === null || row.delay === null) return undefined;
+    if (sharedCount < 2 || row.delay < 0.05) return undefined;
+    return { others: sharedCount - 1, delay: row.delay };
+  };
   const surplus =
     profile.salary - profile.expenses + profile.monthlyContribution;
 
@@ -210,6 +243,7 @@ export function GoalsDashboard() {
               <li key={goal.id} data-testid="goal-item">
                 <GoalCard
                   goal={goal}
+                  sharing={sharingFor(goal.id)}
                   onEdit={() => openEdit(goal)}
                   onRemove={() => removeGoal(goal)}
                 />

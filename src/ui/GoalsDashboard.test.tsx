@@ -394,3 +394,98 @@ describe("GoalsDashboard Add goal button", () => {
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * The Delay line (#159) — the only thread from /goals to the Comparison.
+ *
+ * The dashboard calls the Comparison seam once and hands each card its row; the
+ * card derives nothing. These drive the real dashboard rather than mounting
+ * `GoalCard` with a hand-built prop, so a broken hand-off fails here.
+ *
+ * The profile below has a 1500 surplus (2000 salary − 500 expenses).
+ */
+describe("GoalsDashboard sharing line", () => {
+  const sharingLines = () => screen.queryAllByTestId("goal-sharing");
+
+  it("tells a Shared goal how much the others are costing it", () => {
+    renderDashboard(undefined, [
+      makeGoal({ id: "a", name: "MacBook", price: 6000, share: 100 }),
+      makeGoal({ id: "b", name: "Holiday", price: 6000, share: 100 }),
+    ]);
+    expect(sharingLines()).toHaveLength(2);
+    expect(sharingLines()[0]).toHaveTextContent(/Sharing with 1 goal/);
+    expect(sharingLines()[0]).toHaveTextContent(/months/);
+  });
+
+  it("links to the Comparison", () => {
+    renderDashboard(undefined, [
+      makeGoal({ id: "a", price: 6000, share: 100 }),
+      makeGoal({ id: "b", price: 6000, share: 100 }),
+    ]);
+    expect(sharingLines()[0]).toHaveAttribute("href", "/compare");
+  });
+
+  it("counts the OTHER goals, not every goal", () => {
+    renderDashboard(undefined, [
+      makeGoal({ id: "a", price: 6000, share: 100 }),
+      makeGoal({ id: "b", price: 6000, share: 100 }),
+      makeGoal({ id: "c", price: 6000, share: 100 }),
+    ]);
+    expect(sharingLines()[0]).toHaveTextContent(/Sharing with 2 goals/);
+  });
+
+  it("says nothing on a goal with no Share", () => {
+    // Two Sharing goals so the line is reachable at all, plus one Unassigned
+    // that must not get it: the Unassigned goal is outside the plan, so no
+    // other goal is costing it anything.
+    renderDashboard(undefined, [
+      makeGoal({ id: "a", price: 6000, share: 100 }),
+      makeGoal({ id: "b", price: 6000, share: 100 }),
+      makeGoal({ id: "c", price: 6000 }),
+    ]);
+    expect(sharingLines()).toHaveLength(2);
+  });
+
+  it("says nothing when only one goal is Sharing", () => {
+    // Nothing is competing with it, so there is no "others" to name.
+    renderDashboard(undefined, [
+      makeGoal({ id: "a", price: 6000, share: 100 }),
+      makeGoal({ id: "b", price: 6000 }),
+      makeGoal({ id: "c", price: 6000 }),
+    ]);
+    expect(sharingLines()).toHaveLength(0);
+  });
+
+  it("says nothing when no goal is Sharing at all", () => {
+    renderDashboard(undefined, [makeGoal({ id: "a" }), makeGoal({ id: "b" })]);
+    expect(sharingLines()).toHaveLength(0);
+  });
+
+  it("says nothing when the Delay is too small to read", () => {
+    // Two goals splitting the whole surplus between them, both already covered
+    // by savings: funded at once, so nothing is held up. A line here would
+    // read "+0 months" and tell a goal that is not late that it is.
+    renderDashboard({ savings: 20000 }, [
+      makeGoal({ id: "a", price: 500, share: 750 }),
+      makeGoal({ id: "b", price: 500, share: 750 }),
+    ]);
+    expect(sharingLines()).toHaveLength(0);
+  });
+
+  it("leaves the card's own verdict and months untouched", () => {
+    // The whole point of keeping the Comparison on its own screen: /goals still
+    // shows the alone-figure the reference engine computes.
+    renderDashboard(undefined, [
+      makeGoal({ id: "a", name: "MacBook", price: 6000, share: 100 }),
+      makeGoal({ id: "b", name: "Holiday", price: 6000, share: 100 }),
+    ]);
+    const card = screen.getAllByRole("article")[0]!;
+    // 6000 against this profile's 2000 surplus, alone, is 3 months and a
+    // Stretch. Neither figure knows the other goal exists — and the sharing
+    // line beside them says +57, which is precisely the contradiction ADR 0024
+    // accepts on purpose: /goals answers "can I afford this?", /compare answers
+    // "when, given the others?"
+    expect(within(card).getByText("Stretch")).toBeInTheDocument();
+    expect(card).toHaveTextContent("3 months");
+  });
+});

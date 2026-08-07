@@ -85,3 +85,10 @@ Feature: Splitting my surplus between competing goals
     And I assign 100 a month to "MacBook"
     Then Affordo tells me there is no monthly surplus to share
     And the goal "MacBook" cannot be reached
+
+  Scenario: My goals dashboard admits when a goal is being held up
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    And I assign 100 a month to "Holiday"
+    And I go back to my goals dashboard
+    Then the goal "MacBook" says it is sharing with 1 other goal
