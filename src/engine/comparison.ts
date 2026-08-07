@@ -31,6 +31,145 @@ function shareOf(goal: ComparableGoal): number | null {
 }
 
 /**
+ * Money is compared against this rather than against zero.
+ *
+ * The solve subtracts a rate times a duration from a balance it computed by
+ * dividing, so a goal that should land exactly on its price lands a fraction of
+ * a cent either side of it. Testing `> 0` would leave such a goal "active" with
+ * 1e-13 outstanding, and the next round would divide by a rate to find how long
+ * that takes — arriving at a completion time indistinguishable from the last
+ * one, and burning a round to move the clock nowhere.
+ *
+ * A hundredth of a cent is far below anything money can mean and far above the
+ * error a few divisions accumulate.
+ */
+const SETTLED = 1e-9;
+
+/**
+ * Hand the savings pot out in proportion to Share, capping each goal at what it
+ * costs and re-offering the remainder to the goals still short.
+ *
+ * The cap is what makes this a loop rather than a multiplication. A goal whose
+ * proportional cut exceeds its price cannot use the excess — it is bought — and
+ * money stranded against something already paid for would make every other
+ * goal's date pessimistic for no reason. Re-offering can over-cover the next
+ * goal in turn, so it repeats until the pot is spent or nobody is short.
+ *
+ * Returns the amount each goal actually received, positionally.
+ */
+function allocateSavings(
+  goals: readonly ComparableGoal[],
+  shares: readonly (number | null)[],
+  savings: number,
+): number[] {
+  const received = goals.map(() => 0);
+  let pool = savings;
+
+  // Each pass either exhausts the pool or fully covers at least one goal, so
+  // this cannot run more times than there are goals.
+  for (let pass = 0; pass < goals.length && pool > SETTLED; pass += 1) {
+    const shortfalls = goals.map((goal, i) => {
+      const share = shares[i];
+      if (share === null || share === undefined) return 0;
+      return Math.max(0, goal.price - (received[i] ?? 0));
+    });
+    const claiming = shares.reduce(
+      (total: number, share, i) =>
+        total + ((shortfalls[i] ?? 0) > 0 ? (share ?? 0) : 0),
+      0,
+    );
+    if (claiming <= 0) break;
+
+    let handed = 0;
+    for (let i = 0; i < goals.length; i += 1) {
+      const shortfall = shortfalls[i] ?? 0;
+      if (shortfall <= 0) continue;
+      const give = Math.min(shortfall, (pool * (shares[i] ?? 0)) / claiming);
+      received[i] = (received[i] ?? 0) + give;
+      handed += give;
+    }
+    if (handed <= SETTLED) break;
+    pool -= handed;
+  }
+
+  return received;
+}
+
+/**
+ * Run the plan forward and record when each goal is funded (#157).
+ *
+ * The whole assigned monthly stays committed throughout: when a goal completes,
+ * the Share it was consuming is redistributed among those still saving, in
+ * proportion to their Shares. That reduces to one rate — a goal's effective
+ * monthly is `share * assigned / (shares still active)` — so the last goal
+ * standing draws the entire assigned amount, and nothing is idle while anything
+ * is unfunded.
+ *
+ * Event-driven rather than stepped month by month: solve for the earliest
+ * completion, jump the clock to it, redistribute, repeat. Each round retires at
+ * least one goal, so it terminates in at most one round per goal, and the
+ * answer is exact rather than quantised to whole months.
+ *
+ * Returns each goal's completion time in months, positionally; `0` for a goal
+ * its opening balance already covers.
+ */
+function solveTimeline(
+  goals: readonly ComparableGoal[],
+  shares: readonly (number | null)[],
+  opened: readonly number[],
+  assigned: number,
+): number[] {
+  const months = goals.map(() => 0);
+  const owed = goals.map((goal, i) => {
+    const share = shares[i];
+    if (share === null || share === undefined) return 0;
+    return Math.max(0, goal.price - (opened[i] ?? 0));
+  });
+
+  const active = new Set<number>();
+  for (let i = 0; i < goals.length; i += 1) {
+    if ((owed[i] ?? 0) > SETTLED) active.add(i);
+  }
+  if (assigned <= 0) return months;
+
+  let clock = 0;
+  // One round per completion at most; the guard is belt-and-braces against a
+  // rounding pathology leaving a goal permanently 1e-13 short.
+  for (let round = 0; round < goals.length && active.size > 0; round += 1) {
+    let activeShare = 0;
+    for (const i of active) activeShare += shares[i] ?? 0;
+    if (activeShare <= 0) break;
+
+    // Time until each active goal is funded at its current effective rate; the
+    // earliest is the next event.
+    let step = Infinity;
+    for (const i of active) {
+      const rate = ((shares[i] ?? 0) * assigned) / activeShare;
+      if (rate <= 0) continue;
+      step = Math.min(step, (owed[i] ?? 0) / rate);
+    }
+    if (!Number.isFinite(step)) break;
+
+    clock += step;
+    for (const i of active) {
+      const rate = ((shares[i] ?? 0) * assigned) / activeShare;
+      owed[i] = (owed[i] ?? 0) - rate * step;
+    }
+    // Everything settled at this instant retires together — two goals can
+    // genuinely land in the same month, and retiring only one would hand its
+    // Share to a goal that is already bought.
+    for (const i of [...active]) {
+      if ((owed[i] ?? 0) <= SETTLED) {
+        months[i] = clock;
+        active.delete(i);
+      }
+    }
+  }
+
+  return months;
+}
+
+/**
  * Divide one Monthly Disposable between competing goals (ADR 0024).
  *
  * Pure and framework-free (ADR 0008): the same function must serve a future
@@ -44,8 +183,9 @@ function shareOf(goal: ComparableGoal): number | null {
  * arithmetic — see the Delay slice, where re-using the verdict's own
  * `monthsToSave` would be a fidelity regression rather than reuse.
  *
- * This slice computes months by plain division. The reflow slice replaces that
- * with an event-driven solve; the returned shape does not change.
+ * Months come from an event-driven solve rather than a division (#157): find
+ * the goal that completes first, advance the clock to it, redistribute the
+ * Share it was consuming, repeat.
  */
 export function compare(
   profile: ReferenceProfile,
@@ -64,6 +204,9 @@ export function compare(
   // rejects one on load (ADR 0019), but the engine is reachable without it.
   const savings = Math.max(0, profile.savings);
 
+  const opened = allocateSavings(goals, shares, savings);
+  const funded = solveTimeline(goals, shares, opened, assigned);
+
   const rows: ComparisonRow[] = goals.map((goal, index) => {
     const share = shares[index] ?? null;
 
@@ -78,15 +221,8 @@ export function compare(
       };
     }
 
-    // Savings follow the Share: a goal taking two thirds of the assigned
-    // monthly opens with two thirds of what is already saved. `assigned` is
-    // necessarily positive here — this branch only runs when some share is —
-    // so the division cannot produce NaN.
-    const openingBalance = savings * (share / assigned);
-    const remaining = Math.max(0, goal.price - openingBalance);
-    // Already covered by the opening balance funds at month zero, which is
-    // the honest answer and keeps the figure off Infinity for a free goal.
-    const months = remaining === 0 ? 0 : remaining / share;
+    const openingBalance = opened[index] ?? 0;
+    const months = funded[index] ?? 0;
 
     // The solo baseline: this goal alone, commanding the whole Monthly
     // Disposable and the whole savings pot, because alone means nothing else
