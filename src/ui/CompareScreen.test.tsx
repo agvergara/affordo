@@ -363,11 +363,93 @@ describe("the Delay", () => {
   });
 });
 
-describe("what this slice deliberately does not show", () => {
-  it("shows no Overdrawn warning yet, even when the Shares overrun", () => {
+describe("Overdrawn", () => {
+  it("says how much more than exists has been assigned", () => {
+    // 1000 − 900 = 100 disposable, 500 assigned → 400 over.
     renderCompare({ salary: 1000, expenses: 900 }, [
       makeGoal({ name: "MacBook", price: 1200, share: 500 }),
     ]);
-    expect(screen.queryByText(/overdrawn/i)).toBeNull();
+    expect(screen.getByTestId("compare-overdrawn").textContent).toContain(
+      "400",
+    );
+  });
+
+  it("still shows the dates the plan implies rather than withholding them", () => {
+    // Computed and warned, never blocked (ADR 0024).
+    renderCompare({ salary: 1000, expenses: 900 }, [
+      makeGoal({ name: "MacBook", price: 1200, share: 500 }),
+    ]);
+    expect(monthsFor("MacBook")).toContain("months");
+  });
+
+  it("names the levers rather than the user, per ADR 0010", () => {
+    renderCompare({ salary: 1000, expenses: 900 }, [
+      makeGoal({ name: "MacBook", price: 1200, share: 500 }),
+    ]);
+    const warning = screen.getByTestId("compare-overdrawn").textContent ?? "";
+    expect(warning).toContain("Lower a share");
+  });
+
+  it("stays away when the Shares fit", () => {
+    renderCompare(undefined, [
+      makeGoal({ name: "MacBook", price: 1200, share: 500 }),
+    ]);
+    expect(screen.queryByTestId("compare-overdrawn")).not.toBeInTheDocument();
+  });
+
+  it("stays away when nothing is assigned, however tight the profile", () => {
+    renderCompare({ salary: 1000, expenses: 900 }, [
+      makeGoal({ name: "MacBook", price: 1200 }),
+    ]);
+    expect(screen.queryByTestId("compare-overdrawn")).not.toBeInTheDocument();
+  });
+});
+
+describe("no surplus", () => {
+  const broke = { salary: 1000, expenses: 1500 };
+
+  it("says there is nothing to share", () => {
+    renderCompare(broke, [
+      makeGoal({ name: "MacBook", price: 1200, share: 100 }),
+    ]);
+    expect(screen.getByTestId("compare-no-surplus")).toBeInTheDocument();
+  });
+
+  it("shows a goal the savings already cover as funded", () => {
+    // Withholding this would hide something true the user has earned.
+    renderCompare({ ...broke, savings: 3000 }, [
+      makeGoal({ name: "Headphones", price: 800, share: 100 }),
+    ]);
+    expect(monthsFor("Headphones")).toBe("Funded now");
+  });
+
+  it("calls an assigned goal unreachable, not unassigned", () => {
+    // Two different nulls. Telling a user who assigned a Share that they had
+    // not is a different and worse statement than telling them it cannot be
+    // funded.
+    renderCompare(broke, [
+      makeGoal({ name: "MacBook", price: 1200, share: 100 }),
+    ]);
+    expect(monthsFor("MacBook")).toBe("— unreachable");
+  });
+
+  it("still calls a goal with no Share unassigned", () => {
+    renderCompare(broke, [makeGoal({ name: "Holiday", price: 900 })]);
+    expect(monthsFor("Holiday")).toBe("— not assigned");
+  });
+
+  it("shows the no-surplus message instead of the Overdrawn one", () => {
+    // Both are technically true with no surplus and something assigned, but
+    // "you have no surplus" is the cause and "you assigned too much" is the
+    // symptom. Two warnings would say the same thing twice.
+    renderCompare(broke, [
+      makeGoal({ name: "MacBook", price: 1200, share: 100 }),
+    ]);
+    expect(screen.queryByTestId("compare-overdrawn")).not.toBeInTheDocument();
+  });
+
+  it("stays away on a healthy profile", () => {
+    renderCompare(undefined, [makeGoal({ name: "MacBook", share: 100 })]);
+    expect(screen.queryByTestId("compare-no-surplus")).not.toBeInTheDocument();
   });
 });

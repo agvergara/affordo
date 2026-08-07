@@ -418,7 +418,65 @@ Then(
   },
 );
 
+Given(
+  "my monthly expenses leave me {int} a month",
+  async function (this: AffordoWorld, surplus: number) {
+    await setProfileField(
+      this,
+      "expenses",
+      SEEDED_PROFILE.profile.salary - surplus,
+    );
+  },
+);
+
+Given("my expenses meet my income", async function (this: AffordoWorld) {
+  await setProfileField(this, "expenses", SEEDED_PROFILE.profile.salary);
+});
+
+Then(
+  "Affordo warns me the plan needs money I do not have",
+  async function (this: AffordoWorld) {
+    await expect(this.page.getByTestId("compare-overdrawn")).toContainText(
+      "more than you have",
+    );
+  },
+);
+
+Then(
+  "Affordo tells me there is no monthly surplus to share",
+  async function (this: AffordoWorld) {
+    await expect(this.page.getByTestId("compare-no-surplus")).toContainText(
+      "No monthly surplus to share",
+    );
+  },
+);
+
+Then(
+  "the goal {string} cannot be reached",
+  async function (this: AffordoWorld, name: string) {
+    await expect(shareRow(this, name)).toContainText("unreachable");
+  },
+);
+
 // ---------------------------------------------------------------- helpers
+
+/** Rewrite one profile field in place, then reload so the app re-reads it. */
+async function setProfileField(
+  world: AffordoWorld,
+  field: string,
+  value: number,
+): Promise<void> {
+  await world.page.evaluate(
+    ([key, amount]) => {
+      const raw = window.localStorage.getItem("affordo.profile");
+      const parsed = JSON.parse(raw ?? "{}");
+      parsed.profile[key as string] = amount;
+      window.localStorage.setItem("affordo.profile", JSON.stringify(parsed));
+    },
+    [field, value] as const,
+  );
+  await world.page.reload();
+}
 
 /** The comparison row for a named goal. */
 function shareRow(world: AffordoWorld, name: string) {

@@ -152,6 +152,47 @@ export function CompareScreen() {
           </div>
         )}
 
+        {/*
+          The two states where the plan cannot happen (#158).
+
+          Both challenge the PLAN and not the person (ADR 0010): they name the
+          gap and the levers, and neither implies the user has done something
+          wrong. Neither blocks anything either — Affordo has never blocked bad
+          news, only nonsense, and an over-committed plan is arithmetically fine
+          and merely untrue.
+
+          `border-l-2` with the accent token rather than a red destructive
+          panel: this is a fact about the plan, not an error the user caused,
+          and the destructive tone is spent on Remove.
+        */}
+        {comparison.monthlyDisposable <= 0 && (
+          <p
+            data-testid="compare-no-surplus"
+            className="mb-6 border-l-2 border-accent py-1 pl-3 text-sm"
+          >
+            <b>No monthly surplus to share.</b> Your expenses meet your income,
+            so nothing accumulates each month — only what you have already saved
+            counts toward these goals.
+          </p>
+        )}
+
+        {comparison.overdrawn && comparison.monthlyDisposable > 0 && (
+          <p
+            data-testid="compare-overdrawn"
+            className="mb-6 border-l-2 border-accent py-1 pl-3 text-sm"
+          >
+            <b>
+              {formatMoney(
+                comparison.assigned - comparison.monthlyDisposable,
+                profile.currency,
+              )}{" "}
+              a month more than you have.
+            </b>{" "}
+            These dates assume money that is not there. Lower a share, drop a
+            goal, or close the gap.
+          </p>
+        )}
+
         {goals.length > 0 && comparison.assigned === 0 && (
           <p
             data-testid="compare-none-assigned"
@@ -217,7 +258,11 @@ export function CompareScreen() {
                         data-testid="compare-months"
                         className="font-mono text-xs"
                       >
-                        {describeMonths(row?.months ?? null, profile.currency)}
+                        {describeMonths(
+                          row?.months ?? null,
+                          profile.currency,
+                          !assigned,
+                        )}
                       </p>
                       {describeDelay(row?.delay ?? null, profile.currency) && (
                         <p
@@ -255,11 +300,20 @@ export function CompareScreen() {
  * than as taking forever — the goal draws nothing and delays nobody, so "never"
  * would be false in the direction that discourages (ADR 0010, ADR 0024).
  */
+/**
+ * `months` is null for two different reasons and they must not read the same.
+ *
+ * **Unassigned** is a choice the user has not made yet — the goal is outside
+ * the plan and nothing is wrong. **Unreachable** is the plan's answer: the goal
+ * is in it, and there is no monthly money to fund it (#158). Collapsing both
+ * into "not assigned" would tell a user who assigned a Share that they had not.
+ */
 function describeMonths(
   months: number | null,
   currency: Parameters<typeof formatNumber>[1],
+  unassigned: boolean,
 ): string {
-  if (months === null) return "— not assigned";
+  if (months === null) return unassigned ? "— not assigned" : "— unreachable";
   if (months === 0) return "Funded now";
   return `${formatNumber(months, currency)} months`;
 }
