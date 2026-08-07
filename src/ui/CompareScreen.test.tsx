@@ -510,3 +510,109 @@ describe("where the funding came from", () => {
     expect(monthsFor("Holiday")).toBe("— unreachable");
   });
 });
+
+describe("what savings cost", () => {
+  /** The draw line for the row whose goal name is `name`, or null. */
+  function drawFor(name: string): string | null {
+    const item = screen
+      .getAllByTestId("compare-item")
+      .find((el) => within(el).queryByText(name) !== null);
+    if (!item) throw new Error(`no compare row for "${name}"`);
+    return within(item).queryByTestId("compare-draw")?.textContent ?? null;
+  }
+
+  it("says what a goal in the plan takes out of savings", () => {
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "MacBook", price: 9000, share: 100 }),
+    ]);
+    expect(drawFor("MacBook")).toContain("from savings");
+    expect(drawFor("MacBook")).toContain("5.000");
+  });
+
+  it("splits the stated draw the way the money is actually split", () => {
+    renderCompare({ savings: 6000 }, [
+      makeGoal({ name: "MacBook", price: 9000, share: 100 }),
+      makeGoal({ name: "Holiday", price: 9000, share: 200 }),
+    ]);
+    expect(drawFor("MacBook")).toContain("2.000");
+    expect(drawFor("Holiday")).toContain("4.000");
+  });
+
+  it("says nothing for a goal that draws nothing", () => {
+    renderCompare({ savings: 0 }, [
+      makeGoal({ name: "MacBook", price: 9000, share: 100 }),
+    ]);
+    expect(drawFor("MacBook")).toBeNull();
+  });
+
+  it("words an Unassigned goal conditionally — it would take, it does not take", () => {
+    // It draws nothing at all, so "takes" would be false and "€0" would be
+    // worse than silence.
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "Headphones", price: 300 }),
+    ]);
+    expect(drawFor("Headphones")).toContain("would take");
+    expect(drawFor("Headphones")).toContain("300");
+  });
+
+  it("says nothing for an Unassigned goal savings would not cover", () => {
+    renderCompare({ savings: 100 }, [
+      makeGoal({ name: "MacBook", price: 9000 }),
+    ]);
+    expect(drawFor("MacBook")).toBeNull();
+  });
+
+  it("makes the double-count legible rather than burying it", () => {
+    // Three unassigned goals each saying they would take the same 5000. That
+    // is the known limitation on screen instead of implied (#170).
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "One", price: 4000 }),
+      makeGoal({ name: "Two", price: 4000 }),
+      makeGoal({ name: "Three", price: 4000 }),
+    ]);
+    expect(drawFor("One")).toContain("would take");
+    expect(drawFor("Two")).toContain("would take");
+    expect(drawFor("Three")).toContain("would take");
+  });
+});
+
+describe("the savings total", () => {
+  it("headlines what survives the plan", () => {
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "MacBook", price: 2000, share: 100 }),
+    ]);
+    expect(screen.getByTestId("compare-savings").textContent).toContain(
+      "3.000",
+    );
+  });
+
+  it("says how much goes to the goals", () => {
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "MacBook", price: 2000, share: 100 }),
+    ]);
+    expect(screen.getByTestId("compare-savings-drawn").textContent).toContain(
+      "2.000",
+    );
+  });
+
+  it("leaves the balance untouched when nothing is in the plan", () => {
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "MacBook", price: 2000 }),
+    ]);
+    expect(screen.getByTestId("compare-savings").textContent).toContain(
+      "5.000",
+    );
+    expect(
+      screen.queryByTestId("compare-savings-drawn"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows nothing drawn when there are no savings to draw", () => {
+    renderCompare({ savings: 0 }, [
+      makeGoal({ name: "MacBook", price: 2000, share: 100 }),
+    ]);
+    expect(
+      screen.queryByTestId("compare-savings-drawn"),
+    ).not.toBeInTheDocument();
+  });
+});

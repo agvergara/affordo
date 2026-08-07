@@ -97,3 +97,10 @@ Feature: Splitting my surplus between competing goals
     Given my savings are 5000
     When I open the comparison
     Then the goal "MacBook" is already paid for
+
+  Scenario: Affordo tells me the plan will lower my savings
+    Given my savings are 5000
+    When I open the comparison
+    And I assign 100 a month to "MacBook"
+    Then Affordo says the goal "MacBook" takes money from my savings
+    And Affordo tells me what savings I have left

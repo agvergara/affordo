@@ -277,9 +277,23 @@ export function compare(
     };
   });
 
+  // What the plan spends, and what survives it. Totalled here rather than in
+  // the screen so there is one place it can be wrong, and so a component
+  // cannot quietly disagree with the engine about how much money is left.
+  const savingsDrawn = rows.reduce(
+    (total, row) => total + row.openingBalance,
+    0,
+  );
+
   return {
     monthlyDisposable,
     assigned,
+    savingsDrawn,
+    // Clamped only against rounding: `allocateSavings` caps each goal at its
+    // price and stops when the pot is empty, so this cannot go meaningfully
+    // negative. The guard is there so a float remainder never renders as
+    // "-0,00 €", which reads as a bug whatever the arithmetic says.
+    savingsLeft: Math.max(0, savings - savingsDrawn),
     // `assigned > 0` is load-bearing, not a guard against a divide. Overdrawn
     // describes a *plan* that outruns the money, and a user who has assigned
     // nothing has made no plan — without this, every goal-less profile whose

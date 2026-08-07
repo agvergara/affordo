@@ -93,7 +93,7 @@ export function CompareScreen() {
 
           <div
             data-testid="compare-totals"
-            className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2"
+            className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3"
           >
             <div data-testid="compare-assigned" className="bg-background p-4">
               <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -114,6 +114,33 @@ export function CompareScreen() {
               <p className="mt-1 text-xl font-bold tracking-tight">
                 {formatMoney(comparison.monthlyDisposable, profile.currency)}
               </p>
+            </div>
+
+            {/*
+              Savings had no cost on this screen until #172: goals drew from
+              the pot and nothing said the pot had shrunk, so it read as free
+              money — the one resource here without a visible price, while
+              every Share is totalled against the surplus in plain sight.
+
+              The headline is what SURVIVES the plan rather than what it spends,
+              because that is the number the user actually has afterwards.
+            */}
+            <div data-testid="compare-savings" className="bg-background p-4">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Savings left
+              </p>
+              <p className="mt-1 text-xl font-bold tracking-tight">
+                {formatMoney(comparison.savingsLeft, profile.currency)}
+              </p>
+              {comparison.savingsDrawn > 0 && (
+                <p
+                  data-testid="compare-savings-drawn"
+                  className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+                >
+                  {formatMoney(comparison.savingsDrawn, profile.currency)} goes
+                  to these goals
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -268,6 +295,14 @@ export function CompareScreen() {
                           {describeDelay(row?.delay ?? null, profile.currency)}
                         </p>
                       )}
+                      {describeDraw(row, goal, profile.currency) && (
+                        <p
+                          data-testid="compare-draw"
+                          className="font-mono text-[10px] text-muted-foreground"
+                        >
+                          {describeDraw(row, goal, profile.currency)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </li>
@@ -366,4 +401,41 @@ function describeDelay(
     return `${formatNumber(-delay, currency)} months sooner than alone`;
   }
   return `+${formatNumber(delay, currency)} months vs. alone`;
+}
+
+/**
+ * What this goal takes out of savings (#172).
+ *
+ * The tense is the whole point, and it differs because the two cases are
+ * genuinely different:
+ *
+ * - A goal **in the plan** has an opening balance. That money is spoken for, so
+ *   it **takes**.
+ * - A goal **outside the plan** draws nothing at all. It can still be one
+ *   savings would cover on its own (#170), and there the honest word is
+ *   **would take** — it is a statement about what the user could do, not about
+ *   what the plan has done.
+ *
+ * Saying "takes" of the second would be false, and "€0 from savings" would be
+ * worse than silence. This is also where the weaker claim's cost becomes
+ * legible: three unassigned goals each saying they would take the same €5,000
+ * is the double-count on screen rather than buried in an ADR.
+ */
+function describeDraw(
+  row: ComparisonRow | undefined,
+  goal: Goal,
+  currency: Parameters<typeof formatNumber>[1],
+): string | null {
+  if (!row) return null;
+  const unassigned = row.share === null;
+
+  if (!unassigned) {
+    if (row.openingBalance <= 0) return null;
+    return `${formatMoney(row.openingBalance, currency)} from savings`;
+  }
+
+  // Outside the plan: only worth saying where savings would in fact cover it,
+  // which is exactly when the row reports itself funded through them.
+  if (row.monthsAlone !== 0) return null;
+  return `would take ${formatMoney(goal.price, currency)} of savings`;
 }

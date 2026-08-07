@@ -75,6 +75,21 @@ export interface Comparison {
   /** The Shares, totalled. `0` when nothing is assigned. */
   assigned: number;
   /**
+   * How much of the savings pot the plan actually spends — the opening
+   * balances, totalled (#172).
+   *
+   * Only goals **in** the plan draw. A goal outside it has an opening balance
+   * of zero and contributes nothing here, even when the screen reports that
+   * savings would cover it on its own.
+   */
+  savingsDrawn: number;
+  /**
+   * What is left of the savings pot once the plan has taken its share. Never
+   * negative: the allocation caps each goal at its price and stops when the
+   * pot is empty, so the plan cannot spend money that is not there.
+   */
+  savingsLeft: number;
+  /**
    * Whether the Shares total more than there is to divide. Computed here, never
    * used to block input — an over-committed plan is arithmetically fine and
    * merely untrue, which is a different thing from nonsense (ADR 0024).
