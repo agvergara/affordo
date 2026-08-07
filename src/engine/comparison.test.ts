@@ -610,3 +610,61 @@ describe("purity", () => {
     expect(compare(profile, goals)).toEqual(compare(profile, goals));
   });
 });
+
+describe("what the plan takes out of savings", () => {
+  const saved = { ...profile, savings: 5000 };
+
+  it("totals what the goals actually drew", () => {
+    const result = compare(saved, [goal("a", 9000, 100), goal("b", 9000, 100)]);
+    expect(result.savingsDrawn).toBeCloseTo(5000, 6);
+    expect(result.savingsLeft).toBeCloseTo(0, 6);
+  });
+
+  it("draws only what the goals can use", () => {
+    // Two cheap goals cannot absorb the whole pot, so most of it survives.
+    const result = compare(saved, [goal("a", 300, 100), goal("b", 200, 100)]);
+    expect(result.savingsDrawn).toBeCloseTo(500, 6);
+    expect(result.savingsLeft).toBeCloseTo(4500, 6);
+  });
+
+  it("draws nothing when no goal is in the plan", () => {
+    // The weaker claim (#170) reports these as covered by savings; the plan
+    // still spends none of it, and this is where that shows.
+    const result = compare(saved, [goal("a", 300), goal("b", 200)]);
+    expect(result.savingsDrawn).toBe(0);
+    expect(result.savingsLeft).toBe(5000);
+  });
+
+  it("counts an Unassigned goal as drawing nothing even beside a Shared one", () => {
+    const result = compare(saved, [goal("a", 9000, 100), goal("b", 300)]);
+    expect(result.rows[1]?.openingBalance).toBe(0);
+    expect(result.savingsDrawn).toBeCloseTo(5000, 6);
+  });
+
+  it("leaves the whole pot when there is nothing saved to draw", () => {
+    const result = compare(profile, [goal("a", 9000, 100)]);
+    expect(result.savingsDrawn).toBe(0);
+    expect(result.savingsLeft).toBe(0);
+  });
+
+  it("never leaves a negative balance", () => {
+    const result = compare(saved, [
+      goal("a", 9000, 100),
+      goal("b", 9000, 100),
+      goal("c", 9000, 100),
+    ]);
+    expect(result.savingsLeft).toBeGreaterThanOrEqual(0);
+  });
+
+  it("treats a hostile negative balance as nothing to draw", () => {
+    const hostile = { ...profile, savings: -5000 };
+    const result = compare(hostile, [goal("a", 9000, 100)]);
+    expect(result.savingsDrawn).toBe(0);
+    expect(result.savingsLeft).toBe(0);
+  });
+
+  it("adds up: what was drawn plus what is left is what there was", () => {
+    const result = compare(saved, [goal("a", 3000, 100), goal("b", 9000, 200)]);
+    expect(result.savingsDrawn + result.savingsLeft).toBeCloseTo(5000, 6);
+  });
+});

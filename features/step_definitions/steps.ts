@@ -460,6 +460,22 @@ Then(
 );
 
 Then(
+  "Affordo says the goal {string} takes money from my savings",
+  async function (this: AffordoWorld, name: string) {
+    await expect(shareRow(this, name)).toContainText("from savings");
+  },
+);
+
+Then(
+  "Affordo tells me what savings I have left",
+  async function (this: AffordoWorld) {
+    await expect(this.page.getByTestId("compare-savings")).toContainText(
+      "Savings left",
+    );
+  },
+);
+
+Then(
   "the goal {string} cannot be reached",
   async function (this: AffordoWorld, name: string) {
     await expect(shareRow(this, name)).toContainText("unreachable");
