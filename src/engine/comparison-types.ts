@@ -44,9 +44,13 @@ export interface ComparisonRow {
    * Disposable and the whole savings pot, because alone means nothing else is
    * taking a cut of either.
    *
-   * `null` when Unassigned, and `null` when the goal is unreachable even alone
-   * (a non-positive disposable and a price savings do not cover): there is no
-   * baseline to be late against.
+   * Computed for **every** goal, Shared or not — it never depended on the
+   * Share. `0` means savings alone cover the price, which is how an Unassigned
+   * goal can still be reported as funded through savings (#170).
+   *
+   * `null` only when the goal is unreachable even alone: a non-positive
+   * disposable and a price savings do not cover. There is no baseline to be
+   * late against, and inventing Infinity would make Delay `NaN`.
    */
   monthsAlone: number | null;
   /**

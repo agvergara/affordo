@@ -131,7 +131,7 @@ describe("the list", () => {
     renderCompare({ savings: 5000 }, [
       makeGoal({ name: "Headphones", price: 300, share: 100 }),
     ]);
-    expect(monthsFor("Headphones")).toBe("Funded now");
+    expect(monthsFor("Headphones")).toBe("Funded through savings");
   });
 });
 
@@ -420,7 +420,7 @@ describe("no surplus", () => {
     renderCompare({ ...broke, savings: 3000 }, [
       makeGoal({ name: "Headphones", price: 800, share: 100 }),
     ]);
-    expect(monthsFor("Headphones")).toBe("Funded now");
+    expect(monthsFor("Headphones")).toBe("Funded through savings");
   });
 
   it("calls an assigned goal unreachable, not unassigned", () => {
@@ -451,5 +451,62 @@ describe("no surplus", () => {
   it("stays away on a healthy profile", () => {
     renderCompare(undefined, [makeGoal({ name: "MacBook", share: 100 })]);
     expect(screen.queryByTestId("compare-no-surplus")).not.toBeInTheDocument();
+  });
+});
+
+describe("where the funding came from", () => {
+  it("names savings as the source rather than only the timing", () => {
+    // "Funded now" said when and not where from, and where from is the part
+    // that is not obvious from the rest of the row (#170).
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "Headphones", price: 300, share: 100 }),
+    ]);
+    expect(monthsFor("Headphones")).toBe("Funded through savings");
+  });
+
+  it("says it for a goal with no Share at all, when savings cover it", () => {
+    // An Unassigned goal draws no cut of the pot, so the plan cannot fund it —
+    // but the user's savings would cover it on their own, and that is worth
+    // saying rather than withholding behind "not assigned".
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "Headphones", price: 300 }),
+    ]);
+    expect(monthsFor("Headphones")).toBe("Funded through savings");
+  });
+
+  it("still says not assigned when savings do not cover it", () => {
+    renderCompare({ savings: 100 }, [
+      makeGoal({ name: "MacBook", price: 3000 }),
+    ]);
+    expect(monthsFor("MacBook")).toBe("— not assigned");
+  });
+
+  it("keeps the strict test for a goal in the plan", () => {
+    // Two Shared goals split 5000 evenly, so each opens with 2500. The 3000
+    // goal is NOT covered by its own cut, and must not borrow the weaker
+    // whole-pot claim that unassigned goals get.
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "MacBook", price: 3000, share: 100 }),
+      makeGoal({ name: "Holiday", price: 3000, share: 100 }),
+    ]);
+    expect(monthsFor("MacBook")).not.toBe("Funded through savings");
+  });
+
+  it("keeps it even where the weaker claim would otherwise reach", () => {
+    // The case that actually pins the guard, and the reason the test above is
+    // not enough: it has months of 5, so it never enters the branch where the
+    // weaker claim lives. Only a goal whose months are NULL gets there, and for
+    // an assigned goal that means no surplus.
+    //
+    // Here savings of 5000 would cover this 3000 goal on its own, but its own
+    // cut is 2500 and there is no monthly money. It is in the plan, so the plan
+    // must answer: unreachable. Borrowing the whole-pot claim would let two
+    // goals in one plan both say the same 5000 pays for them.
+    renderCompare({ salary: 1000, expenses: 1500, savings: 5000 }, [
+      makeGoal({ name: "MacBook", price: 3000, share: 100 }),
+      makeGoal({ name: "Holiday", price: 3000, share: 100 }),
+    ]);
+    expect(monthsFor("MacBook")).toBe("— unreachable");
+    expect(monthsFor("Holiday")).toBe("— unreachable");
   });
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { compare } from "../engine";
+import { compare, type ComparisonRow } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
 import { AppHeader } from "./AppHeader";
@@ -258,11 +258,7 @@ export function CompareScreen() {
                         data-testid="compare-months"
                         className="font-mono text-xs"
                       >
-                        {describeMonths(
-                          row?.months ?? null,
-                          profile.currency,
-                          !assigned,
-                        )}
+                        {describeMonths(row, profile.currency)}
                       </p>
                       {describeDelay(row?.delay ?? null, profile.currency) && (
                         <p
@@ -309,12 +305,32 @@ export function CompareScreen() {
  * into "not assigned" would tell a user who assigned a Share that they had not.
  */
 function describeMonths(
-  months: number | null,
+  row: ComparisonRow | undefined,
   currency: Parameters<typeof formatNumber>[1],
-  unassigned: boolean,
 ): string {
-  if (months === null) return unassigned ? "— not assigned" : "— unreachable";
-  if (months === 0) return "Funded now";
+  const months = row?.months ?? null;
+  const unassigned = row?.share === null || row?.share === undefined;
+
+  // Funded at month zero means this goal's own cut of savings covered it, so
+  // naming savings as the source is simply what happened. "Funded now" said
+  // *when* and not *where from*, and where from is the interesting part (#170).
+  if (months === 0) return "Funded through savings";
+
+  if (months === null) {
+    // An Unassigned goal draws no cut of the pot, so the plan can never fund
+    // it. It can still be a goal the user's savings would cover on their own,
+    // which is exactly what a zero solo baseline means — a weaker claim than
+    // the one above, and worth making rather than withholding.
+    //
+    // The weaker claim can be true of several goals at once: three unassigned
+    // €5,000 goals against €5,000 saved all say this, and buying any one
+    // empties the pot. That is the limitation ADR 0024 already records for
+    // /goals, and it reaches only goals OUTSIDE the plan — goals in it keep the
+    // strict test above and cannot double-count.
+    if (unassigned && row?.monthsAlone === 0) return "Funded through savings";
+    return unassigned ? "— not assigned" : "— unreachable";
+  }
+
   return `${formatNumber(months, currency)} months`;
 }
 

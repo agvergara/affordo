@@ -218,37 +218,10 @@ export function compare(
   const rows: ComparisonRow[] = goals.map((goal, index) => {
     const share = shares[index] ?? null;
 
-    if (share === null) {
-      return {
-        goalId: goal.id,
-        share: null,
-        openingBalance: 0,
-        months: null,
-        monthsAlone: null,
-        delay: null,
-      };
-    }
-
-    const openingBalance = opened[index] ?? 0;
-    const covered = openingBalance >= goal.price - SETTLED;
-    // Funded from savings alone is true regardless of surplus. Everything else
-    // needs monthly money, so with no surplus it is unreachable rather than
-    // slow, and `null` says that without inventing a duration (#158).
-    const months = hasSurplus ? (funded[index] ?? 0) : covered ? 0 : null;
-
-    // The solo baseline: this goal alone, commanding the whole Monthly
-    // Disposable and the whole savings pot, because alone means nothing else
-    // is taking a cut of either.
-    //
-    // Computed here rather than read off `evaluateReference`, and that is a
-    // requirement rather than a preference. The verdict engine reports
-    // `monthsToSave` only on its `stretch` path; past twelve months it reports
-    // null and the goal card falls back to rendering `cutMonths` as
-    // "12 months *". So the figure Delay needs does not exist in the verdict
-    // output for exactly the goals that need it most — and populating it
-    // unconditionally would silently change what every cut-to-afford card on
-    // /goals displays, which is a fidelity regression wearing a cleanup's
-    // clothes (ADR 0024).
+    // The solo baseline never depended on the Share — it is this goal measured
+    // alone, against everything the user has. Nulling it for Unassigned goals
+    // (#156) was over-cautious rather than correct, and #170 needs it: a goal
+    // outside the plan can still be one savings would cover.
     const remainingAlone = Math.max(0, goal.price - savings);
     const monthsAlone =
       remainingAlone === 0
@@ -259,6 +232,26 @@ export function compare(
             // against. A duration cannot be compared to one that does not
             // exist, and inventing Infinity here would make Delay NaN.
             null;
+
+    if (share === null) {
+      return {
+        goalId: goal.id,
+        share: null,
+        openingBalance: 0,
+        months: null,
+        monthsAlone,
+        // Still null, and for the unchanged reason: the goal is outside the
+        // plan, so it has no months in the plan to compare the baseline to.
+        delay: null,
+      };
+    }
+
+    const openingBalance = opened[index] ?? 0;
+    const covered = openingBalance >= goal.price - SETTLED;
+    // Funded from savings alone is true regardless of surplus. Everything else
+    // needs monthly money, so with no surplus it is unreachable rather than
+    // slow, and `null` says that without inventing a duration (#158).
+    const months = hasSurplus ? (funded[index] ?? 0) : covered ? 0 : null;
 
     return {
       goalId: goal.id,

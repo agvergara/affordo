@@ -452,10 +452,26 @@ describe("the solo baseline and the Delay", () => {
     expect(row?.delay).toBeCloseTo(60, 10);
   });
 
-  it("has none for an Unassigned goal — not a Delay of zero", () => {
+  it("has no Delay for an Unassigned goal — not a Delay of zero", () => {
     const result = compare(profile, [goal("a", 1200, 100), goal("b", 900)]);
-    expect(result.rows[1]?.monthsAlone).toBeNull();
     expect(result.rows[1]?.delay).toBeNull();
+  });
+
+  it("still measures an Unassigned goal alone, since that never needed a Share", () => {
+    // Changed by #170. The baseline is this goal against everything the user
+    // has; the Share was never part of it, and nulling it here was
+    // over-cautious rather than correct. It is what lets a goal outside the
+    // plan still report that savings would cover it.
+    const result = compare(profile, [goal("a", 1200, 100), goal("b", 900)]);
+    expect(result.rows[1]?.monthsAlone).toBeCloseTo(0.36, 10);
+  });
+
+  it("gives an Unassigned goal a zero baseline when savings cover it", () => {
+    const saved = { ...profile, savings: 5000 };
+    const [row] = compare(saved, [goal("a", 900)]).rows;
+    expect(row?.monthsAlone).toBe(0);
+    expect(row?.months).toBeNull();
+    expect(row?.delay).toBeNull();
   });
 
   it("has none when the goal is unreachable even alone", () => {

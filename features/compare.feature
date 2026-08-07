@@ -92,3 +92,8 @@ Feature: Splitting my surplus between competing goals
     And I assign 100 a month to "Holiday"
     And I go back to my goals dashboard
     Then the goal "MacBook" says it is sharing with 1 other goal
+
+  Scenario: A goal my savings already cover says where the money came from
+    Given my savings are 5000
+    When I open the comparison
+    Then the goal "MacBook" is already paid for
