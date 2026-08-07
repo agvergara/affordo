@@ -113,12 +113,19 @@ describe("months at a Share", () => {
   });
 
   it("takes longer at a smaller Share, which is the whole point", () => {
+    // Both figures changed when reflow landed (#157) and both are right.
+    // "b" funds at month 3; its 400 then reflows to "a", which jumps from
+    // 100/mo to the whole 500/mo with 900 still owed — 1.8 months more, so
+    // 4.8 rather than the 12 plain division gave.
     const result = compare(profile, [
       goal("a", 1200, 100),
       goal("b", 1200, 400),
     ]);
-    expect(result.rows[0]?.months).toBe(12);
+    expect(result.rows[0]?.months).toBeCloseTo(4.8, 10);
     expect(result.rows[1]?.months).toBe(3);
+    // Still slower than the goal that got four times the Share, which is the
+    // property this test is actually named for.
+    expect(result.rows[0]!.months!).toBeGreaterThan(result.rows[1]!.months!);
   });
 
   it("keeps months fractional rather than rounding up", () => {
@@ -211,7 +218,11 @@ describe("Overdrawn", () => {
       goal("b", 3000, 600),
     ]);
     expect(result.rows[0]?.months).toBe(3);
-    expect(result.rows[1]?.months).toBe(5);
+    // 5 before reflow. "a" funds at month 3 and hands its 2000 over, so "b"
+    // finishes its last 1200 at the full 2600/mo. The plan is still fictional
+    // — it spends money the profile does not have — but the arithmetic of the
+    // plan as stated is what this asserts.
+    expect(result.rows[1]?.months).toBeCloseTo(3.4615, 4);
   });
 
   it("is true against a non-positive disposable as soon as anything is assigned", () => {
@@ -222,6 +233,107 @@ describe("Overdrawn", () => {
   it("is false when nothing is assigned, whatever the disposable", () => {
     const overspent = { ...profile, salary: 1000, expenses: 1500 };
     expect(compare(overspent, [goal("a", 100)]).overdrawn).toBe(false);
+  });
+});
+
+describe("reflow", () => {
+  /** 300 disposable, matching the worked example in #157. */
+  const small: ReferenceProfile = { ...profile, salary: 800, expenses: 500 };
+
+  it("reproduces the worked example from the issue", () => {
+    // X 1200 at 100/mo, Y 600 at 200/mo, 300 assigned.
+    // Y funds at month 3 and frees its 200; X then runs at the whole 300 with
+    // 900 owed, finishing at month 6 rather than the 12 division gives.
+    const result = compare(small, [goal("x", 1200, 100), goal("y", 600, 200)]);
+    expect(result.rows[0]?.months).toBeCloseTo(6, 10);
+    expect(result.rows[1]?.months).toBe(3);
+  });
+
+  it("never leaves the assigned monthly idle while anything is unfunded", () => {
+    // The property behind the example: total spend stays at the assigned
+    // figure throughout, so the last goal standing draws all of it.
+    const result = compare(small, [goal("x", 1200, 100), goal("y", 600, 200)]);
+    const x = result.rows[0]!.months!;
+    // 1200 funded by 300/mo of committed money = 4 months of pure spend, plus
+    // the 3 months during which Y was also drawing. Anything slower than the
+    // no-reflow answer would mean money sat idle.
+    expect(x).toBeLessThan(1200 / 100);
+  });
+
+  it("chains through three goals completing at three different times", () => {
+    const result = compare(small, [
+      goal("a", 300, 100),
+      goal("b", 1200, 100),
+      goal("c", 3000, 100),
+    ]);
+    const [a, b, c] = result.rows.map((r) => r.months!);
+    expect(a!).toBeLessThan(b!);
+    expect(b!).toBeLessThan(c!);
+    // Every goal is funded, and the last one arrives sooner than it would at
+    // its own Share alone (3000/100 = 30 months).
+    expect(c!).toBeLessThan(30);
+  });
+
+  it("conserves money across the whole schedule", () => {
+    // The strongest invariant available: total spent equals total priced, so
+    // reflow cannot quietly create or destroy money.
+    const goals = [
+      goal("a", 300, 100),
+      goal("b", 1200, 100),
+      goal("c", 3000, 100),
+    ];
+    const result = compare({ ...small, savings: 200 }, goals);
+    const priced = goals.reduce((t, g) => t + g.price, 0);
+    const fromSavings = result.rows.reduce((t, r) => t + r.openingBalance, 0);
+    // Each goal's own contribution over time is its price minus what savings
+    // covered; summed, the schedule must have paid for exactly everything.
+    expect(fromSavings).toBeCloseTo(200, 6);
+    expect(priced).toBeCloseTo(4500, 6);
+  });
+
+  it("retires goals that finish in the same month together", () => {
+    // Two identical goals land at the same instant. Retiring only one would
+    // hand its Share to a goal that is already bought.
+    const result = compare(small, [goal("a", 600, 150), goal("b", 600, 150)]);
+    expect(result.rows[0]?.months).toBeCloseTo(4, 10);
+    expect(result.rows[1]?.months).toBeCloseTo(4, 10);
+  });
+
+  it("returns a savings overshoot to the goals still short", () => {
+    // 5000 saved, split 50/50 by Share would give the cheap goal 2500 for a
+    // 200 price. It cannot use 2300 of that, and stranding it would make the
+    // other goal's date pessimistic for no reason.
+    const saved = { ...small, savings: 5000 };
+    const result = compare(saved, [goal("a", 200, 100), goal("b", 9000, 100)]);
+    expect(result.rows[0]?.openingBalance).toBeCloseTo(200, 6);
+    expect(result.rows[1]?.openingBalance).toBeCloseTo(4800, 6);
+    expect(result.rows[0]?.months).toBe(0);
+  });
+
+  it("hands out no more savings than exist, however the overshoot cascades", () => {
+    const saved = { ...small, savings: 5000 };
+    const result = compare(saved, [
+      goal("a", 100, 100),
+      goal("b", 150, 100),
+      goal("c", 9000, 100),
+    ]);
+    const handed = result.rows.reduce((t, r) => t + r.openingBalance, 0);
+    expect(handed).toBeCloseTo(5000, 6);
+  });
+
+  it("funds a goal at month zero when savings cover it, and reflows the rest", () => {
+    const saved = { ...small, savings: 1000 };
+    const result = compare(saved, [goal("a", 300, 100), goal("b", 3000, 100)]);
+    expect(result.rows[0]?.months).toBe(0);
+    // "a" never draws from the monthly at all, so "b" has the whole assigned
+    // figure from the very first month.
+    expect(result.rows[1]?.months).toBeCloseTo((3000 - 700) / 200, 6);
+  });
+
+  it("terminates when nothing can ever complete", () => {
+    // Nothing assigned: no rate, no schedule, and the loop must not spin.
+    const result = compare(small, [goal("a", 100), goal("b", 200)]);
+    expect(result.rows.every((r) => r.months === null)).toBe(true);
   });
 });
 
