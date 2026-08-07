@@ -26,6 +26,19 @@ interface GoalCardProps {
   onEdit: () => void;
   /** The user asked to delete this goal. */
   onRemove: () => void;
+  /**
+   * How much the other goals are costing this one, when they are (#159).
+   *
+   * Handed down already computed. The card renders it and derives **nothing**:
+   * the dashboard calls the Comparison seam once for the whole list, so there
+   * is one place the arithmetic can be wrong and no way for a card to disagree
+   * with the engine. Working-agreements rule 5 records tests here passing
+   * because they re-derived the logic they were testing.
+   *
+   * Absent when the goal is Unassigned, when nothing else is sharing, or when
+   * the Delay is too small to read — the card says nothing rather than "+0".
+   */
+  sharing?: { others: number; delay: number };
 }
 
 /**
@@ -47,7 +60,7 @@ const ACTION =
 const EDIT_ACTION = `${ACTION} hover:text-accent-foreground`;
 const REMOVE_ACTION = `${ACTION} text-destructive hover:text-destructive`;
 
-export function GoalCard({ goal, onEdit, onRemove }: GoalCardProps) {
+export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
   const { profile } = useAffordo();
   const verdict = useMemo(
     () => evaluateReference(profile, goal),
@@ -191,6 +204,39 @@ export function GoalCard({ goal, onEdit, onRemove }: GoalCardProps) {
         <p className="mt-4 border-l-2 border-emerald-600 bg-emerald-600/5 p-3 text-sm">
           You already have savings for this.
         </p>
+      )}
+
+      {/*
+        The Delay line (#159) — the only thread from /goals to the Comparison,
+        and the only element this slice adds to the app's most reference-faithful
+        component. Additive by design: the verdict, the badge, the price and the
+        months above are exactly what the reference engine computes and are not
+        touched. Keeping /goals reference-faithful is the whole reason the
+        Comparison is a separate screen (ADR 0024).
+
+        It renders only for a goal actually held up by the others. A Shared goal
+        with no Delay has nothing to say here, and a line saying nothing is how a
+        reference-faithful card acquires noise.
+
+        `-my-2 py-2` is a hit-area fix, not a layout one: the row keeps its
+        height and the link its position, while the target clears WCAG 2.2
+        §2.5.8's 24x24 floor. Exactly the technique AppHeader's links use, which
+        is also why this is the treatment ADR 0023 asks for — the nearest
+        existing analogue governs where the reference offers nothing.
+      */}
+      {sharing !== undefined && (
+        <a
+          href="/compare"
+          data-testid="goal-sharing"
+          className="-my-2 mt-4 inline-flex items-center py-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        >
+          Sharing with {sharing.others}{" "}
+          {sharing.others === 1 ? "goal" : "goals"} —{" "}
+          <span className="ml-1 text-foreground">
+            +{formatNumber(sharing.delay, profile.currency)} months
+          </span>
+          <span aria-hidden="true"> →</span>
+        </a>
       )}
 
       <div className="mt-6 flex justify-end gap-2">
