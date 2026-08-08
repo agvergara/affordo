@@ -616,3 +616,81 @@ describe("the savings total", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("the screen never contradicts its own savings figure", () => {
+  function drawFor(name: string): string | null {
+    const item = screen
+      .getAllByTestId("compare-item")
+      .find((el) => within(el).queryByText(name) !== null);
+    if (!item) throw new Error(`no compare row for "${name}"`);
+    return within(item).queryByTestId("compare-draw")?.textContent ?? null;
+  }
+
+  it("stops claiming savings the plan has already spent", () => {
+    // Found by the review of the unreviewed range. The plan takes the whole
+    // 5000 and the tile says so; the unassigned goal was measured against the
+    // original balance, so one screen read "Savings left 0,00 €" and "would
+    // take 5.000,00 € of savings" at the same time about the same money.
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "InPlan", price: 5000, share: 100 }),
+      makeGoal({ name: "Outside", price: 5000 }),
+    ]);
+    expect(screen.getByTestId("compare-savings").textContent).toContain("0,00");
+    expect(monthsFor("Outside")).toBe("— not assigned");
+    expect(drawFor("Outside")).toBeNull();
+  });
+
+  it("still claims the savings the plan left alone", () => {
+    // The other side: an untouched balance genuinely can cover it, and saying
+    // so is the whole point of #170.
+    renderCompare({ savings: 5000 }, [
+      makeGoal({ name: "InPlan", price: 1000, share: 100 }),
+      makeGoal({ name: "Outside", price: 500 }),
+    ]);
+    expect(monthsFor("Outside")).toBe("Funded through savings");
+    expect(drawFor("Outside")).toContain("would take");
+  });
+
+  it("does not reject a goal priced exactly at what the plan left over", () => {
+    // The float sum lands 2.3e-13 short of 1547.65, so a bare `<=` flips to
+    // false and the screen reads "Savings left 1.547,65 €" directly above a
+    // 1.547,65 € goal marked "not assigned". Over 600,000 generated exact-fit
+    // plans, more than 40% land this way.
+    renderCompare({ savings: 3315.41 }, [
+      makeGoal({ name: "A", price: 1697.12, share: 85 }),
+      makeGoal({ name: "B", price: 70.64, share: 57 }),
+      makeGoal({ name: "Exact", price: 1547.65 }),
+    ]);
+    expect(monthsFor("Exact")).toBe("Funded through savings");
+    expect(drawFor("Exact")).toContain("would take");
+  });
+
+  it("says nothing about a free goal rather than 'would take 0,00 €'", () => {
+    // The assigned branch guards this; the unassigned one did not.
+    renderCompare({ savings: 0 }, [makeGoal({ name: "Freebie", price: 0 })]);
+    expect(monthsFor("Freebie")).toBe("Funded through savings");
+    expect(drawFor("Freebie")).toBeNull();
+  });
+});
+
+describe("the no-surplus wording", () => {
+  it("says expenses MEET income when they are equal", () => {
+    renderCompare({ salary: 1000, expenses: 1000 }, [
+      makeGoal({ name: "MacBook", share: 100 }),
+    ]);
+    expect(screen.getByTestId("compare-no-surplus").textContent).toContain(
+      "meet your income",
+    );
+  });
+
+  it("says they EXCEED it when they do", () => {
+    // The banner claimed "meet" for every non-positive disposable, including
+    // one 500 short. Only the equal case was ever exercised.
+    renderCompare({ salary: 1000, expenses: 1500 }, [
+      makeGoal({ name: "MacBook", share: 100 }),
+    ]);
+    expect(screen.getByTestId("compare-no-surplus").textContent).toContain(
+      "exceed your income",
+    );
+  });
+});

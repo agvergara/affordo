@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { compare, type ComparisonRow } from "../engine";
+import {
+  compare,
+  MONEY_EPSILON,
+  type Comparison,
+  type ComparisonRow,
+} from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
 import { AppHeader } from "./AppHeader";
@@ -197,9 +202,12 @@ export function CompareScreen() {
             data-testid="compare-no-surplus"
             className="mb-6 border-l-2 border-accent py-1 pl-3 text-sm"
           >
-            <b>No monthly surplus to share.</b> Your expenses meet your income,
-            so nothing accumulates each month — only what you have already saved
-            counts toward these goals.
+            <b>No monthly surplus to share.</b>{" "}
+            {comparison.monthlyDisposable < 0
+              ? "Your expenses exceed your income"
+              : "Your expenses meet your income"}
+            , so nothing accumulates each month — only what you have already
+            saved counts toward these goals.
           </p>
         )}
 
@@ -285,7 +293,12 @@ export function CompareScreen() {
                         data-testid="compare-months"
                         className="font-mono text-xs"
                       >
-                        {describeMonths(row, profile.currency)}
+                        {describeMonths(
+                          row,
+                          goal.price,
+                          comparison,
+                          profile.currency,
+                        )}
                       </p>
                       {describeDelay(row?.delay ?? null, profile.currency) && (
                         <p
@@ -295,12 +308,22 @@ export function CompareScreen() {
                           {describeDelay(row?.delay ?? null, profile.currency)}
                         </p>
                       )}
-                      {describeDraw(row, goal, profile.currency) && (
+                      {describeDraw(
+                        row,
+                        goal,
+                        comparison,
+                        profile.currency,
+                      ) && (
                         <p
                           data-testid="compare-draw"
                           className="font-mono text-[10px] text-muted-foreground"
                         >
-                          {describeDraw(row, goal, profile.currency)}
+                          {describeDraw(
+                            row,
+                            goal,
+                            comparison,
+                            profile.currency,
+                          )}
                         </p>
                       )}
                     </div>
@@ -341,15 +364,19 @@ export function CompareScreen() {
  */
 function describeMonths(
   row: ComparisonRow | undefined,
+  goalPrice: number,
+  comparison: Comparison,
   currency: Parameters<typeof formatNumber>[1],
 ): string {
   const months = row?.months ?? null;
   const unassigned = row?.share === null || row?.share === undefined;
 
-  // Funded at month zero means this goal's own cut of savings covered it, so
-  // naming savings as the source is simply what happened. "Funded now" said
-  // *when* and not *where from*, and where from is the interesting part (#170).
-  if (months === 0) return "Funded through savings";
+  // Reads the engine's stated fact, not the `months === 0` sentinel it used to
+  // infer from. That sentinel meant two things — "bought before the clock
+  // started" and, through a float pathology, "the schedule went wrong" — and
+  // this sentence is about where the money came from, so it must only be said
+  // when money actually came from there (#174).
+  if (row?.fundedFromSavings) return "Funded through savings";
 
   if (months === null) {
     // An Unassigned goal draws no cut of the pot, so the plan can never fund
@@ -362,7 +389,24 @@ function describeMonths(
     // empties the pot. That is the limitation ADR 0024 already records for
     // /goals, and it reaches only goals OUTSIDE the plan — goals in it keep the
     // strict test above and cannot double-count.
-    if (unassigned && row?.monthsAlone === 0) return "Funded through savings";
+    // Measured against what SURVIVES the plan, not against the whole balance.
+    // #172 added a tile that states the plan has spent the pot; measuring the
+    // weaker claim against `savings` let one screen say "Savings left €0" and
+    // "would take €5,000 of savings" at the same time, about the same money.
+    //
+    // ADR 0024's known limitation covers unassigned goals double-counting
+    // against EACH OTHER. It does not cover contradicting a figure this screen
+    // computes and displays three lines higher.
+    // `+ MONEY_EPSILON`, because `savingsLeft` is a float sum and the question
+    // is about money. Without it, a goal priced exactly at the leftover is
+    // rejected whenever the subtraction lands a fraction of a cent short —
+    // which over 600,000 generated exact-fit plans happens to more than 40% of
+    // them. The screen then reads "Savings left 1.547,65 €" directly above a
+    // 1.547,65 € goal marked "not assigned", which is the same class of
+    // self-contradiction this gate was added to remove.
+    if (unassigned && goalPrice <= comparison.savingsLeft + MONEY_EPSILON) {
+      return "Funded through savings";
+    }
     return unassigned ? "— not assigned" : "— unreachable";
   }
 
@@ -424,6 +468,7 @@ function describeDelay(
 function describeDraw(
   row: ComparisonRow | undefined,
   goal: Goal,
+  comparison: Comparison,
   currency: Parameters<typeof formatNumber>[1],
 ): string | null {
   if (!row) return null;
@@ -434,8 +479,15 @@ function describeDraw(
     return `${formatMoney(row.openingBalance, currency)} from savings`;
   }
 
-  // Outside the plan: only worth saying where savings would in fact cover it,
-  // which is exactly when the row reports itself funded through them.
-  if (row.monthsAlone !== 0) return null;
+  // Outside the plan: only worth saying where the savings the plan has NOT
+  // spent would in fact cover it — the same test `describeMonths` uses, so the
+  // two lines cannot disagree about the same goal.
+  // The same tolerance as `describeMonths`, so the two lines cannot disagree
+  // about the same goal.
+  if (goal.price > comparison.savingsLeft + MONEY_EPSILON) return null;
+  // The assigned branch above guards this; the unassigned one was written
+  // without it. A free goal read "would take 0,00 € of savings", and the
+  // docblock's own rule is that a zero here is worse than silence.
+  if (goal.price <= 0) return null;
   return `would take ${formatMoney(goal.price, currency)} of savings`;
 }
