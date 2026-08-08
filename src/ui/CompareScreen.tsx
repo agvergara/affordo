@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { compare, type Comparison, type ComparisonRow } from "../engine";
+import {
+  compare,
+  MONEY_EPSILON,
+  type Comparison,
+  type ComparisonRow,
+} from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
 import { AppHeader } from "./AppHeader";
@@ -366,10 +371,12 @@ function describeMonths(
   const months = row?.months ?? null;
   const unassigned = row?.share === null || row?.share === undefined;
 
-  // Funded at month zero means this goal's own cut of savings covered it, so
-  // naming savings as the source is simply what happened. "Funded now" said
-  // *when* and not *where from*, and where from is the interesting part (#170).
-  if (months === 0) return "Funded through savings";
+  // Reads the engine's stated fact, not the `months === 0` sentinel it used to
+  // infer from. That sentinel meant two things — "bought before the clock
+  // started" and, through a float pathology, "the schedule went wrong" — and
+  // this sentence is about where the money came from, so it must only be said
+  // when money actually came from there (#174).
+  if (row?.fundedFromSavings) return "Funded through savings";
 
   if (months === null) {
     // An Unassigned goal draws no cut of the pot, so the plan can never fund
@@ -390,7 +397,14 @@ function describeMonths(
     // ADR 0024's known limitation covers unassigned goals double-counting
     // against EACH OTHER. It does not cover contradicting a figure this screen
     // computes and displays three lines higher.
-    if (unassigned && goalPrice <= comparison.savingsLeft) {
+    // `+ MONEY_EPSILON`, because `savingsLeft` is a float sum and the question
+    // is about money. Without it, a goal priced exactly at the leftover is
+    // rejected whenever the subtraction lands a fraction of a cent short —
+    // which over 600,000 generated exact-fit plans happens to more than 40% of
+    // them. The screen then reads "Savings left 1.547,65 €" directly above a
+    // 1.547,65 € goal marked "not assigned", which is the same class of
+    // self-contradiction this gate was added to remove.
+    if (unassigned && goalPrice <= comparison.savingsLeft + MONEY_EPSILON) {
       return "Funded through savings";
     }
     return unassigned ? "— not assigned" : "— unreachable";
@@ -468,7 +482,9 @@ function describeDraw(
   // Outside the plan: only worth saying where the savings the plan has NOT
   // spent would in fact cover it — the same test `describeMonths` uses, so the
   // two lines cannot disagree about the same goal.
-  if (goal.price > comparison.savingsLeft) return null;
+  // The same tolerance as `describeMonths`, so the two lines cannot disagree
+  // about the same goal.
+  if (goal.price > comparison.savingsLeft + MONEY_EPSILON) return null;
   // The assigned branch above guards this; the unassigned one was written
   // without it. A free goal read "would take 0,00 € of savings", and the
   // docblock's own rule is that a zero here is worse than silence.

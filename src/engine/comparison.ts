@@ -46,6 +46,18 @@ function shareOf(goal: ComparableGoal): number | null {
 const SETTLED = 1e-9;
 
 /**
+ * The same tolerance, published for callers that must compare money against a
+ * figure this engine computed (#174).
+ *
+ * A screen asking "does this price fit in what is left?" is doing the engine's
+ * arithmetic in the engine's units, and a bare `<=` against a float sum gets it
+ * wrong: over 600,000 generated plans whose leftover fits a goal exactly, more
+ * than 40% land a fraction of a cent short and the answer flips. Exporting the
+ * constant is what keeps one definition of "close enough is equal".
+ */
+export const MONEY_EPSILON = SETTLED;
+
+/**
  * Hand the savings pot out in proportion to Share, capping each goal at what it
  * costs and re-offering the remainder to the goals still short.
  *
@@ -149,13 +161,34 @@ function solveTimeline(
     for (const i of active) activeShare += shares[i] ?? 0;
     if (activeShare <= 0) break;
 
-    // Time until each active goal is funded at its current effective rate. The
-    // earliest is the next event, and we keep WHICH goal it was.
+    // Each goal's effective monthly this round, computed once and reused for
+    // both the lookahead and the subtraction so the two cannot disagree.
+    //
+    // `Number.isFinite` is load-bearing, not defensive tidiness. A Share near
+    // the float ceiling makes `share * assigned` overflow, so the rate is
+    // Infinity and the step it implies is ZERO — the goal is then retired at
+    // clock 0 with its full balance outstanding, reporting itself funded from
+    // savings it never had. A denormal Share underflows the same product to 0
+    // and the goal can never progress. Neither is schedulable, so neither is
+    // scheduled: both leave `months` null, which reads as unreachable.
+    const rates = new Map<number, number>();
+    // `share * (assigned / activeShare)`, not `(share * assigned) / activeShare`.
+    // Algebraically identical, numerically not: the ratio is a modest number at
+    // or above 1, so scaling the Share by it cannot overflow, whereas the
+    // product could. Written the other way, ONE goal with a Share near the
+    // float ceiling made the intermediate overflow for every goal in the plan,
+    // and perfectly ordinary goals beside it became unschedulable.
+    const reflow = assigned / activeShare;
+    for (const i of active) {
+      const rate = (shares[i] ?? 0) * reflow;
+      if (Number.isFinite(rate) && rate > 0) rates.set(i, rate);
+    }
+
+    // Time until each schedulable goal is funded. The earliest is the next
+    // event, and we keep WHICH goal it was.
     let step = Infinity;
     let next = -1;
-    for (const i of active) {
-      const rate = ((shares[i] ?? 0) * assigned) / activeShare;
-      if (rate <= 0) continue;
+    for (const [i, rate] of rates) {
       const due = (owed[i] ?? 0) / rate;
       if (due < step) {
         step = due;
@@ -165,8 +198,7 @@ function solveTimeline(
     if (!Number.isFinite(step) || next < 0) break;
 
     clock += step;
-    for (const i of active) {
-      const rate = ((shares[i] ?? 0) * assigned) / activeShare;
+    for (const [i, rate] of rates) {
       owed[i] = (owed[i] ?? 0) - rate * step;
     }
 
@@ -190,7 +222,9 @@ function solveTimeline(
     // two goals can be funded in the same month, and leaving one active would
     // hand it a Share it no longer needs.
     for (const i of [...active]) {
-      if ((owed[i] ?? 0) <= SETTLED) {
+      // Only a goal that actually drew money this round can have settled by
+      // it; an unschedulable one still has its original balance.
+      if (rates.has(i) && (owed[i] ?? 0) <= SETTLED) {
         months[i] = clock;
         active.delete(i);
       }
@@ -270,6 +304,9 @@ export function compare(
         share: null,
         openingBalance: 0,
         months: null,
+        // An Unassigned goal draws no cut at all, so nothing of its price was
+        // ever paid from savings — whatever the balance would cover on its own.
+        fundedFromSavings: false,
         monthsAlone,
         // Still null, and for the unchanged reason: the goal is outside the
         // plan, so it has no months in the plan to compare the baseline to.
@@ -292,6 +329,7 @@ export function compare(
       share,
       openingBalance,
       months,
+      fundedFromSavings: covered,
       monthsAlone,
       // Both sides must exist. `months` became nullable with the no-surplus
       // rule (#158), and JS would have coerced `null - 4` to -4 — a goal that

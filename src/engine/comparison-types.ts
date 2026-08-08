@@ -35,10 +35,21 @@ export interface ComparisonRow {
    */
   openingBalance: number;
   /**
-   * Months to fund the goal at its Share, or `null` when Unassigned. `0` when
-   * the opening balance already covers the price.
+   * Months to fund the goal at its Share, or `null` when it cannot be
+   * scheduled — Unassigned, no surplus, or a Share too extreme to run a
+   * schedule with.
    */
   months: number | null;
+  /**
+   * Whether this goal's own cut of savings already covers its price.
+   *
+   * Stated rather than inferred from `months === 0`. That sentinel was doing
+   * double duty — it meant both "bought before the clock started" and, through
+   * two float pathologies, "the schedule went wrong" — and the screen turns it
+   * into a sentence about where the money came from. A goal funded instantly
+   * by an absurd Share is funded; it is not funded *from savings*.
+   */
+  fundedFromSavings: boolean;
   /**
    * What this goal would take **alone** — commanding the whole Monthly
    * Disposable and the whole savings pot, because alone means nothing else is

@@ -651,6 +651,20 @@ describe("the screen never contradicts its own savings figure", () => {
     expect(drawFor("Outside")).toContain("would take");
   });
 
+  it("does not reject a goal priced exactly at what the plan left over", () => {
+    // The float sum lands 2.3e-13 short of 1547.65, so a bare `<=` flips to
+    // false and the screen reads "Savings left 1.547,65 €" directly above a
+    // 1.547,65 € goal marked "not assigned". Over 600,000 generated exact-fit
+    // plans, more than 40% land this way.
+    renderCompare({ savings: 3315.41 }, [
+      makeGoal({ name: "A", price: 1697.12, share: 85 }),
+      makeGoal({ name: "B", price: 70.64, share: 57 }),
+      makeGoal({ name: "Exact", price: 1547.65 }),
+    ]);
+    expect(monthsFor("Exact")).toBe("Funded through savings");
+    expect(drawFor("Exact")).toContain("would take");
+  });
+
   it("says nothing about a free goal rather than 'would take 0,00 €'", () => {
     // The assigned branch guards this; the unassigned one did not.
     renderCompare({ savings: 0 }, [makeGoal({ name: "Freebie", price: 0 })]);

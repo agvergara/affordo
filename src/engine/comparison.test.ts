@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compare, type ComparableGoal } from "./comparison";
+import { compare, MONEY_EPSILON, type ComparableGoal } from "./comparison";
 import type { ReferenceProfile } from "./reference-types";
 
 /**
@@ -779,5 +779,141 @@ describe("the solve is exact at scales where the epsilon is not", () => {
     ]);
     expect(result.savingsLeft).toBeGreaterThanOrEqual(0);
     expect(Object.is(result.savingsLeft, -0)).toBe(false);
+  });
+});
+
+describe("Shares at the edges of what a float can hold", () => {
+  // All three from the duel on #174, which found that the previous fix left
+  // the same defect reachable by other routes. A Share is validated as finite
+  // and non-negative and nothing more — `goals-store.ts` sets no ceiling, and
+  // `parseFloat` will hand back anything — so these are reachable through the
+  // product, not just through a unit test.
+
+  it("survives the reflow ratio itself overflowing", () => {
+    // The subtle one, and the reason `Number.isFinite` on the rate is not
+    // redundant with `rate > 0`. After the big goal retires, the only active
+    // Share is denormal, so `assigned / activeShare` overflows to Infinity and
+    // the rate with it. Infinity passes `> 0` — it is NaN that does not — and
+    // an infinite rate implies a step of ZERO, which retires the goal at the
+    // current clock with `owed` set to NaN.
+    const result = compare(profile, [
+      goal("big", 100, 1e300),
+      goal("tiny", 9000, 5e-324),
+    ]);
+    expect(result.rows[1]?.months).toBeNull();
+    expect(result.rows[1]?.fundedFromSavings).toBe(false);
+    for (const row of result.rows) {
+      expect(Number.isNaN(row.months ?? 0)).toBe(false);
+      expect(Number.isNaN(row.openingBalance)).toBe(false);
+    }
+  });
+
+  it("does not claim savings paid for a goal an extreme Share funded", () => {
+    // The rate used to overflow to Infinity, implying a step of ZERO, so the
+    // goal retired at clock 0 with its full balance outstanding and rendered
+    // "Funded through savings" against no savings — this PR's blocking bug by
+    // another route. The rate is now finite and the claim is stated by the
+    // engine rather than inferred from a zero.
+    const [row] = compare(profile, [goal("z", 9000, 1e308)]).rows;
+    expect(row?.fundedFromSavings).toBe(false);
+  });
+
+  it("does not report a goal funded when the assigned total overflows", () => {
+    const result = compare(profile, [
+      goal("x", 9000, 1e308),
+      goal("y", 9000, 1e308),
+    ]);
+    expect(result.assigned).toBe(Infinity);
+    expect(result.rows.map((r) => r.months)).toEqual([null, null]);
+  });
+
+  it("does not report a goal funded when its Share denormalises to nothing", () => {
+    // share * assigned underflows to 0, so the goal can never progress. It is
+    // unreachable, which is what null says; zero would say the opposite.
+    const [row] = compare(profile, [goal("z", 9000, 5e-324)]).rows;
+    expect(row?.months).toBeNull();
+  });
+
+  it("still schedules ordinary goals beside an extreme Share", () => {
+    // My first attempt at the fix computed `(share * assigned) / activeShare`,
+    // so ONE extreme Share overflowed the intermediate for every goal in the
+    // plan and perfectly ordinary ones became unschedulable. Written as
+    // `share * (assigned / activeShare)` the ratio stays modest and cannot
+    // overflow. Both goals are funded here; neither is null.
+    const result = compare(profile, [
+      goal("mad", 9000, 1e308),
+      goal("sane", 1200, 100),
+    ]);
+    for (const row of result.rows) {
+      expect(row.months, row.goalId).not.toBeNull();
+      expect(Number.isFinite(row.months ?? 0)).toBe(true);
+    }
+  });
+
+  it("does not call an instantly-funded goal funded FROM SAVINGS", () => {
+    // A Share of 1e308 a month does fund a 9,000 goal immediately, and the
+    // arithmetic saying so is fine. What is not fine is the screen turning
+    // that into "Funded through savings" against a balance of zero.
+    const [row] = compare(profile, [goal("z", 9000, 1e308)]).rows;
+    expect(row?.fundedFromSavings).toBe(false);
+    expect(row?.openingBalance).toBe(0);
+  });
+
+  // The PR body claimed the null seed was "now unreachable" and therefore dead
+  // defence. That was wrong: the two overflow paths above reach it, which makes
+  // a mutation restoring the 0 seed a VALID mutation rather than an invalid
+  // one. These tests are what pin it.
+  it("pins the null seed the earlier fix wrongly called unreachable", () => {
+    const overflow = compare(profile, [
+      goal("a", 9000, 1e308),
+      goal("b", 9000, 1e308),
+    ]);
+    const denormal = compare(profile, [goal("c", 9000, 5e-324)]);
+    for (const row of [...overflow.rows, ...denormal.rows]) {
+      expect(row.months).toBeNull();
+      expect(row.delay).toBeNull();
+    }
+  });
+
+  it("keeps the funded-from-savings claim tied to the money", () => {
+    // A goal reads zero months if and only if its opening balance covered it.
+    // Nothing else may produce that value, because the screen turns it into a
+    // sentence about where the money came from.
+    const saved = { ...profile, savings: 4000 };
+    const result = compare(saved, [
+      goal("covered", 1000, 100),
+      goal("not", 9000, 100),
+    ]);
+    expect(result.rows[0]?.fundedFromSavings).toBe(true);
+    expect(result.rows[0]?.months).toBe(0);
+    expect(result.rows[1]?.fundedFromSavings).toBe(false);
+    // The claim tracks the money, not the clock.
+    for (const row of result.rows) {
+      if (row.fundedFromSavings) {
+        expect(row.openingBalance).toBeGreaterThanOrEqual(0);
+        expect(row.months).toBe(0);
+      }
+    }
+  });
+});
+
+describe("the published money tolerance", () => {
+  it("is the same one the solve settles with", () => {
+    expect(MONEY_EPSILON).toBe(1e-9);
+  });
+
+  it("closes the gap a bare comparison leaves on an exact fit", () => {
+    // 600,000 generated plans whose leftover fits a goal exactly: more than 40%
+    // land a fraction of a cent short, so `price <= savingsLeft` flips to false
+    // and the screen contradicts its own headline. This is one of them.
+    const saved = { ...profile, savings: 3315.41 };
+    const result = compare(saved, [
+      goal("a", 1697.12, 85),
+      goal("b", 70.64, 57),
+    ]);
+    const leftover = result.savingsLeft;
+    expect(leftover).toBeLessThan(1547.65);
+    expect(1547.65 <= leftover).toBe(false);
+    expect(1547.65 <= leftover + MONEY_EPSILON).toBe(true);
   });
 });
