@@ -917,3 +917,73 @@ describe("the published money tolerance", () => {
     expect(1547.65 <= leftover + MONEY_EPSILON).toBe(true);
   });
 });
+
+describe("conservation, as a property rather than an example", () => {
+  /**
+   * Deterministic pseudo-random, so a failure is reproducible and CI cannot
+   * flake. Seeded once per test; the constants are the classic LCG.
+   */
+  function seeded(seed: number): () => number {
+    let s = seed;
+    return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  }
+
+  /**
+   * Every euro of every price is paid either out of savings or out of the
+   * committed monthly — and the monthly runs at the full assigned figure for
+   * the whole schedule, because reflow keeps it committed. So
+   *
+   *     assigned x (time of the last completion) = total priced - savings drawn
+   *
+   * This is the invariant the whole solve exists to satisfy, and until now
+   * nothing stood on it: every other test here checks one example. The
+   * blocking bug this PR fixes — a goal starved and reported at month zero —
+   * violates it enormously, and would have been caught the day it was written.
+   *
+   * A wide magnitude range on purpose: the bug only appeared once a balance
+   * was large enough that one ulp exceeded the settling epsilon.
+   */
+  it("pays for exactly what was priced, across a thousand generated plans", () => {
+    const rand = seeded(20260808);
+    let worst = 0;
+
+    for (let round = 0; round < 1000; round += 1) {
+      const count = 1 + Math.floor(rand() * 5);
+      const goals: ComparableGoal[] = [];
+      for (let k = 0; k < count; k += 1) {
+        const magnitude = Math.pow(10, 1 + rand() * 8);
+        goals.push({
+          id: `g${k}`,
+          price: Math.round(rand() * magnitude * 100) / 100,
+          share: Math.round(rand() * 1000) + 1,
+        });
+      }
+      const savings =
+        Math.round(rand() * Math.pow(10, 1 + rand() * 7) * 100) / 100;
+      const result = compare(
+        { ...profile, salary: 100000, expenses: 0, savings },
+        goals,
+      );
+
+      let last = 0;
+      for (const row of result.rows) {
+        expect(row.months, `unsolved goal ${row.goalId}`).not.toBeNull();
+        expect(Number.isFinite(row.months ?? 0)).toBe(true);
+        // A zero here means savings paid for it, and nothing else.
+        if (row.months === 0) expect(row.fundedFromSavings).toBe(true);
+        last = Math.max(last, row.months ?? 0);
+      }
+
+      const priced = goals.reduce((total, g) => total + g.price, 0);
+      const fromMonthly = priced - result.savingsDrawn;
+      const scheduled = result.assigned * last;
+      worst = Math.max(
+        worst,
+        Math.abs(scheduled - fromMonthly) / Math.max(1, Math.abs(fromMonthly)),
+      );
+    }
+
+    // Float, not algebra: a handful of ulps across a whole schedule.
+    expect(worst).toBeLessThan(1e-9);
+  });
+});
