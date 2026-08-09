@@ -27,5 +27,5 @@ export type {
  * different questions, and a Comparison must never be able to change what a
  * goal's own Verdict says.
  */
-export { compare, type ComparableGoal } from "./comparison";
+export { compare, MONEY_EPSILON, type ComparableGoal } from "./comparison";
 export type { Comparison, ComparisonRow } from "./comparison-types";
