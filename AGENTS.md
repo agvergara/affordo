@@ -140,7 +140,7 @@ so and stop. Guessing produces a value that looks researched and is not.
 
 ### 3. The unit suite cannot see anything visual
 
-jsdom applies no stylesheet. 454 green tests prove nothing about geometry,
+jsdom applies no stylesheet. 644 green tests prove nothing about geometry,
 colour, focus rings, hit targets or layout. Anything visual is pinned by an e2e
 test measuring the real thing, or it is not pinned.
 
