@@ -151,9 +151,9 @@ survive tailwind-merge and appear in no source. A class-string comparison cannot
 see that; `getBoundingClientRect` can.
 
 ```bash
-npm test          # Vitest — 644 tests
-npm run test:e2e  # Playwright — 17 journeys
-npm run test:bdd  # Cucumber — 37 scenarios
+npm test          # Vitest — engine, state and components
+npm run test:e2e  # Playwright — geometry, contrast, hit targets, privacy
+npm run test:bdd  # Cucumber — the user journeys, in stakeholder language
 npm run typecheck # tsc --noEmit
 ```
 
