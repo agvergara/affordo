@@ -111,20 +111,43 @@ _Avoid_: plan (taken — see Goal), scenario, budget
 The monthly amount a user assigns to one goal out of the shared Monthly
 Disposable. A goal's share of the monthly also fixes its share of existing
 savings — assign a goal two thirds of the monthly and it opens with two thirds
-of what is already saved.
+of what is already saved, capped at what the goal costs, with anything over
+that offered to the goals still short.
 _Avoid_: allocation (taken — see Contribution), budget, split, stake
 
 **Unassigned**:
 A goal carrying no Share. It is not a slow goal, it is a goal outside the
 competition: it draws nothing, releases nothing, and changes no other goal's
 Delay.
-_Avoid_: zero share, infinite, unreachable, never
+_Avoid_: zero share, infinite, never. **Not** "unreachable" — that is a
+different state, defined below, and the two must not be collapsed.
+
+**Unreachable**:
+A goal that _is_ in the Comparison and that the plan cannot fund — there is no
+Monthly Disposable to fund it with. Distinct from Unassigned, which is a choice
+the user has not made rather than an answer.
+_Avoid_: cannot (taken — see the Verdict), impossible, never
 
 **Delay**:
 The months a goal takes beyond what it would take alone, because it is sharing
 the Monthly Disposable rather than commanding all of it. The number behind
-"buying X delays Y".
+"buying X delays Y". Zero when a goal's Share **is** the whole Monthly
+Disposable — not merely when it is the only goal sharing. Negative only on an
+Overdrawn plan, where it is the signature of money that is not there.
 _Avoid_: slippage, penalty, setback
+
+**Funded through savings**:
+Said of a goal savings have paid for. It means two different things by design:
+for a goal **in** the Comparison, that its own cut of savings covers the price —
+strict, and it cannot double-count. For a goal **outside** it, only that savings
+the plan has not already spent would cover it on its own — weaker, and true of
+several goals at once.
+_Avoid_: funded now, affordable, paid off
+
+**Savings left**:
+What survives the plan: the savings pot less every cut the Comparison hands
+out. The figure that keeps drawing on savings from reading as free money.
+_Avoid_: remaining balance, leftover, unspent
 
 **Overdrawn**:
 The state in which the Shares assigned across goals total more than the Monthly

@@ -10,7 +10,7 @@ ever leaves your browser — name a purchase, and Affordo answers in plain langu
 
 ---
 
-## The two answers
+## The three answers
 
 - **Time Cost** — how many hours and work days of your life the purchase costs. A
   "work day" is built from **your** contracted hours, not a fixed 8.
@@ -18,6 +18,12 @@ ever leaves your browser — name a purchase, and Affordo answers in plain langu
   12 months from what you have spare; **Cut to afford**, reachable if you trim
   expenses, with the percentage and the horizon that buys; or **Cannot**, no route
   at the current numbers. No ∞, no NaN, no negative durations.
+
+- **What wanting several things costs you.** Give each goal a **Share** of your
+  monthly surplus and Affordo tells you when each arrives and how much longer it
+  takes _because of the others_ — the **Delay**. It also says what each one
+  takes out of your savings, and what is left afterwards, so drawing on savings
+  never reads as free money.
 
 A purchase above your **Significance Threshold** (default 10% of monthly income,
 adjustable) is marked as such on its card.
@@ -89,10 +95,15 @@ Android app untouched ([ADR 0008](docs/adr/0008-isolated-pure-typescript-engine.
         └────────────────────────────────────────────────┘
 ```
 
-`evaluateReference(profile, goal) → ReferenceVerdict` is the one seam: give it a
-financial profile and a goal, and it hands back the Net Hourly Wage, the Time Cost in
-hours and days, and the four-way verdict. Derived values (Net Hourly Wage, Surplus) are
-computed _inside_ — the caller never supplies them.
+There are exactly two seams. `evaluateReference(profile, goal) → ReferenceVerdict`
+gives one goal, measured **alone**, the Net Hourly Wage, the Time Cost in hours and
+days, and the four-way verdict. `compare(profile, goals) → Comparison` divides one
+month between **all** of them and returns each goal's schedule, its Delay, and what
+the plan takes out of savings ([ADR 0024](docs/adr/0024-cross-goal-contention-opt-in-shares.md)).
+
+They sit side by side rather than one wrapping the other, and that is deliberate: a
+Comparison must never be able to change what a goal'"'"'s own verdict says. Derived values
+(Net Hourly Wage, Surplus) are computed _inside_ — the caller never supplies them.
 
 ---
 
@@ -124,8 +135,11 @@ Three seams, heaviest where the risk is ([ADR 0013](docs/adr/0013-three-layer-te
   be the worst bug, so coverage is deepest here.
 - **E2E (Playwright)** — journeys through the running app: the onboarding gate,
   saving/editing/removing goals, reset, and the guards no unit test can see — a
-  privacy check that no request leaves the origin, and a sweep that every
-  interactive target clears 24×24 ([ADR 0022](docs/adr/0022-fidelity-bar-stops-at-the-perceivable.md)).
+  privacy check that no third-party origin is contacted and that no figure you
+  type reaches the analytics beacons ([ADR 0025](docs/adr/0025-vercel-analytics-and-speed-insights.md)),
+  and a sweep that every interactive target clears 24×24 ([ADR 0022](docs/adr/0022-fidelity-bar-stops-at-the-perceivable.md)).
+- **Features (Cucumber)** — the journeys a stakeholder could confirm, written in
+  their language rather than in storage shapes or class names.
 - **UI components (Testing Library)** — the React glue and the reference's exact
   class strings, since jsdom applies no stylesheet and geometry is otherwise
   invisible to the suite.
@@ -137,8 +151,9 @@ survive tailwind-merge and appear in no source. A class-string comparison cannot
 see that; `getBoundingClientRect` can.
 
 ```bash
-npm test          # Vitest — 454 tests
-npm run test:e2e  # Playwright — 16 journeys
+npm test          # Vitest — 644 tests
+npm run test:e2e  # Playwright — 17 journeys
+npm run test:bdd  # Cucumber — 37 scenarios
 npm run typecheck # tsc --noEmit
 ```
 
@@ -149,7 +164,7 @@ npm run typecheck # tsc --noEmit
 ```
 src/
   engine/     reference-evaluate · reference-types  — pure TS, no framework imports
-  ui/         Router · OnboardingWizard · GoalsDashboard · SettingsScreen
+  ui/         Router · OnboardingWizard · GoalsDashboard · CompareScreen · SettingsScreen
   state/      profile · goals · theme stores and their providers
   styles/     Tailwind v4 @theme tokens
   main.tsx    React entry point

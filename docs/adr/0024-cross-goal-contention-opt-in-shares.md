@@ -81,3 +81,54 @@ before this feature — so the migration is a no-op by construction, and bumping
 the version would instead have destroyed every saved goal, since
 `goals-store.ts:53-58` discards rather than migrates on a version mismatch.
 Per ADR 0019 a stored `share` is range-checked on load, not merely type-checked.
+
+## Amendments from building it (#155–#159, #170, #172, #174)
+
+This ADR was written before any of it existed. Five things the implementation
+settled or changed, recorded here rather than left to be rediscovered from
+commit messages.
+
+**Delay is zero when a Share IS the whole disposable**, not merely when a goal
+is the only one sharing. Issue #156 said both and they disagree: one goal
+assigned €100 of a €2,500 surplus is not commanding all of it. `CONTEXT.md`
+governs — alone means the whole Monthly Disposable _and_ the whole savings pot.
+A lone under-assigned goal therefore has a positive Delay, which is useful
+rather than pedantic: it says the user is under-committing.
+
+**A negative Delay is possible and means something.** It is reachable only on
+an Overdrawn plan — a Share is at most the whole disposable unless the Shares
+overdraw it — so it is the signature of spending money that is not there, not a
+value to clamp away.
+
+**Savings are capped and re-offered, not merely divided.** A goal whose
+proportional cut exceeds its price cannot use the excess; stranding it there
+would make every other goal's date pessimistic for nothing. The allocation
+repeats until the pot is spent or nobody is short.
+
+**A goal outside the plan can still be reported as covered by savings** (#170),
+measured against what the plan has _not_ spent (#174). This is a deliberately
+weaker claim than the one made for a goal in the plan, and unlike that one it
+can be true of several goals at once — the same limitation this ADR already
+records for `/goals`, now visible on `/compare`. #172 makes its cost legible by
+stating what each goal takes and what survives the plan.
+
+**`fundedFromSavings` is stated by the engine, not inferred from `months === 0`**
+(#174). That sentinel meant two things — bought before the clock started, and,
+through a float pathology, the schedule went wrong — and the screen turns it
+into a sentence about where money came from. A goal funded instantly by an
+absurd Share is funded; it is not funded _from savings_, and only the engine can
+tell those apart.
+
+### The failure worth remembering
+
+Seven of these commits shipped without independent review, and the review, when
+it finally ran, found that a plan with prices near €10⁷ could report a goal at
+**month zero** — rendered "Funded through savings" — against a balance of
+nothing. One ulp of such a balance exceeds the settling epsilon, so a goal was
+never retired, a round was spent moving the clock nowhere, and the loop bound
+starved the next goal.
+
+The fix is in the engine. The lesson is in `comparison.test.ts`: a **conservation
+property** — `assigned × (last completion) = total priced − savings drawn` —
+catches it in one line and would have caught it the day it was written. Every
+other test in that file checks one example. Reach for the invariant first.
