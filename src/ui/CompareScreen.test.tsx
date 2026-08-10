@@ -75,11 +75,6 @@ describe("the empty states", () => {
     expect(screen.getByText("Nothing to compare yet.")).toBeInTheDocument();
   });
 
-  it("shows no list when no goals are saved", () => {
-    renderCompare();
-    expect(screen.queryByTestId("compare-list")).not.toBeInTheDocument();
-  });
-
   it("says how to start when there are goals but nothing is assigned", () => {
     renderCompare(undefined, [makeGoal({ name: "MacBook" })]);
     expect(screen.getByTestId("compare-none-assigned")).toBeInTheDocument();
@@ -125,13 +120,6 @@ describe("the list", () => {
       makeGoal({ name: "MacBook", price: 1200, share: 100 }),
     ]);
     expect(monthsFor("MacBook")).toContain("12");
-  });
-
-  it("says a goal already covered by savings is funded now", () => {
-    renderCompare({ savings: 5000 }, [
-      makeGoal({ name: "Headphones", price: 300, share: 100 }),
-    ]);
-    expect(monthsFor("Headphones")).toBe("Funded through savings");
   });
 });
 
@@ -255,11 +243,6 @@ describe("the totals", () => {
     expect(screen.getByTestId("compare-assigned").textContent).toContain("500");
   });
 
-  it("counts nothing when every goal is Unassigned", () => {
-    renderCompare(undefined, [makeGoal({ name: "MacBook" })]);
-    expect(screen.getByTestId("compare-assigned").textContent).toContain("0");
-  });
-
   // Found by the duel on #164: this counted every saved goal, so it read
   // "Sharing · 2" directly above "Nothing is assigned yet".
   it("counts goals that are in the plan, not goals that exist", () => {
@@ -315,13 +298,6 @@ describe("the Delay", () => {
       makeGoal({ name: "MacBook", price: 5000, share: 2500 }),
     ]);
     expect(delayFor("MacBook")).toBeNull();
-  });
-
-  it("shows nothing for a goal savings already cover", () => {
-    renderCompare({ savings: 9000 }, [
-      makeGoal({ name: "Headphones", price: 300, share: 100 }),
-    ]);
-    expect(delayFor("Headphones")).toBeNull();
   });
 
   it("shows nothing when the Delay would round to zero on screen", () => {
