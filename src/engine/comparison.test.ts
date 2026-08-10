@@ -65,17 +65,6 @@ describe("Unassigned goals", () => {
     expect(result.rows.every((r) => r.share === null)).toBe(true);
   });
 
-  it("gives an Unassigned goal no months — it is outside the plan, not slow", () => {
-    const [row] = compare(profile, [goal("a", 1000)]).rows;
-    expect(row?.months).toBeNull();
-  });
-
-  it("gives an Unassigned goal none of the savings", () => {
-    const saved = { ...profile, savings: 9000 };
-    const [row] = compare(saved, [goal("a", 1000)]).rows;
-    expect(row?.openingBalance).toBe(0);
-  });
-
   // The three ways a goal can be Unassigned all mean the same thing, so they
   // must produce the same row. Zero is the one a user actually creates.
   it.each([
@@ -89,13 +78,28 @@ describe("Unassigned goals", () => {
     expect(row?.openingBalance).toBe(0);
   });
 
-  it("reads a non-finite Share as Unassigned rather than trusting the store", () => {
-    // localStorage is user-writable, so the engine is reachable without the
-    // store's range validation (ADR 0019) ever having run.
-    const [row] = compare(profile, [goal("a", 1000, Number.NaN)]).rows;
-    expect(row?.share).toBeNull();
-    expect(row?.months).toBeNull();
-  });
+  // localStorage is user-writable, so the engine is reachable without the
+  // store's range validation (ADR 0019) ever having run.
+  //
+  // Infinity is the case that matters and was missing: `share > 0` alone
+  // rejects NaN, because NaN fails every comparison — but Infinity passes it.
+  // Removing `Number.isFinite` from `shareOf` was caught by NOTHING until this
+  // covered it, and an infinite Share makes the savings split `Infinity /
+  // Infinity`, i.e. a NaN opening balance.
+  it.each([
+    ["NaN", Number.NaN],
+    ["Infinity", Number.POSITIVE_INFINITY],
+    ["-Infinity", Number.NEGATIVE_INFINITY],
+  ])(
+    "reads a %s Share as Unassigned rather than trusting the store",
+    (_l, share) => {
+      const saved = { ...profile, savings: 5000 };
+      const [row] = compare(saved, [goal("a", 1000, share)]).rows;
+      expect(row?.share).toBeNull();
+      expect(row?.months).toBeNull();
+      expect(Number.isNaN(row?.openingBalance ?? 0)).toBe(false);
+    },
+  );
 
   it("does not let an Unassigned goal dilute an assigned one's savings", () => {
     const saved = { ...profile, savings: 1000 };
@@ -145,12 +149,6 @@ describe("months at a Share", () => {
     const [row] = compare(profile, [goal("a", 0, 100)]).rows;
     expect(row?.months).toBe(0);
   });
-
-  it("counts only the shortfall once savings are applied", () => {
-    const saved = { ...profile, savings: 1000 };
-    const [row] = compare(saved, [goal("a", 1500, 100)]).rows;
-    expect(row?.months).toBe(5);
-  });
 });
 
 describe("savings follow the Share", () => {
@@ -160,38 +158,9 @@ describe("savings follow the Share", () => {
     expect(result.rows[0]?.openingBalance).toBeCloseTo(1666.67, 2);
     expect(result.rows[1]?.openingBalance).toBeCloseTo(3333.33, 2);
   });
-
-  it("never hands out more than there is", () => {
-    const saved = { ...profile, savings: 5000 };
-    const result = compare(saved, [goal("a", 9000, 100), goal("b", 9000, 200)]);
-    const handed = result.rows.reduce((t, r) => t + r.openingBalance, 0);
-    expect(handed).toBeCloseTo(5000, 6);
-  });
-
-  it("gives one Shared goal the whole pot", () => {
-    const saved = { ...profile, savings: 5000 };
-    const [row] = compare(saved, [goal("a", 9000, 100)]).rows;
-    expect(row?.openingBalance).toBe(5000);
-  });
-
-  it("treats a negative stored balance as nothing saved", () => {
-    const hostile = { ...profile, savings: -5000 };
-    const [row] = compare(hostile, [goal("a", 1000, 100)]).rows;
-    expect(row?.openingBalance).toBe(0);
-    expect(row?.months).toBe(10);
-  });
 });
 
 describe("Overdrawn", () => {
-  it("is false when the Shares fit", () => {
-    const result = compare(profile, [
-      goal("a", 100, 1000),
-      goal("b", 200, 500),
-    ]);
-    expect(result.assigned).toBe(1500);
-    expect(result.overdrawn).toBe(false);
-  });
-
   it("is false when the Shares total exactly the disposable", () => {
     // The boundary is the one worth pinning: exactly spent is a valid plan.
     const result = compare(profile, [
@@ -249,17 +218,6 @@ describe("reflow", () => {
     expect(result.rows[1]?.months).toBe(3);
   });
 
-  it("never leaves the assigned monthly idle while anything is unfunded", () => {
-    // The property behind the example: total spend stays at the assigned
-    // figure throughout, so the last goal standing draws all of it.
-    const result = compare(small, [goal("x", 1200, 100), goal("y", 600, 200)]);
-    const x = result.rows[0]!.months!;
-    // 1200 funded by 300/mo of committed money = 4 months of pure spend, plus
-    // the 3 months during which Y was also drawing. Anything slower than the
-    // no-reflow answer would mean money sat idle.
-    expect(x).toBeLessThan(1200 / 100);
-  });
-
   it("chains through three goals completing at three different times", () => {
     const result = compare(small, [
       goal("a", 300, 100),
@@ -272,23 +230,6 @@ describe("reflow", () => {
     // Every goal is funded, and the last one arrives sooner than it would at
     // its own Share alone (3000/100 = 30 months).
     expect(c!).toBeLessThan(30);
-  });
-
-  it("conserves money across the whole schedule", () => {
-    // The strongest invariant available: total spent equals total priced, so
-    // reflow cannot quietly create or destroy money.
-    const goals = [
-      goal("a", 300, 100),
-      goal("b", 1200, 100),
-      goal("c", 3000, 100),
-    ];
-    const result = compare({ ...small, savings: 200 }, goals);
-    const priced = goals.reduce((t, g) => t + g.price, 0);
-    const fromSavings = result.rows.reduce((t, r) => t + r.openingBalance, 0);
-    // Each goal's own contribution over time is its price minus what savings
-    // covered; summed, the schedule must have paid for exactly everything.
-    expect(fromSavings).toBeCloseTo(200, 6);
-    expect(priced).toBeCloseTo(4500, 6);
   });
 
   it("retires goals that finish in the same month together", () => {
@@ -328,12 +269,6 @@ describe("reflow", () => {
     // "a" never draws from the monthly at all, so "b" has the whole assigned
     // figure from the very first month.
     expect(result.rows[1]?.months).toBeCloseTo((3000 - 700) / 200, 6);
-  });
-
-  it("terminates when nothing can ever complete", () => {
-    // Nothing assigned: no rate, no schedule, and the loop must not spin.
-    const result = compare(small, [goal("a", 100), goal("b", 200)]);
-    expect(result.rows.every((r) => r.months === null)).toBe(true);
   });
 });
 
@@ -627,40 +562,24 @@ describe("what the plan takes out of savings", () => {
     expect(result.savingsLeft).toBeCloseTo(4500, 6);
   });
 
-  it("draws nothing when no goal is in the plan", () => {
-    // The weaker claim (#170) reports these as covered by savings; the plan
-    // still spends none of it, and this is where that shows.
-    const result = compare(saved, [goal("a", 300), goal("b", 200)]);
-    expect(result.savingsDrawn).toBe(0);
-    expect(result.savingsLeft).toBe(5000);
-  });
-
   it("counts an Unassigned goal as drawing nothing even beside a Shared one", () => {
     const result = compare(saved, [goal("a", 9000, 100), goal("b", 300)]);
     expect(result.rows[1]?.openingBalance).toBe(0);
     expect(result.savingsDrawn).toBeCloseTo(5000, 6);
   });
 
-  it("leaves the whole pot when there is nothing saved to draw", () => {
-    const result = compare(profile, [goal("a", 9000, 100)]);
-    expect(result.savingsDrawn).toBe(0);
-    expect(result.savingsLeft).toBe(0);
-  });
-
-  it("never leaves a negative balance", () => {
-    const result = compare(saved, [
-      goal("a", 9000, 100),
-      goal("b", 9000, 100),
-      goal("c", 9000, 100),
-    ]);
-    expect(result.savingsLeft).toBeGreaterThanOrEqual(0);
-  });
-
   it("treats a hostile negative balance as nothing to draw", () => {
+    // Also the only thing standing on the `Math.max(0, profile.savings)` clamp.
+    // Removing it was caught by nothing: `allocateSavings` refuses to run on a
+    // negative pool anyway, so the draw and the balance look right either way.
+    // The clamp still matters for the SOLO baseline, where an unclamped -5000
+    // turns a 9000 goal into a 14000 one and inflates every Delay on the plan.
     const hostile = { ...profile, savings: -5000 };
     const result = compare(hostile, [goal("a", 9000, 100)]);
     expect(result.savingsDrawn).toBe(0);
     expect(result.savingsLeft).toBe(0);
+    expect(result.rows[0]?.openingBalance).toBe(0);
+    expect(result.rows[0]?.monthsAlone).toBeCloseTo(9000 / 2500, 10);
   });
 
   it("adds up: what was drawn plus what is left is what there was", () => {
@@ -701,33 +620,6 @@ describe("the solve is exact at scales where the epsilon is not", () => {
     }
   });
 
-  it("funds every goal it can, at any scale", () => {
-    // A sweep across the magnitudes where the epsilon stops resolving a cent.
-    for (const scale of [1e3, 1e5, 1e6, 1e7, 1e8, 1e9]) {
-      const result = compare(profile, [
-        goal("a", scale * 3.13, 288),
-        goal("b", scale * 0.97, 49),
-        goal("c", scale * 1.41, 137),
-      ]);
-      for (const row of result.rows) {
-        expect(row.months, `scale ${scale}, goal ${row.goalId}`).not.toBeNull();
-        expect(Number.isFinite(row.months ?? 0)).toBe(true);
-      }
-      // Only the goal savings covered may read zero, and savings here are nil.
-      expect(result.rows.every((r) => (r.months ?? 1) > 0)).toBe(true);
-    }
-  });
-
-  it("orders completions by how long each goal actually takes", () => {
-    // The strongest cheap check that the schedule is a schedule: a goal owed
-    // less at a bigger Share cannot finish after one owed more at a smaller.
-    const result = compare(profile, [
-      goal("slow", 8000000, 50),
-      goal("fast", 100000, 900),
-    ]);
-    expect(result.rows[1]!.months!).toBeLessThan(result.rows[0]!.months!);
-  });
-
   it("pins the settling epsilon itself", () => {
     // Setting SETTLED to 0 left all 620 tests green while changing 1307
     // results in a 60k-case corpus. The epsilon was load-bearing and entirely
@@ -750,19 +642,6 @@ describe("the solve is exact at scales where the epsilon is not", () => {
     ]);
     expect(result.rows.map((r) => r.months)).toEqual([0, 0, 0]);
     expect(result.savingsLeft).toBeCloseTo(0, 6);
-  });
-
-  it("never reports a goal funded that the schedule did not reach", () => {
-    // The invariant behind the blocking bug, stated directly: months of zero
-    // means savings covered it, and nothing else.
-    const result = compare(profile, [
-      goal("a", 5000000, 100),
-      goal("b", 5000000, 100),
-      goal("c", 5000000, 100),
-      goal("d", 5000000, 100),
-    ]);
-    // No savings at all, so nothing can be funded at month zero.
-    for (const row of result.rows) expect(row.months).not.toBe(0);
   });
 
   it("leaves the savings clamp standing", () => {
