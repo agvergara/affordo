@@ -5,8 +5,8 @@ purchase and reframes the price as something you actually feel: the **Time Cost*
 hours and days of your own working life. A €1.200 laptop isn't an abstract number;
 it's _three weeks of work_.
 
-It's a privacy-first, client-only web app. You type what you earn and spend — nothing
-ever leaves your browser — name a purchase, and Affordo answers in plain language.
+It's a privacy-first, client-only web app. You type what you earn and spend — none of
+it leaves your browser — name a purchase, and Affordo answers in plain language.
 
 ---
 
@@ -64,7 +64,9 @@ the network, so it holds whether or not the beacons are reachable.
 | Money        | Float currency units                    | What the reference computes in; the v1 integer-cents model was superseded ([ADR 0017](docs/adr/0017-money-as-floating-point-currency-units.md)) |
 | Persistence  | Versioned `localStorage`, plain JSON    | Client-only, with a `schemaVersion` so future migrations don't hurt                                                                             |
 | Unit tests   | Vitest + Testing Library                | Near-exhaustive on the engine, thin on the UI                                                                                                   |
-| E2E          | Playwright                              | Real-browser journeys for the paths that matter                                                                                                 |
+| E2E          | Playwright                              | The invariants a user never articulates: geometry, contrast, hit targets, privacy                                                               |
+| Journeys     | Cucumber                                | The paths a stakeholder could confirm, written in their language                                                                                |
+| Analytics    | Vercel Web Analytics + Speed Insights   | Same-origin beacons carrying paths and timings, never a figure you typed ([ADR 0025](docs/adr/0025-vercel-analytics-and-speed-insights.md))     |
 
 React stays the only _runtime_ dependency — Tailwind is a build-time tool that compiles
 to plain CSS and ships no JavaScript. Its config is deliberately minimal (v4's CSS-first
@@ -102,7 +104,7 @@ month between **all** of them and returns each goal's schedule, its Delay, and w
 the plan takes out of savings ([ADR 0024](docs/adr/0024-cross-goal-contention-opt-in-shares.md)).
 
 They sit side by side rather than one wrapping the other, and that is deliberate: a
-Comparison must never be able to change what a goal'"'"'s own verdict says. Derived values
+Comparison must never be able to change what a goal's own verdict says. Derived values
 (Net Hourly Wage, Surplus) are computed _inside_ — the caller never supplies them.
 
 ---
@@ -127,12 +129,17 @@ npm run preview   # serve the built bundle
 
 ## Testing
 
-Three seams, heaviest where the risk is ([ADR 0013](docs/adr/0013-three-layer-testing-e2e-in-v1.md)):
+Four suites, heaviest where the risk is ([ADR 0013](docs/adr/0013-three-layer-testing-e2e-in-v1.md)
+set out three; the Cucumber features came later). Putting a test in the wrong one is
+how it ends up asserting nothing, so the split is deliberate:
 
-- **Engine (Vitest)** — every case `evaluateReference` surfaces: all four verdicts,
-  the 12-month stretch boundary, the expense-cut path, 12/14 payment periods,
-  Significance-Threshold boundaries, and the guards against ∞/NaN. Wrong money would
-  be the worst bug, so coverage is deepest here.
+- **Engine (Vitest)** — every case the two seams surface: all four verdicts, the
+  12-month stretch boundary, the expense-cut path, 12/14 payment periods,
+  Significance-Threshold boundaries, and — for the Comparison — reflow, the savings
+  cascade, Overdrawn plans, and the guards against ∞/NaN. Wrong money would be the
+  worst bug, so coverage is deepest here. Conservation is pinned as a **property**
+  across a thousand generated plans rather than as another example; that is what
+  catches a schedule going wrong at a magnitude nobody thought to write a case for.
 - **E2E (Playwright)** — journeys through the running app: the onboarding gate,
   saving/editing/removing goals, reset, and the guards no unit test can see — a
   privacy check that no third-party origin is contacted and that no figure you
@@ -163,18 +170,30 @@ npm run typecheck # tsc --noEmit
 
 ```
 src/
-  engine/     reference-evaluate · reference-types  — pure TS, no framework imports
-  ui/         Router · OnboardingWizard · GoalsDashboard · CompareScreen · SettingsScreen
-  state/      profile · goals · theme stores and their providers
-  styles/     Tailwind v4 @theme tokens
-  main.tsx    React entry point
-e2e/          Playwright journeys
+  engine/     evaluateReference · compare  — pure TS, no framework imports
+  ui/         Router · OnboardingWizard · GoalsDashboard · CompareScreen ·
+              SettingsScreen · GoalCard · GoalDialog · AppHeader · Toast
+  state/      profile · goals · theme stores, and the providers over them
+  styles/     Tailwind v4 @theme tokens (theme.css) and the contrast tests
+  main.tsx    React entry point — mounts the router and the Vercel beacons
+e2e/          Playwright: geometry, contrast, hit targets, privacy
+features/     Cucumber: the user journeys, in stakeholder language
+public/       favicon (an Affordo mark, not the reference's — ADR 0026)
 docs/
-  prd/        product requirements (frozen, per release)
-  adr/        22 architecture decision records
+  prd/                 frozen product requirements, one per release
+  adr/                 architecture decision records; superseded ones kept
+  affordo-context.md   the reference extraction — read its coverage table first
+  reference-snapshot/  the deleted reference repo, verbatim. Evidence, not source
 CONTEXT.md    the glossary / ubiquitous language
-AGENTS.md     working agreements for agents on this repo
+AGENTS.md     working agreements for anyone — human or agent — changing this repo
 ```
+
+Two directories are easy to misread. **`docs/reference-snapshot/`** is an archive of
+a repository that no longer exists; it is excluded from `tsc` and `prettier` on
+purpose, because reformatting it would destroy the one property that makes it useful.
+And **`features/`** is not a duplicate of `e2e/` — the split is that a feature
+describes behaviour a stakeholder could confirm, while an e2e test measures things a
+user never articulates.
 
 ---
 
@@ -187,10 +206,19 @@ from integer cents to float currency units. `CONTEXT.md` lists what was retired 
 what replaced it; `docs/prd/v1-affordability-calculator.md` is kept as the frozen
 record of the app this one replaced.
 
+**v1.1 — Comparison** shipped on top of that: Shares, Delay, reflow, Overdrawn plans,
+and what the plan takes out of savings ([PRD](docs/prd/v1.1-comparison.md),
+[ADR 0024](docs/adr/0024-cross-goal-contention-opt-in-shares.md)). The reference has
+no such screen, so it is the first surface built to
+[ADR 0023](docs/adr/0023-net-new-surface-governed-by-reference-idiom.md) — composed
+only from primitives already extracted from the reference, never invented.
+
 Known and deliberate: the reference palette fails WCAG AA in four places, and those
 failures are reproduced and pinned as expected failures. See
 [ADR 0022](docs/adr/0022-fidelity-bar-stops-at-the-perceivable.md) for what may
-diverge from the reference and what may not.
+diverge from the reference and what may not. Also deliberate, and recorded in ADR
+0024 so nobody "fixes" it: `/goals` and `/compare` disagree. A goal's card shows what
+it would take **alone**; the Comparison shows what it takes given the others.
 
 ---
 
@@ -205,6 +233,9 @@ diverge from the reference and what may not.
   it is not evidence about the reference.**
 - [**`docs/prd/`**](docs/prd) — frozen PRDs, one per release. v1 describes the app
   this one replaced.
-- [**`docs/adr/`**](docs/adr) — the 22 decisions that shaped the build, superseded
-  ones kept and marked.
+- [**`docs/adr/`**](docs/adr) — the decisions that shaped the build, superseded ones
+  kept and marked rather than deleted.
+- [**`docs/reference-snapshot/`**](docs/reference-snapshot) — the reference repo,
+  archived verbatim before it was deleted. Where it and the extraction disagree, the
+  snapshot wins.
 - [**`AGENTS.md`**](AGENTS.md) — how agents are expected to work in this repo.
