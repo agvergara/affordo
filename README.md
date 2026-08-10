@@ -83,16 +83,16 @@ against a single function in milliseconds, and the same engine could power a fut
 Android app untouched ([ADR 0008](docs/adr/0008-isolated-pure-typescript-engine.md)).
 
 ```
-        ┌────────────────────────────────────────────────┐
-  UI    │  Router · wizard · goals · settings  (React)     │
- src/ui │  state/ holds profile · goals · theme            │
-        └────────────────────────┬───────────────────────┘
-                                  │  evaluateReference(profile, goal)
-        ┌────────────────────────▼───────────────────────┐
- ENGINE │  evaluateReference(…) → ReferenceVerdict         │
- src/   │  pure TypeScript · money = float currency units  │
- engine │  zero framework imports · reference-types        │
-        └────────────────────────────────────────────────┘
+        ┌────────────────────────────────────────────────────┐
+  UI    │  Router · wizard · goals · compare · settings       │
+ src/ui │  state/ holds profile · goals · theme               │
+        └───────────┬─────────────────────────┬──────────────┘
+                    │  one goal, alone        │  all goals, one month
+        ┌───────────▼─────────────────────────▼──────────────┐
+ ENGINE │  evaluateReference(…)  →  ReferenceVerdict          │
+ src/   │  compare(…)            →  Comparison                │
+ engine │  pure TypeScript · float currency units · no React  │
+        └────────────────────────────────────────────────────┘
 ```
 
 There are exactly two seams. `evaluateReference(profile, goal) → ReferenceVerdict`
