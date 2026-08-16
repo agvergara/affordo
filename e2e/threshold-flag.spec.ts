@@ -126,6 +126,15 @@ test("the two states are painted differently in dark mode too", async ({
   const calm = page.getByText("Significance threshold: 10%", { exact: true });
   await expect(breached).toBeVisible();
 
+  // Prove the theme actually flipped before measuring anything under it.
+  // Without this the test is self-satisfying: `emulateMedia` only asks, and
+  // the app answers through ThemeProvider's OS fallback (#73). Break that
+  // fallback and the page renders LIGHT, where the two captions are also well
+  // separated — so every assertion below would pass while the theme this test
+  // is named for went unmeasured. A duel reviewer confirmed it on #182 by
+  // stubbing the fallback out.
+  await expect(page.locator("html")).toHaveClass(/(^|\s)dark(\s|$)/);
+
   // Not a direction assertion — dark inverts which end is "darker". The claim
   // is that a real, measurable step exists at all, which 0.04 of contrast
   // was not.
