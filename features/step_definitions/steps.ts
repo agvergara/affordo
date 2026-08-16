@@ -285,6 +285,33 @@ Then(
   },
 );
 
+/**
+ * The breach in words (#181, ADR 0027). Reading the caption's text keeps this
+ * file's rule intact — a stakeholder can confirm what a card *says*, and the
+ * colour and weight that say it alongside are measured in
+ * `e2e/threshold-flag.spec.ts` where a stylesheet exists.
+ *
+ * That the wording carries the state at all is the point of the ADR: the
+ * reference signalled it by hue alone, and a scenario like this one could not
+ * have been written against it.
+ */
+Then(
+  "the goal {string} is flagged above my significance threshold",
+  async function (this: AffordoWorld, name: string) {
+    const card = this.page.getByRole("article").filter({ hasText: name });
+    await expect(card).toContainText("Above significance threshold");
+  },
+);
+
+Then(
+  "the goal {string} is not flagged above my significance threshold",
+  async function (this: AffordoWorld, name: string) {
+    const card = this.page.getByRole("article").filter({ hasText: name });
+    await expect(card).toContainText("Significance threshold");
+    await expect(card).not.toContainText("Above significance threshold");
+  },
+);
+
 Then(
   "the goal still shows its 2020 creation date",
   async function (this: AffordoWorld) {

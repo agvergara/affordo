@@ -28,6 +28,14 @@ Feature: Weighing purchases against my working life
     When I add a goal "House" priced 500000
     Then the goal "House" shows the verdict "Cannot"
 
+  Scenario: A goal that costs more than my threshold says so
+    When I add a goal "Laptop" priced 300
+    Then the goal "Laptop" is flagged above my significance threshold
+
+  Scenario: A goal costing exactly my threshold is not flagged
+    When I add a goal "Headphones" priced 200
+    Then the goal "Headphones" is not flagged above my significance threshold
+
   Scenario: Editing a goal updates it in place
     Given I have a goal "Down payment" priced 20000
     When I rename it to "House deposit" and reprice it to 25000
