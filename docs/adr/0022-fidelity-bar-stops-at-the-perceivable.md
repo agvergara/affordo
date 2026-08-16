@@ -2,6 +2,16 @@
 
 **Status:** Accepted. Amends the fidelity bar in PRD [#39](https://github.com/agvergara/affordo/issues/39). Decided on [#145](https://github.com/agvergara/affordo/issues/145).
 
+> **Case 4 is partially superseded by [ADR 0027](0027-the-breach-signal-is-measured-as-a-transition.md).**
+> The goal card's above-threshold caption named in the case-4 table below is no
+> longer `text-accent`; it is `font-bold text-foreground` and says "Above
+> significance threshold". Case 4 measured each state's contrast against its
+> background and never the *change between two states*, which is the only
+> quantity a flag has — measured that way the accent moved the wrong way
+> (7.44:1 → 3.10:1 light) and not at all in dark (Δ0.04). **Everywhere else,
+> including the wizard kicker, every primary button hover and the `cutToAfford`
+> badge, case 4 stands and the accent failures still ship.**
+
 PRD #39 sets the bar for this rebuild:
 
 > **Fidelity bar:** pixel-for-pixel and behaviour-for-behaviour with the reference. Nothing is improved, simplified, modernized, or tidied. If it looks like a mistake, it is a requirement.
@@ -33,8 +43,8 @@ Colour is not incidental to this reference; it is most of what the rebuild is _f
 | pairing                              | ratio  | AA  | where                                           |
 | ------------------------------------ | ------ | --- | ----------------------------------------------- |
 | `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge |
-| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker, goal-card caption — 10px mono    |
-| `--accent` as text on `--card`       | 3.1:1  | 4.5 | as above                                        |
+| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027) |
+| `--accent` as text on `--card`       | 3.1:1  | 4.5 | wizard kicker (the goal-card caption left accent in ADR 0027) |
 | white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                   |
 
 The accent failures are **light-only** — the same pairings clear AA under `.dark` — and light is the default theme.
