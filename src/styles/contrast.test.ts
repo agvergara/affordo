@@ -462,3 +462,71 @@ describe("the retired progressive-disclosure layer stays retired", () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * The breach transition (#181, ADR 0027).
+ *
+ * Every assertion above measures ONE state's legibility — text against its
+ * background. That is the only quantity ADR 0022 case 4 ever measured, and it
+ * cannot see whether a flag flags. The goal card's threshold caption swaps
+ * class on breach, so what a user perceives is the DELTA between two states,
+ * and the reference's delta was worthless: 7.44:1 -> 3.10:1 in light, so the
+ * alarm read fainter than the calm, and 7.16:1 -> 7.12:1 in dark, luminance-
+ * identical. Case 4 waved dark through as "light-only" because both states
+ * clear AA there — correct about legibility, silent about detectability.
+ *
+ * These are guards on the transition, not on either endpoint. The pinned
+ * expected failures above stay exactly as they are: this file still asserts the
+ * app is inaccessible where the reference is, because those numbers are the
+ * finding (ADR 0022) and none of them are what this measures.
+ */
+describe("the above-threshold caption's transition", () => {
+  /** The two classes GoalCard.tsx swaps between, as their tokens. */
+  const CALM = "--muted-foreground";
+  const BREACHED = "--foreground";
+
+  it.each([
+    [":root", "light"],
+    [".dark", "dark"],
+  ])("raises contrast rather than lowering it in %s (%s)", (selector) => {
+    const t = resolver(selector);
+    const card = toSrgb(t("--card"));
+    const calm = contrast(toSrgb(t(CALM)), card);
+    const breached = contrast(toSrgb(t(BREACHED)), card);
+
+    expect(
+      breached,
+      `the breached caption (${breached.toFixed(2)}:1) must not be fainter than the calm one (${calm.toFixed(2)}:1)`,
+    ).toBeGreaterThanOrEqual(calm);
+  });
+
+  it.each([
+    [":root", "light"],
+    [".dark", "dark"],
+  ])("is a visible step, not a hue swap, in %s (%s)", (selector) => {
+    // The dark theme is why this is a separate assertion from the one above.
+    // `--accent` there sat 0.04 from `--muted-foreground` and passed every
+    // ratio test in this file, because a pure hue change at matched luminance
+    // is invisible to a contrast ratio and nearly invisible on 10px type.
+    const t = resolver(selector);
+    const card = toSrgb(t("--card"));
+    const step =
+      contrast(toSrgb(t(BREACHED)), card) - contrast(toSrgb(t(CALM)), card);
+
+    expect(step, `only ${step.toFixed(2)} of contrast separates the two states`)
+      .toBeGreaterThan(1);
+  });
+
+  it("is not carried by hue alone — the words differ too", () => {
+    // WCAG 1.4.1: colour must never be the only channel. The card says
+    // "Above significance threshold" vs "Significance threshold", which is the
+    // one channel that survives greyscale, colour blindness and a 10px cap
+    // height all at once. Read from source because jsdom renders no stylesheet
+    // and this file measures tokens, not DOM.
+    const card = readFileSync(
+      resolve(__dirname, "..", "ui", "GoalCard.tsx"),
+      "utf8",
+    );
+    expect(card).toContain("Above significance");
+  });
+});
