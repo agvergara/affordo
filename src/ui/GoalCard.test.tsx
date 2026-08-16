@@ -141,34 +141,52 @@ describe("GoalCard threshold meter caption", () => {
 
 describe("GoalCard threshold caption", () => {
   it("names the profile's significance threshold beside the percentage", () => {
-    renderCard(makeGoal({ price: 500 }), { threshold: 15 });
+    // 200 of a 2000 salary is 10%, comfortably under the 15% threshold. This
+    // fixture used to be `price: 500` — 25%, a breach — and still passed,
+    // because both states rendered the same words. Splitting the two captions
+    // (#181) is what exposed it: the test named the calm caption and had never
+    // once rendered it.
+    renderCard(makeGoal({ price: 200 }), { threshold: 15 });
     expect(screen.getByText("Significance threshold: 15%")).toBeInTheDocument();
   });
 
-  // The caption's colour IS the behaviour — significance "visually flagged"
-  // (#61, user story 39). jsdom exposes a colour only through the utility class
-  // that sets it, so this follows the one exception VerdictBadge established
-  // rather than inventing a second kind.
+  // The breach says so in words, not only in colour (#181, ADR 0027).
   //
-  // NOTE: the accent lands on the THRESHOLD caption, not the percent caption.
-  // The dossier's literal extraction (§5) is
-  // `className={v.aboveThreshold ? "text-accent" : "text-muted-foreground"}` on
-  // the right-hand span, while the percent span is permanently muted. #61's AC
-  // and PRD story 39 read the other way round; the dossier wins on exact values.
-  it("accents the threshold caption when the purchase is above threshold", () => {
+  // The reference flags it by hue alone — `v.aboveThreshold ? "text-accent" :
+  // "text-muted-foreground"` (snapshot GoalCard.tsx:59) — and measured on #180
+  // that hue carries no signal: the light-theme transition runs 7.44:1 → 3.10:1,
+  // so the flag makes the caption FAINTER than its calm state, and the dark
+  // transition is 7.16:1 → 7.12:1, luminance-identical. A word survives both.
+  it("says the purchase is above the threshold, in words", () => {
     // 300 of a 2000 salary is 15%, past the 10% threshold.
     renderCard(makeGoal({ price: 300 }), { salary: 2000, threshold: 10 });
-    expect(screen.getByText("Significance threshold: 10%")).toHaveClass(
-      "text-accent",
-    );
+    expect(
+      screen.getByText("Above significance threshold: 10%"),
+    ).toBeInTheDocument();
   });
 
-  it("leaves the threshold caption muted at exactly the threshold", () => {
-    // 200 of 2000 is exactly 10% — `aboveThreshold` is strictly greater-than.
+  // jsdom exposes a colour only through the utility class that sets it, so this
+  // follows the one exception VerdictBadge established. The class is all the
+  // unit layer can see — that both classes were always present and correct is
+  // exactly why nothing failed while the flag was invisible. The pixels are
+  // proven in e2e/threshold-flag.spec.ts, the ratios in styles/contrast.test.ts.
+  it("weights and darkens the caption when the purchase is above threshold", () => {
+    renderCard(makeGoal({ price: 300 }), { salary: 2000, threshold: 10 });
+    const caption = screen.getByText("Above significance threshold: 10%");
+    expect(caption).toHaveClass("font-bold");
+    expect(caption).toHaveClass("text-foreground");
+    expect(caption).not.toHaveClass("text-accent");
+  });
+
+  it("leaves the threshold caption calm at exactly the threshold", () => {
+    // 200 of 2000 is exactly 10% — `aboveThreshold` is strictly greater-than,
+    // and #181 does not move that boundary. The whole calm state is pinned
+    // here, words included: "Significance threshold: 10%" does not match the
+    // breached caption, so this fails if the boundary ever loosens to `>=`.
     renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
-    expect(screen.getByText("Significance threshold: 10%")).toHaveClass(
-      "text-muted-foreground",
-    );
+    const caption = screen.getByText("Significance threshold: 10%");
+    expect(caption).toHaveClass("text-muted-foreground");
+    expect(caption).not.toHaveClass("font-bold");
   });
 });
 

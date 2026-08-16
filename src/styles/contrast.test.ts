@@ -362,9 +362,28 @@ describe("AA failures inherited from the reference", () => {
     "accent used as text on %s also fails in light, at ~%s:1",
     (surface, approx) => {
       // §3 (line 202) gives accent four roles, three of them text on a canvas
-      // rather than a filled surface — `text-accent` is on the wizard's kicker
-      // and the goal card's above-threshold caption, both 10px mono. The filled
-      // -surface row above understated the blast radius.
+      // rather than a filled surface. The filled-surface row above understated
+      // the blast radius.
+      //
+      // The two surfaces are no longer equally live, and the difference is
+      // worth stating precisely because an earlier revision of this comment got
+      // it wrong in both directions:
+      //
+      // - `--background`: still real. `text-accent` sits on the wizard's
+      //   kicker (`OnboardingWizard.tsx:213`), 10px mono, on `bg-background`.
+      // - `--card`: no live site. `bg-card` appears once in shipped source
+      //   (`GoalCard.tsx:99`) and ADR 0027 moved that card's above-threshold
+      //   caption off accent, because measured as a TRANSITION rather than as a
+      //   ratio the hue carried no signal (7.44:1 -> 3.10:1 light, 7.16:1 ->
+      //   7.12:1 dark).
+      //
+      // Both ratios stay asserted, but be precise about what that buys. These
+      // assertions read two token values and compare them: they fire if the
+      // PALETTE moves, and never if a USAGE appears. Putting `text-accent`
+      // back on a `bg-card` surface reintroduces the pairing at 3.09:1 and
+      // leaves all 45 tests in this file green — verified by mutation, after a
+      // comment here claimed the opposite. A usage guard would have to read the
+      // component tree, which nothing in this file does today (#183).
       const light = resolver(":root");
       const ratio = contrast(toSrgb(light("--accent")), toSrgb(light(surface)));
       expect(ratio).toBeLessThan(4.5);
@@ -460,5 +479,115 @@ describe("the retired progressive-disclosure layer stays retired", () => {
       graph.filter((f) => /([^/]+)\.(ts|tsx)$/.exec(f)?.[1] === name),
       `a module named ${name} is reachable from main.tsx again`,
     ).toEqual([]);
+  });
+});
+
+/**
+ * The breach transition (#181, ADR 0027).
+ *
+ * Every assertion above measures ONE state's legibility — text against its
+ * background. That is the only quantity ADR 0022 case 4 ever measured, and it
+ * cannot see whether a flag flags. The goal card's threshold caption swaps
+ * class on breach, so what a user perceives is the DELTA between two states,
+ * and the reference's delta was worthless: 7.44:1 -> 3.10:1 in light, so the
+ * alarm read fainter than the calm, and 7.16:1 -> 7.12:1 in dark, luminance-
+ * identical. Case 4 waved dark through as "light-only" because both states
+ * clear AA there — correct about legibility, silent about detectability.
+ *
+ * These are guards on the transition, not on either endpoint. The pinned
+ * expected failures above stay exactly as they are: this file still asserts the
+ * app is inaccessible where the reference is, because those numbers are the
+ * finding (ADR 0022) and none of them are what this measures.
+ */
+describe("the above-threshold caption's transition", () => {
+  /**
+   * The two tokens the card ACTUALLY swaps between, read out of its source.
+   *
+   * These were hard-coded literals in the first version of this block, and a
+   * duel reviewer showed that made the whole guard inert: reverting
+   * `GoalCard.tsx` to `text-accent` left all 45 tests in this file green,
+   * because the guard was measuring two constants that no longer described the
+   * component. It was measuring its own opinion.
+   *
+   * That is the exact failure this file exists to prevent, one level up — a
+   * guard that cannot fail is worth nothing, whatever it asserts. Deriving the
+   * tokens from the ternary means a change to the component's colours either
+   * moves these numbers or breaks the parse, and both are loud.
+   *
+   * Reading source is the same narrow exception the `VerdictBadge` assertion
+   * above already takes, and for the same reason: it identifies WHICH colours
+   * to measure. It asserts nothing about rendered output.
+   */
+  function captionTokens(): { calm: string; breached: string } {
+    const source = readFileSync(
+      resolve(__dirname, "..", "ui", "GoalCard.tsx"),
+      "utf8",
+    );
+    const ternary =
+      /verdict\.aboveThreshold\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"/.exec(source);
+    if (!ternary) {
+      throw new Error(
+        "could not find the threshold caption's className ternary in GoalCard.tsx — " +
+          "if the card now picks its caption colour another way, this guard must follow it",
+      );
+    }
+    const tokenOf = (classes: string, which: string): string => {
+      const m = /(?:^|\s)text-([a-z-]+)/.exec(classes);
+      if (!m) throw new Error(`no text-* utility in the ${which} branch`);
+      return `--${m[1]}`;
+    };
+    return {
+      breached: tokenOf(ternary[1] ?? "", "breached"),
+      calm: tokenOf(ternary[2] ?? "", "calm"),
+    };
+  }
+
+  const { calm: CALM, breached: BREACHED } = captionTokens();
+
+  it.each([
+    [":root", "light"],
+    [".dark", "dark"],
+  ])("raises contrast rather than lowering it in %s (%s)", (selector) => {
+    const t = resolver(selector);
+    const card = toSrgb(t("--card"));
+    const calm = contrast(toSrgb(t(CALM)), card);
+    const breached = contrast(toSrgb(t(BREACHED)), card);
+
+    expect(
+      breached,
+      `the breached caption (${breached.toFixed(2)}:1) must not be fainter than the calm one (${calm.toFixed(2)}:1)`,
+    ).toBeGreaterThanOrEqual(calm);
+  });
+
+  it.each([
+    [":root", "light"],
+    [".dark", "dark"],
+  ])("is a visible step, not a hue swap, in %s (%s)", (selector) => {
+    // The dark theme is why this is a separate assertion from the one above.
+    // `--accent` there sat 0.04 from `--muted-foreground` and passed every
+    // ratio test in this file, because a pure hue change at matched luminance
+    // is invisible to a contrast ratio and nearly invisible on 10px type.
+    const t = resolver(selector);
+    const card = toSrgb(t("--card"));
+    const step =
+      contrast(toSrgb(t(BREACHED)), card) - contrast(toSrgb(t(CALM)), card);
+
+    expect(
+      step,
+      `only ${step.toFixed(2)} of contrast separates the two states`,
+    ).toBeGreaterThan(1);
+  });
+
+  it("is not carried by hue alone — the words differ too", () => {
+    // WCAG 1.4.1: colour must never be the only channel. The card says
+    // "Above significance threshold" vs "Significance threshold", which is the
+    // one channel that survives greyscale, colour blindness and a 10px cap
+    // height all at once. Read from source because jsdom renders no stylesheet
+    // and this file measures tokens, not DOM.
+    const card = readFileSync(
+      resolve(__dirname, "..", "ui", "GoalCard.tsx"),
+      "utf8",
+    );
+    expect(card).toContain("Above significance");
   });
 });

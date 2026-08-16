@@ -2,6 +2,16 @@
 
 **Status:** Accepted. Amends the fidelity bar in PRD [#39](https://github.com/agvergara/affordo/issues/39). Decided on [#145](https://github.com/agvergara/affordo/issues/145).
 
+> **Case 4 is partially superseded by [ADR 0027](0027-the-breach-signal-is-measured-as-a-transition.md).**
+> The goal card's above-threshold caption named in the case-4 table below is no
+> longer `text-accent`; it is `font-bold text-foreground` and says "Above
+> significance threshold". Case 4 measured each state's contrast against its
+> background and never the _change between two states_, which is the only
+> quantity a flag has — measured that way the accent moved the wrong way
+> (7.44:1 → 3.10:1 light) and not at all in dark (Δ0.04). **Everywhere else,
+> including the wizard kicker, every primary button hover and the `cutToAfford`
+> badge, case 4 stands and the accent failures still ship.**
+
 PRD #39 sets the bar for this rebuild:
 
 > **Fidelity bar:** pixel-for-pixel and behaviour-for-behaviour with the reference. Nothing is improved, simplified, modernized, or tidied. If it looks like a mistake, it is a requirement.
@@ -30,14 +40,32 @@ Case 1 also carries a concrete cost the others do not: **123 assertions** (113 u
 
 Colour is not incidental to this reference; it is most of what the rebuild is _for_. The failures are visible to everyone and central to the design:
 
-| pairing                              | ratio  | AA  | where                                           |
-| ------------------------------------ | ------ | --- | ----------------------------------------------- |
-| `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge |
-| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker, goal-card caption — 10px mono    |
-| `--accent` as text on `--card`       | 3.1:1  | 4.5 | as above                                        |
-| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                   |
+| pairing                              | ratio  | AA  | where                                                       |
+| ------------------------------------ | ------ | --- | ----------------------------------------------------------- |
+| `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge             |
+| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027) |
+| `--accent` as text on `--card`       | 3.1:1  | 4.5 | **no live site since ADR 0027** — see note below            |
+| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                               |
 
 The accent failures are **light-only** — the same pairings clear AA under `.dark` — and light is the default theme.
+
+**On the `--card` row.** `bg-card` occurs in exactly one place in shipped source
+(`GoalCard.tsx:99`, the goal card itself), and ADR 0027 moved that card's only
+accent text off the token. `text-accent` as text now survives in one place —
+the wizard kicker, `OnboardingWizard.tsx:213` — and that sits on
+`bg-background`, which is the row above. So this row currently describes a
+pairing with **no live site**.
+
+Its assertion in `contrast.test.ts` is kept anyway, but be precise about what
+that assertion does: it reads two token values and compares them, so it fires
+if the **palette** moves and never if a **usage** appears. Putting
+`text-accent` back on a `bg-card` surface reintroduces this exact pairing at
+3.09:1 and leaves all 45 tests in that file green — verified by mutation. It is
+a palette guard, not a usage guard, and no usage guard exists (#183).
+
+Two earlier revisions of this paragraph got it wrong: one reattributed the row
+to the wizard kicker, which was simply false, and one called the retained
+assertion a guard against reintroduction, which overstated what it can see.
 
 This is the uncomfortable half of the decision and is recorded as such rather than justified away. `src/styles/contrast.test.ts` pins each ratio as an **expected failure**, so the suite asserts the app is inaccessible here rather than quietly passing. If this project ever takes on an accessibility commitment, accent-as-text at 2.96:1 on 10px type is the first thing that has to give.
 
