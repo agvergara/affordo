@@ -377,9 +377,13 @@ describe("AA failures inherited from the reference", () => {
       //   ratio the hue carried no signal (7.44:1 -> 3.10:1 light, 7.16:1 ->
       //   7.12:1 dark).
       //
-      // Both ratios stay asserted. The `--card` one is now a guard against the
-      // pairing being reintroduced at the same bad ratio, not a description of
-      // somewhere you can go and look.
+      // Both ratios stay asserted, but be precise about what that buys. These
+      // assertions read two token values and compare them: they fire if the
+      // PALETTE moves, and never if a USAGE appears. Putting `text-accent`
+      // back on a `bg-card` surface reintroduces the pairing at 3.09:1 and
+      // leaves all 45 tests in this file green — verified by mutation, after a
+      // comment here claimed the opposite. A usage guard would have to read the
+      // component tree, which nothing in this file does today (#183).
       const light = resolver(":root");
       const ratio = contrast(toSrgb(light("--accent")), toSrgb(light(surface)));
       expect(ratio).toBeLessThan(4.5);

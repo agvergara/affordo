@@ -54,10 +54,18 @@ The accent failures are **light-only** — the same pairings clear AA under `.da
 accent text off the token. `text-accent` as text now survives in one place —
 the wizard kicker, `OnboardingWizard.tsx:213` — and that sits on
 `bg-background`, which is the row above. So this row currently describes a
-pairing with **no live site**. Its assertion in `contrast.test.ts` is kept
-anyway, as a guard against the pairing being reintroduced at the same bad
-ratio rather than as a record of a place you can go and look at. An earlier
-edit reattributed this row to the wizard kicker, which was simply wrong.
+pairing with **no live site**.
+
+Its assertion in `contrast.test.ts` is kept anyway, but be precise about what
+that assertion does: it reads two token values and compares them, so it fires
+if the **palette** moves and never if a **usage** appears. Putting
+`text-accent` back on a `bg-card` surface reintroduces this exact pairing at
+3.09:1 and leaves all 45 tests in that file green — verified by mutation. It is
+a palette guard, not a usage guard, and no usage guard exists (#183).
+
+Two earlier revisions of this paragraph got it wrong: one reattributed the row
+to the wizard kicker, which was simply false, and one called the retained
+assertion a guard against reintroduction, which overstated what it can see.
 
 This is the uncomfortable half of the decision and is recorded as such rather than justified away. `src/styles/contrast.test.ts` pins each ratio as an **expected failure**, so the suite asserts the app is inaccessible here rather than quietly passing. If this project ever takes on an accessibility commitment, accent-as-text at 2.96:1 on 10px type is the first thing that has to give.
 
