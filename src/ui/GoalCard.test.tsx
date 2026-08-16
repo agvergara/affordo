@@ -165,12 +165,28 @@ describe("GoalCard threshold caption", () => {
     ).toBeInTheDocument();
   });
 
-  it("leaves the threshold caption muted at exactly the threshold", () => {
-    // 200 of 2000 is exactly 10% — `aboveThreshold` is strictly greater-than.
+  // jsdom exposes a colour only through the utility class that sets it, so this
+  // follows the one exception VerdictBadge established. The class is all the
+  // unit layer can see — that both classes were always present and correct is
+  // exactly why nothing failed while the flag was invisible. The pixels are
+  // proven in e2e/threshold-flag.spec.ts, the ratios in styles/contrast.test.ts.
+  it("weights and darkens the caption when the purchase is above threshold", () => {
+    renderCard(makeGoal({ price: 300 }), { salary: 2000, threshold: 10 });
+    const caption = screen.getByText("Above significance threshold: 10%");
+    expect(caption).toHaveClass("font-bold");
+    expect(caption).toHaveClass("text-foreground");
+    expect(caption).not.toHaveClass("text-accent");
+  });
+
+  it("leaves the threshold caption calm at exactly the threshold", () => {
+    // 200 of 2000 is exactly 10% — `aboveThreshold` is strictly greater-than,
+    // and #181 does not move that boundary. The whole calm state is pinned
+    // here, words included: "Significance threshold: 10%" does not match the
+    // breached caption, so this fails if the boundary ever loosens to `>=`.
     renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
-    expect(screen.getByText("Significance threshold: 10%")).toHaveClass(
-      "text-muted-foreground",
-    );
+    const caption = screen.getByText("Significance threshold: 10%");
+    expect(caption).toHaveClass("text-muted-foreground");
+    expect(caption).not.toHaveClass("font-bold");
   });
 });
 

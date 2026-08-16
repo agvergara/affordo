@@ -134,7 +134,9 @@ export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
           </span>
           <span
             className={
-              verdict.aboveThreshold ? "text-accent" : "text-muted-foreground"
+              verdict.aboveThreshold
+                ? "font-bold text-foreground"
+                : "text-muted-foreground"
             }
           >
             {`${verdict.aboveThreshold ? "Above significance" : "Significance"} threshold: ${profile.threshold}%`}
