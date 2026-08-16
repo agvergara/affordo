@@ -481,9 +481,49 @@ describe("the retired progressive-disclosure layer stays retired", () => {
  * finding (ADR 0022) and none of them are what this measures.
  */
 describe("the above-threshold caption's transition", () => {
-  /** The two classes GoalCard.tsx swaps between, as their tokens. */
-  const CALM = "--muted-foreground";
-  const BREACHED = "--foreground";
+  /**
+   * The two tokens the card ACTUALLY swaps between, read out of its source.
+   *
+   * These were hard-coded literals in the first version of this block, and a
+   * duel reviewer showed that made the whole guard inert: reverting
+   * `GoalCard.tsx` to `text-accent` left all 45 tests in this file green,
+   * because the guard was measuring two constants that no longer described the
+   * component. It was measuring its own opinion.
+   *
+   * That is the exact failure this file exists to prevent, one level up — a
+   * guard that cannot fail is worth nothing, whatever it asserts. Deriving the
+   * tokens from the ternary means a change to the component's colours either
+   * moves these numbers or breaks the parse, and both are loud.
+   *
+   * Reading source is the same narrow exception the `VerdictBadge` assertion
+   * above already takes, and for the same reason: it identifies WHICH colours
+   * to measure. It asserts nothing about rendered output.
+   */
+  function captionTokens(): { calm: string; breached: string } {
+    const source = readFileSync(
+      resolve(__dirname, "..", "ui", "GoalCard.tsx"),
+      "utf8",
+    );
+    const ternary =
+      /verdict\.aboveThreshold\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"/.exec(source);
+    if (!ternary) {
+      throw new Error(
+        "could not find the threshold caption's className ternary in GoalCard.tsx — " +
+          "if the card now picks its caption colour another way, this guard must follow it",
+      );
+    }
+    const tokenOf = (classes: string, which: string): string => {
+      const m = /(?:^|\s)text-([a-z-]+)/.exec(classes);
+      if (!m) throw new Error(`no text-* utility in the ${which} branch`);
+      return `--${m[1]}`;
+    };
+    return {
+      breached: tokenOf(ternary[1] ?? "", "breached"),
+      calm: tokenOf(ternary[2] ?? "", "calm"),
+    };
+  }
+
+  const { calm: CALM, breached: BREACHED } = captionTokens();
 
   it.each([
     [":root", "light"],
