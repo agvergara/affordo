@@ -129,9 +129,13 @@ test("the two states are painted differently in dark mode too", async ({
   // Not a direction assertion — dark inverts which end is "darker". The claim
   // is that a real, measurable step exists at all, which 0.04 of contrast
   // was not.
-  const step = Math.abs((await luminanceOf(breached)) - (await luminanceOf(calm)));
-  expect(step, `only ${step.toFixed(3)} of luminance separates the two states`)
-    .toBeGreaterThan(0.05);
+  const step = Math.abs(
+    (await luminanceOf(breached)) - (await luminanceOf(calm)),
+  );
+  expect(
+    step,
+    `only ${step.toFixed(3)} of luminance separates the two states`,
+  ).toBeGreaterThan(0.05);
 });
 
 test("a goal exactly at the threshold is not flagged", async ({ page }) => {

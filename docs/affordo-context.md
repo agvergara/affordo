@@ -790,6 +790,31 @@ Note the reference's `<Plus>` sits inside a button whose text already says "Add
 goal", so ours is `aria-hidden` — that is not a divergence from the reference's
 rendering, which produces an SVG with no accessible name either way.
 
+### Decided divergences after extraction
+
+Recorded here because [ADR 0022](adr/0022-fidelity-bar-stops-at-the-perceivable.md)
+requires every divergence it licenses to land in §6b. Unlike the table above,
+these are not drift found by an extraction pass — each was decided against the
+reference deliberately, with an ADR saying why.
+
+| element | reference | ours | decided by |
+| --- | --- | --- | --- |
+| goal card threshold caption, **above** threshold | `Significance threshold: {n}%` in `text-accent` | `Above significance threshold: {n}%` in `font-bold text-foreground` | [ADR 0027](adr/0027-the-breach-signal-is-measured-as-a-transition.md) |
+
+The caption **at or below** the threshold is unchanged, and so is everything else
+on the card — the meter fill stays `bg-foreground`, the marker stays `bg-accent`
+at `Math.min(100, 50)`, and `--accent` is untouched everywhere in `theme.css`.
+
+The reasoning is worth carrying here rather than only in the ADR, because it is
+the kind of thing a future extraction pass would otherwise "correct" back:
+`--accent` on this caption was measured as a **transition** rather than as a
+ratio against its background, and it moved the wrong way — 7.44:1 → 3.10:1 in
+light, so the flag rendered *fainter* than the calm state it replaced, and
+7.16:1 → 7.12:1 in dark, luminance-identical. ADR 0022 case 4 had looked at this
+exact element and reproduced it, because every number available to that decision
+measured one state's legibility and none measured the change between two. A hue
+that carries no signal is not a hue the reproduction owes the reference.
+
 **Copying a reference `className` is not fidelity when the reference element is a
 component with a base layer.** The add button needs `h-9` and `border-0` beyond
 the reference's own string to render at the reference's height. `h-9` comes from

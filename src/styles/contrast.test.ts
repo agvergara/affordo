@@ -513,8 +513,10 @@ describe("the above-threshold caption's transition", () => {
     const step =
       contrast(toSrgb(t(BREACHED)), card) - contrast(toSrgb(t(CALM)), card);
 
-    expect(step, `only ${step.toFixed(2)} of contrast separates the two states`)
-      .toBeGreaterThan(1);
+    expect(
+      step,
+      `only ${step.toFixed(2)} of contrast separates the two states`,
+    ).toBeGreaterThan(1);
   });
 
   it("is not carried by hue alone — the words differ too", () => {
