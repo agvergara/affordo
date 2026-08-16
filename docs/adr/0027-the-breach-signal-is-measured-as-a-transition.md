@@ -100,18 +100,57 @@ flagging**:
   can see, and a correct class resolving to an invisible colour is exactly the
   blind spot `CLAUDE.md` warns about.
 
-So two guards were added, and both were verified by reverting the fix and
-watching them fail:
+So two guards were added:
 
 1. `contrast.test.ts` now asserts the **transition**: breached ≥ calm, and a
-   step of more than 1.0 of contrast, in _both_ themes. Reverted, it reproduces
-   −4.34 and −0.04 and fails four ways.
+   step of more than 1.0 of contrast, in _both_ themes. Reverting the component
+   reproduces −4.34 and −0.04 and fails four ways.
 2. `e2e/threshold-flag.spec.ts` measures **painted** weight and luminance in a
-   real browser. Reverted, it catches weight 400 and 0.0006 of luminance
-   separation in dark.
+   real browser, and asserts `.dark` actually applied before measuring under it.
+   Reverting the component catches weight 400 and 0.0006 of luminance separation
+   in dark; stubbing out the OS-theme fallback fails the class assertion instead
+   of quietly re-measuring the light theme.
 
-A guard that has never failed is a guess. Both of these were made to fail
-against the code they exist to prevent.
+**The first version of guard 1 did not work, and how it failed is the most
+useful thing in this ADR.** It compared two hard-coded token names, so it
+measured its own opinion of what the component did rather than the component.
+Reverting `GoalCard.tsx` to `text-accent` left all 45 tests in the file green.
+It had been "verified" by reverting the test's own constant — which proves only
+that arithmetic is arithmetic. A duel reviewer on #182 caught it by mutating the
+component instead; the tokens are now parsed out of the caption's ternary, so
+the guard follows the code it guards.
+
+That is this ADR's own thesis landing on it: a guard that cannot fail is worth
+nothing, whatever it asserts, and the only way to know which kind you have is to
+break the thing on purpose and watch.
+
+## The longer string reflows, and that is accepted
+
+A longer caption wraps sooner, so a breached card can be taller than a calm one.
+Measured on the two-goal fixture:
+
+| viewport | breached card | calm card | caption lines                     |
+| -------- | ------------- | --------- | --------------------------------- |
+| 375px    | 512px         | 512px     | both wrap — no difference         |
+| 414px    | 488px         | 473px     | **breached wraps, calm does not** |
+| 430px    | 488px         | 473px     | **breached wraps, calm does not** |
+| 768px    | 425px         | 425px     | neither wraps                     |
+
+So the 15px difference lives in a band roughly 400–450px wide, which includes
+real devices (iPhone 14/15 Pro Max). It is accepted rather than designed out:
+
+- Cards in this list already differ in height — the note is optional, names
+  truncate at different lengths, verdict explainers run to different lengths. A
+  varying card height is not a new property of the dashboard.
+- It is not a layout _shift_. The state changes only when the goal or the
+  threshold is edited, never spontaneously during a read.
+- The obvious prevention is worse. `whitespace-nowrap` on the caption would stop
+  the wrap in this band and cause overflow below it — at 375px _both_ captions
+  already wrap, so forcing one line there trades a 15px height difference for
+  clipped or horizontally-scrolling text.
+
+Recorded here because a future reader measuring two cards at 414px should find
+this paragraph rather than file a bug.
 
 ## Consequences
 

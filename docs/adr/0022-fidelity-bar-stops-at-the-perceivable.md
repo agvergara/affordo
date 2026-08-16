@@ -6,7 +6,7 @@
 > The goal card's above-threshold caption named in the case-4 table below is no
 > longer `text-accent`; it is `font-bold text-foreground` and says "Above
 > significance threshold". Case 4 measured each state's contrast against its
-> background and never the *change between two states*, which is the only
+> background and never the _change between two states_, which is the only
 > quantity a flag has — measured that way the accent moved the wrong way
 > (7.44:1 → 3.10:1 light) and not at all in dark (Δ0.04). **Everywhere else,
 > including the wizard kicker, every primary button hover and the `cutToAfford`
@@ -40,12 +40,12 @@ Case 1 also carries a concrete cost the others do not: **123 assertions** (113 u
 
 Colour is not incidental to this reference; it is most of what the rebuild is _for_. The failures are visible to everyone and central to the design:
 
-| pairing                              | ratio  | AA  | where                                           |
-| ------------------------------------ | ------ | --- | ----------------------------------------------- |
-| `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge |
-| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027) |
+| pairing                              | ratio  | AA  | where                                                         |
+| ------------------------------------ | ------ | --- | ------------------------------------------------------------- |
+| `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge               |
+| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027)   |
 | `--accent` as text on `--card`       | 3.1:1  | 4.5 | wizard kicker (the goal-card caption left accent in ADR 0027) |
-| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                   |
+| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                                 |
 
 The accent failures are **light-only** — the same pairings clear AA under `.dark` — and light is the default theme.
 
