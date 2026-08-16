@@ -362,15 +362,24 @@ describe("AA failures inherited from the reference", () => {
     "accent used as text on %s also fails in light, at ~%s:1",
     (surface, approx) => {
       // §3 (line 202) gives accent four roles, three of them text on a canvas
-      // rather than a filled surface — `text-accent` is on the wizard's kicker,
-      // 10px mono. The filled-surface row above understated the blast radius.
+      // rather than a filled surface. The filled-surface row above understated
+      // the blast radius.
       //
-      // This comment used to name the goal card's above-threshold caption here
-      // too. It no longer applies there: ADR 0027 moved that caption off accent
-      // entirely, because measured as a TRANSITION rather than as a ratio the
-      // hue carried no signal (7.44:1 -> 3.10:1 light, 7.16:1 -> 7.12:1 dark).
-      // The ratio below is unchanged and still a real failure on the kicker —
-      // only the list of places it bites got shorter.
+      // The two surfaces are no longer equally live, and the difference is
+      // worth stating precisely because an earlier revision of this comment got
+      // it wrong in both directions:
+      //
+      // - `--background`: still real. `text-accent` sits on the wizard's
+      //   kicker (`OnboardingWizard.tsx:213`), 10px mono, on `bg-background`.
+      // - `--card`: no live site. `bg-card` appears once in shipped source
+      //   (`GoalCard.tsx:99`) and ADR 0027 moved that card's above-threshold
+      //   caption off accent, because measured as a TRANSITION rather than as a
+      //   ratio the hue carried no signal (7.44:1 -> 3.10:1 light, 7.16:1 ->
+      //   7.12:1 dark).
+      //
+      // Both ratios stay asserted. The `--card` one is now a guard against the
+      // pairing being reintroduced at the same bad ratio, not a description of
+      // somewhere you can go and look.
       const light = resolver(":root");
       const ratio = contrast(toSrgb(light("--accent")), toSrgb(light(surface)));
       expect(ratio).toBeLessThan(4.5);

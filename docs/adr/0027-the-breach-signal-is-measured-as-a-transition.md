@@ -144,10 +144,22 @@ real devices (iPhone 14/15 Pro Max). It is accepted rather than designed out:
   varying card height is not a new property of the dashboard.
 - It is not a layout _shift_. The state changes only when the goal or the
   threshold is edited, never spontaneously during a read.
-- The obvious prevention is worse. `whitespace-nowrap` on the caption would stop
-  the wrap in this band and cause overflow below it — at 375px _both_ captions
-  already wrap, so forcing one line there trades a 15px height difference for
-  clipped or horizontally-scrolling text.
+- The obvious prevention does not work. `whitespace-nowrap` on the caption was
+  applied and measured, not reasoned about:
+
+  | viewport | without nowrap       | with nowrap                     |
+  | -------- | -------------------- | ------------------------------- |
+  | 375px    | 512 / 512 — no delta | **527 / 512 — a delta appears** |
+  | 414px    | 488 / 473            | 488 / 473 — **unchanged**       |
+
+  It does not close the 414px band at all: the caption stops wrapping and the
+  `% of monthly income` span beside it wraps instead, so the row is the same
+  height either way. And at 375px, where both captions previously wrapped and
+  the cards matched, it introduces the very difference it was meant to remove.
+  No clipping and no horizontal scroll (`scrollWidth == clientWidth` on both
+  the document and the caption) — the first version of this ADR warned of an
+  overflow that does not happen, and credited the fix with a repair it does not
+  make. Both claims were wrong; a duel reviewer on #182 measured them.
 
 Recorded here because a future reader measuring two cards at 414px should find
 this paragraph rather than file a bug.

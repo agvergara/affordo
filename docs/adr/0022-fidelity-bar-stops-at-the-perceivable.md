@@ -40,14 +40,24 @@ Case 1 also carries a concrete cost the others do not: **123 assertions** (113 u
 
 Colour is not incidental to this reference; it is most of what the rebuild is _for_. The failures are visible to everyone and central to the design:
 
-| pairing                              | ratio  | AA  | where                                                         |
-| ------------------------------------ | ------ | --- | ------------------------------------------------------------- |
-| `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge               |
-| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027)   |
-| `--accent` as text on `--card`       | 3.1:1  | 4.5 | wizard kicker (the goal-card caption left accent in ADR 0027) |
-| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                                 |
+| pairing                              | ratio  | AA  | where                                                       |
+| ------------------------------------ | ------ | --- | ----------------------------------------------------------- |
+| `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge             |
+| `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027) |
+| `--accent` as text on `--card`       | 3.1:1  | 4.5 | **no live site since ADR 0027** — see note below            |
+| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                               |
 
 The accent failures are **light-only** — the same pairings clear AA under `.dark` — and light is the default theme.
+
+**On the `--card` row.** `bg-card` occurs in exactly one place in shipped source
+(`GoalCard.tsx:99`, the goal card itself), and ADR 0027 moved that card's only
+accent text off the token. `text-accent` as text now survives in one place —
+the wizard kicker, `OnboardingWizard.tsx:213` — and that sits on
+`bg-background`, which is the row above. So this row currently describes a
+pairing with **no live site**. Its assertion in `contrast.test.ts` is kept
+anyway, as a guard against the pairing being reintroduced at the same bad
+ratio rather than as a record of a place you can go and look at. An earlier
+edit reattributed this row to the wizard kicker, which was simply wrong.
 
 This is the uncomfortable half of the decision and is recorded as such rather than justified away. `src/styles/contrast.test.ts` pins each ratio as an **expected failure**, so the suite asserts the app is inaccessible here rather than quietly passing. If this project ever takes on an accessibility commitment, accent-as-text at 2.96:1 on 10px type is the first thing that has to give.
 
