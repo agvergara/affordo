@@ -45,7 +45,7 @@ Colour is not incidental to this reference; it is most of what the rebuild is _f
 | `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge             |
 | `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027) |
 | `--accent` as text on `--card`       | 3.1:1  | 4.5 | **no live site since ADR 0027** — see note below            |
-| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                               |
+| white on `emerald-600`               | 3.65:1 | 4.5 | afford badge, **both** themes                               |
 
 The accent failures are **light-only** — the same pairings clear AA under `.dark` — and light is the default theme.
 
@@ -66,6 +66,13 @@ a palette guard, not a usage guard, and no usage guard exists (#183).
 Two earlier revisions of this paragraph got it wrong: one reattributed the row
 to the wizard kicker, which was simply false, and one called the retained
 assertion a guard against reintroduction, which overstated what it can see.
+
+**On the `emerald-600` row.** It read 3.77:1 until #183 measured the badge in a
+browser and got 3.65:1. 3.77 is Tailwind **v3**'s `#059669`; this repo is on v4,
+which redefined the palette in oklch and paints `#009966`. The failure is
+unchanged in kind and severity — both miss AA's 4.5 and both clear the 3.0
+large-text floor the badge cannot use at `text-[10px]` — but the number was
+wrong, and it was wrong in a table whose whole purpose is to be the record.
 
 This is the uncomfortable half of the decision and is recorded as such rather than justified away. `src/styles/contrast.test.ts` pins each ratio as an **expected failure**, so the suite asserts the app is inaccessible here rather than quietly passing. If this project ever takes on an accessibility commitment, accent-as-text at 2.96:1 on 10px type is the first thing that has to give.
 

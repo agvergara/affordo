@@ -12,7 +12,7 @@ import { resolve } from "node:path";
  *
  * - `--accent-foreground` on `--accent`, ~2.96:1 in the light theme (7.49 in
  *   dark). Every primary button's hover state and the `cutToAfford` badge.
- * - white on `emerald-600` in the afford badge, ~3.77:1 in **both** themes,
+ * - white on `emerald-600` in the afford badge, ~3.65:1 in **both** themes,
  *   since neither colour is a token.
  *
  * Both are pinned below rather than fixed; see the issue linked from #71.
@@ -241,8 +241,24 @@ describe.each([
  * product owner — see the issue linked from #71. Do not "fix" these to make the
  * suite greener: the numbers are the finding.
  */
-/** Tailwind's `emerald-600`, the one non-token colour the reference specifies. */
-const TAILWIND_EMERALD_600: RGB = [5 / 255, 150 / 255, 105 / 255];
+/**
+ * Tailwind's `emerald-600`, the one non-token colour the reference specifies.
+ *
+ * **v4's, not v3's.** This was `#059669` — Tailwind v3's hex — until the usage
+ * sweep in `e2e/contrast-usage.spec.ts` measured the badge in a browser and got
+ * 3.65:1 where this file predicted 3.77:1. This repo is on Tailwind v4
+ * (`package.json`), which redefined the palette in oklch:
+ * `oklch(0.596 0.145 163.225)`, which paints `#009966`.
+ *
+ * So this file spent that time asserting a ratio for a colour the app does not
+ * render. Correcting it does NOT soften the finding — 3.65:1 fails AA exactly
+ * as 3.77:1 did, and the assertions below are unchanged. It makes a false
+ * number true, which is a different act from making a suite greener (#183).
+ *
+ * The lesson is the one #183 is about: a literal in a test is a claim about the
+ * world that nothing re-checks. The browser sweep is what re-checks this one.
+ */
+const TAILWIND_EMERALD_600: RGB = [0 / 255, 153 / 255, 102 / 255];
 
 describe.each([
   ["light", ":root"],
@@ -399,11 +415,12 @@ describe("AA failures inherited from the reference", () => {
   });
 
   it("white on emerald-600 fails equally in both themes", () => {
-    // §5 records `afford: "bg-emerald-600 text-white"` verbatim. Tailwind's
-    // emerald-600 is #059669; white on it is ~3.77:1, clearing AA only for
+    // §5 records `afford: "bg-emerald-600 text-white"` verbatim. Tailwind v4's
+    // emerald-600 paints #009966; white on it is ~3.65:1, clearing AA only for
     // large text — and the badge is `text-[10px] font-bold`, which is not
     // large. Neither colour is a token, so the ratio cannot vary by theme;
-    // that is precisely why this is not a dark-mode finding.
+    // that is precisely why this is not a dark-mode finding. (The 3.77:1 this
+    // comment used to quote was v3's hex — see TAILWIND_EMERALD_600.)
     // The pair is read out of `VerdictBadge.tsx` rather than restated here.
     // Hardcoding both sides made this a tautology: it contrasted two literals
     // in its own body and passed even with the badge recoloured to
