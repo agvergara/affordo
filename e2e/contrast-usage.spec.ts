@@ -66,21 +66,34 @@ const PROFILE = {
  *
  * The `share` values put two of them in the Comparison so `/compare` renders
  * its populated state rather than its empty one.
+ *
+ * The names are deliberately NOT the verdict words. A goal named "Afford"
+ * renders the same string as the afford badge, and an `ACCEPTED` entry keyed on
+ * that string would absorb a real failure on the goal name instead of the badge
+ * — a trap the duel on #184 demonstrated. Route scoping alone does not fix it,
+ * because both render on `/goals`.
  */
 const GOALS = {
   schemaVersion: 1,
   goals: [
     {
       id: "g1",
-      name: "Afford",
+      name: "Laptop",
       price: 300,
       note: "n",
       createdAt: 1,
       share: 200,
     },
-    { id: "g2", name: "Cut", price: 26000, note: "", createdAt: 2, share: 150 },
-    { id: "g3", name: "Cannot", price: 500000, note: "", createdAt: 3 },
-    { id: "g4", name: "Stretch", price: 900, note: "", createdAt: 4 },
+    {
+      id: "g2",
+      name: "Kitchen",
+      price: 26000,
+      note: "",
+      createdAt: 2,
+      share: 150,
+    },
+    { id: "g3", name: "Villa", price: 500000, note: "", createdAt: 3 },
+    { id: "g4", name: "Bicycle", price: 900, note: "", createdAt: 4 },
   ],
 };
 
@@ -111,6 +124,9 @@ const ROUTES = [
  */
 type Accepted = {
   text: string;
+  /** Routes this is accepted on. Unscoped matching let one entry absorb a
+   *  different element's failure elsewhere (#184 duel), so it is explicit. */
+  routes: readonly string[];
   ratio: number;
   themes: ReadonlyArray<"light" | "dark">;
   why: string;
@@ -119,21 +135,48 @@ type Accepted = {
 const ACCEPTED: readonly Accepted[] = [
   {
     text: "Before you buy",
+    routes: ["/onboarding"],
     ratio: 2.96,
     themes: ["light"],
     why: "wizard kicker, `text-accent` on `--background` — ADR 0022 case 4, row 2",
   },
   {
     text: "Cut to afford",
+    routes: ["/goals"],
     ratio: 2.96,
     themes: ["light"],
     why: "`--accent-foreground` on `--accent` — ADR 0022 case 4, row 1",
   },
   {
     text: "Afford",
+    routes: ["/goals"],
     ratio: 3.65,
     themes: ["light", "dark"],
     why: "white on `emerald-600` — ADR 0022 case 4, row 4. Measured 3.65, not the 3.77 that row quotes: that figure is Tailwind v3's `#059669`, and this repo is on v4, which paints `oklch(0.596 0.145 163.225)` = `#009966`. Same failure, corrected number (#183).",
+  },
+  // The two below are NOT in ADR 0022's case-4 table, which says the palette
+  // "fails WCAG AA in four places". That count was taken before anything
+  // measured painted opacity, and it is wrong: the dashboard footer is wrapped
+  // in `opacity-50`, so its 10px text lands at 3.74:1 while its own computed
+  // colour reads a perfectly legible 17:1. Nothing could see this until the
+  // sweep composited ancestor opacity (#184 duel).
+  //
+  // Accepted on the same grounds as the rest of case 4: the `opacity-50` is the
+  // reference's own, extracted to close #104 after a duel wrongly called it an
+  // invention. Reproduced, therefore shipped, therefore recorded here.
+  {
+    text: "Record persistent in local-cache",
+    routes: ["/goals", "/compare"],
+    ratio: 3.74,
+    themes: ["light"],
+    why: "dashboard footer under the reference's own `opacity-50` (#104) — not in ADR 0022's case-4 table, found by this sweep (#183/#184)",
+  },
+  {
+    text: "Affordo",
+    routes: ["/goals", "/compare"],
+    ratio: 3.74,
+    themes: ["light"],
+    why: "footer wordmark under the same `opacity-50`. Distinct from the header wordmark, which is the same string at 19:1 — which is why entries are route- and ratio-scoped.",
   },
 ];
 
@@ -209,23 +252,73 @@ function sweep(route: string) {
       return getComputedStyle(document.body).backgroundColor;
     };
 
+    /**
+     * Opacity multiplies down the tree, so the element's own value is not the
+     * one the user sees through.
+     *
+     * `/goals` and `/compare` wrap their footer in `opacity-50`; the `<p>`
+     * inside computes `opacity: 1` and scores ~17:1 while Chromium paints it at
+     * 3.73:1. Reading only the element's own opacity therefore hid a live AA
+     * failure on two routes — found by the duel on #184.
+     */
+    const effectiveOpacity = (el: Element): number => {
+      let alpha = 1;
+      let node: Element | null = el;
+      while (node) {
+        const own = Number(getComputedStyle(node).opacity);
+        alpha *= Number.isFinite(own) ? own : 1;
+        node = node.parentElement;
+      }
+      return alpha;
+    };
+
+    /** Composite `fg` over `bg` at `alpha`, which is what the eye receives. */
+    const composite = (
+      fg: [number, number, number],
+      bg: [number, number, number],
+      alpha: number,
+    ): [number, number, number] =>
+      [0, 1, 2].map((i) =>
+        Math.round((fg[i] as number) * alpha + (bg[i] as number) * (1 - alpha)),
+      ) as [number, number, number];
+
     const found: Finding[] = [];
 
-    document.querySelectorAll("*").forEach((el) => {
-      // Only the element that OWNS the text node, so a wrapper is not credited
-      // with its child's contrast and measured twice.
-      const own = Array.from(el.childNodes)
-        .filter((n) => n.nodeType === Node.TEXT_NODE)
-        .map((n) => n.textContent ?? "")
-        .join("")
-        .trim();
-      if (!own) return;
+    /**
+     * WCAG 1.4.3 exempts "an inactive user interface component" from any
+     * contrast requirement, and this app dims disabled controls with
+     * `disabled:opacity-50` — the wizard's `← Back` on step 0 paints at
+     * 3.74:1 purely because it is disabled. Measuring it would force a real
+     * exemption into the accepted-failures list, which is the wrong place for
+     * something that is not a failure.
+     */
+    const isInactive = (el: Element): boolean => {
+      let node: Element | null = el;
+      while (node) {
+        if (
+          (node as HTMLButtonElement).disabled === true ||
+          node.getAttribute("aria-disabled") === "true"
+        ) {
+          return true;
+        }
+        node = node.parentElement;
+      }
+      return false;
+    };
 
-      const cs = getComputedStyle(el);
-      if (cs.visibility === "hidden" || cs.display === "none") return;
-      if (Number(cs.opacity) < 0.1) return;
+    const measure = (
+      el: Element,
+      text: string,
+      colour: string,
+      cs: CSSStyleDeclaration,
+    ) => {
       const box = (el as HTMLElement).getBoundingClientRect();
       if (box.width < 1 || box.height < 1) return;
+      if (isInactive(el)) return;
+
+      const alpha = effectiveOpacity(el);
+      // Fully transparent is hidden, not low-contrast.
+      if (alpha < 0.05) return;
 
       const fontSize = parseFloat(cs.fontSize);
       const fontWeight = Number(cs.fontWeight) || 400;
@@ -235,20 +328,55 @@ function sweep(route: string) {
       const floor = isLarge ? 3 : 4.5;
 
       const background = backgroundBehind(el);
-      const ratio = contrast(toPixel(cs.color), toPixel(background));
+      const bgPixel = toPixel(background);
+      const ratio = contrast(
+        composite(toPixel(colour), bgPixel, alpha),
+        bgPixel,
+      );
 
       if (ratio < floor) {
         found.push({
-          text: own.slice(0, 40),
+          text: text.slice(0, 40),
           ratio: Math.round(ratio * 100) / 100,
           route: r,
-          color: cs.color,
+          color: colour,
           background,
           fontSize,
           fontWeight,
           floor,
         });
       }
+    };
+
+    document.querySelectorAll("*").forEach((el) => {
+      const cs = getComputedStyle(el);
+      if (cs.visibility === "hidden" || cs.display === "none") return;
+
+      // Form controls paint their value and placeholder without ever owning a
+      // text node, so the ownership rule below skips every one of them — which
+      // silently exempted the whole of `/settings`. Found by the duel on #184.
+      const tag = el.tagName;
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
+        const value = (el as HTMLInputElement).value;
+        if (value) measure(el, `${tag} value "${value}"`, cs.color, cs);
+        const placeholder = (el as HTMLInputElement).placeholder;
+        if (placeholder) {
+          const ph = getComputedStyle(el, "::placeholder");
+          measure(el, `${tag} placeholder "${placeholder}"`, ph.color, ph);
+        }
+        return;
+      }
+
+      // Otherwise only the element that OWNS the text node, so a wrapper is not
+      // credited with its child's contrast and measured twice.
+      const own = Array.from(el.childNodes)
+        .filter((n) => n.nodeType === Node.TEXT_NODE)
+        .map((n) => n.textContent ?? "")
+        .join("")
+        .trim();
+      if (!own) return;
+
+      measure(el, own, cs.color, cs);
     });
 
     return found;
@@ -263,8 +391,17 @@ async function sweepTheme(
   const all: Finding[] = [];
   for (const route of ROUTES) {
     await page.goto(route);
-    // The dashboard animates its meter in; settle before measuring.
-    await page.waitForTimeout(250);
+    // Wait for animations to FINISH, not for a guessed interval.
+    // `animate-slide-up` runs opacity 0 → 1 over 0.5s, so a fixed 250ms wait
+    // measured the wizard kicker mid-flight at 2.77:1 instead of its settled
+    // 2.96:1 — a contrast guard whose numbers depend on when you look is a
+    // flake, and this one only became visible once opacity was composited at
+    // all (#184 duel).
+    await page.evaluate(() =>
+      Promise.all(
+        document.getAnimations().map((a) => a.finished.catch(() => undefined)),
+      ).then(() => undefined),
+    );
     if (theme === "dark") {
       await expect(page.locator("html")).toHaveClass(/(^|\s)dark(\s|$)/);
     }
@@ -291,7 +428,8 @@ for (const theme of ["light", "dark"] as const) {
 
     const accepted = ACCEPTED.filter((a) => a.themes.includes(theme));
     const unexpected = findings.filter(
-      (f) => !accepted.some((a) => f.text === a.text),
+      (f) =>
+        !accepted.some((a) => f.text === a.text && a.routes.includes(f.route)),
     );
 
     expect(
@@ -310,23 +448,115 @@ for (const theme of ["light", "dark"] as const) {
     const accepted = ACCEPTED.filter((a) => a.themes.includes(theme));
 
     for (const entry of accepted) {
-      const hit = findings.find((f) => f.text === entry.text);
+      for (const route of entry.routes) {
+        const hit = findings.find(
+          (f) => f.text === entry.text && f.route === route,
+        );
 
-      // A stale entry is a failure in its own right. The `--card` row in ADR
-      // 0022 spent a release naming a site that no longer existed, and nothing
-      // could tell — that is the mistake this assertion exists to prevent.
-      expect(
-        hit,
-        `"${entry.text}" is recorded as an accepted AA failure (${entry.why}) but no longer fails in ${theme}. If it was fixed, delete the entry.`,
-      ).toBeDefined();
+        // A stale entry is a failure in its own right. The `--card` row in ADR
+        // 0022 spent a release naming a site that no longer existed, and
+        // nothing could tell — the mistake this assertion exists to prevent.
+        expect(
+          hit,
+          `"${entry.text}" on ${route} is recorded as an accepted AA failure (${entry.why}) but no longer fails in ${theme}. If it was fixed, delete the entry.`,
+        ).toBeDefined();
 
-      expect(
-        hit?.ratio,
-        `"${entry.text}" was recorded at ${entry.ratio}:1 and now measures ${hit?.ratio}:1`,
-      ).toBeCloseTo(entry.ratio, 1);
+        expect(
+          hit?.ratio,
+          `"${entry.text}" on ${route} was recorded at ${entry.ratio}:1 and now measures ${hit?.ratio}:1`,
+        ).toBeCloseTo(entry.ratio, 1);
+      }
     }
   });
 }
+
+/**
+ * The accent pairing, checked independently of text size (#184 duel).
+ *
+ * WCAG's large-text allowance is real — 3.0 rather than 4.5 above 24px — and
+ * the sweep above honours it. But it also means the very pairing this guard is
+ * named for walks straight through at a large size: `text-accent` on the goal
+ * card's 36px `<h2>` paints 3.09:1, clears the 3.0 floor, and every assertion
+ * above passes. The duel demonstrated exactly that.
+ *
+ * Issue #183's first acceptance criterion carries no size qualifier, and
+ * neither does ADR 0022, which pinned these pairings as failures outright. So
+ * this asserts the pairing itself: no element paints the accent colour as text
+ * anywhere except the one place case 4 accepted.
+ *
+ * It compares painted pixels rather than class names, so it survives the
+ * indirect routes a `grep` would miss — a nested custom property, a `style`
+ * attribute, a token realiased in `@theme`.
+ */
+test("accent is never text, except where ADR 0022 accepted it", async ({
+  page,
+}) => {
+  const offenders: string[] = [];
+
+  for (const theme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: theme });
+    for (const route of ROUTES) {
+      await page.goto(route);
+      await page.evaluate(() =>
+        Promise.all(
+          document
+            .getAnimations()
+            .map((a) => a.finished.catch(() => undefined)),
+        ).then(() => undefined),
+      );
+
+      offenders.push(
+        ...(await page.evaluate(
+          ({ r, t }) => {
+            const paint = (colour: string) => {
+              const c = document.createElement("canvas");
+              c.width = c.height = 1;
+              const x = c.getContext("2d");
+              if (!x) throw new Error("no 2d context");
+              x.fillStyle = colour;
+              x.fillRect(0, 0, 1, 1);
+              const d = x.getImageData(0, 0, 1, 1).data;
+              return `${d[0]},${d[1]},${d[2]}`;
+            };
+
+            const accent = paint(
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--accent")
+                .trim(),
+            );
+
+            const hits: string[] = [];
+            document.querySelectorAll("*").forEach((el) => {
+              const own = Array.from(el.childNodes)
+                .filter((n) => n.nodeType === Node.TEXT_NODE)
+                .map((n) => n.textContent ?? "")
+                .join("")
+                .trim();
+              if (!own) return;
+              const cs = getComputedStyle(el);
+              if (cs.visibility === "hidden" || cs.display === "none") return;
+              const box = (el as HTMLElement).getBoundingClientRect();
+              if (box.width < 1 || box.height < 1) return;
+              if (paint(cs.color) === accent) {
+                hits.push(`${t} ${r} "${own.slice(0, 40)}"`);
+              }
+            });
+            return hits;
+          },
+          { r: route, t: theme },
+        )),
+      );
+    }
+  }
+
+  // The wizard kicker is the one accepted site (ADR 0022 case 4, row 2). It is
+  // light-only in the accepted list above because that is where it FAILS AA;
+  // it is accent in both themes, which is why both appear here.
+  expect(
+    offenders.filter((o) => !o.includes('"Before you buy"')),
+    "accent used as text outside the one site ADR 0022 accepted — see ADR 0027, which moved the goal card's caption off accent precisely because the hue carried no signal",
+  ).toEqual([]);
+});
 
 test("the sweep can see the app at all", async ({ page }) => {
   // Without this every "no failures" assertion above is trivially true — the

@@ -29,7 +29,7 @@ It says nothing about accessibility, and the parity rebuild hit that gap five ti
 | 1   | `/settings` labels: reference has no `htmlFor`/`id` pairing | **diverge** — keep ours associated |
 | 2   | `/goals` list: reference is `<div>`, ours `<ul>`/`<li>`     | **diverge** — keep ours            |
 | 3   | `__root`: reference is `<div>`, ours `<main>`               | **diverge** — keep ours            |
-| 4   | palette fails WCAG AA in four places                        | **reproduce** — the failures ship  |
+| 4   | palette fails WCAG AA in four places (**five**, see below)  | **reproduce** — the failures ship  |
 | 5   | no agreed hit-target floor                                  | **24×24 adopted**                  |
 
 Cases 1–3 cost nothing visually. This was checked, not assumed: Tailwind's preflight zeroes `margin`/`padding` on every element and sets `list-style: none`, so `<ul>` and `<div>` render byte-identically here, and `<main>` and `<div>` always did. Reproducing the reference in those three places would trade real assistive-technology behaviour — a "list, 3 items" announcement, a landmark, nine labelled fields — for no visible difference at all.
@@ -46,6 +46,7 @@ Colour is not incidental to this reference; it is most of what the rebuild is _f
 | `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027) |
 | `--accent` as text on `--card`       | 3.1:1  | 4.5 | **no live site since ADR 0027** — see note below            |
 | white on `emerald-600`               | 3.65:1 | 4.5 | afford badge, **both** themes                               |
+| foreground under `opacity-50`        | 3.74:1 | 4.5 | dashboard + comparison footer, 10px — added by #183         |
 
 The accent failures are **light-only** — the same pairings clear AA under `.dark` — and light is the default theme.
 
@@ -82,6 +83,15 @@ measuring them honestly needs transitions defeated first.
 Two earlier revisions of this paragraph got it wrong: one reattributed the row
 to the wizard kicker, which was simply false, and one called the retained
 assertion a guard against reintroduction, which overstated what it can see.
+
+**On the count.** This case was decided as "four places". It is five. The
+dashboard and comparison footers are wrapped in the reference's own
+`opacity-50` (#104), which drops their 10px text to 3.74:1 — while the elements
+themselves compute a perfectly legible 17:1, because opacity multiplies down the
+tree and none of it appears in any element's own colour. Nothing in the original
+audit composited that, so nothing could see it; the usage sweep added by #183
+did, on its first run. Same disposition as the other rows — the dimming is
+reproduced from the reference, so the failure ships and is recorded.
 
 **On the `emerald-600` row.** It read 3.77:1 until #183 measured the badge in a
 browser and got 3.65:1. 3.77 is Tailwind **v3**'s `#059669`; this repo is on v4,
