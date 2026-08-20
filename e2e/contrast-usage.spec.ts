@@ -148,6 +148,19 @@ const ROUTES = [
  */
 type Accepted = {
   text: string;
+  /**
+   * A CSS selector the element must sit inside.
+   *
+   * Text and route were not enough, and adding the ratio did not help either:
+   * the footer wordmark and the header wordmark are BOTH "Affordo", both on
+   * the same routes, and when the header is dimmed they fail at exactly the
+   * same 3.74:1 — so the ratio could not separate them and the round-2 fix was
+   * inert for the mutation it claimed to catch (#184 duel, round 3).
+   *
+   * A structural scope does separate them, because they are genuinely
+   * different places rather than different numbers.
+   */
+  within: string;
   /** Routes this is accepted on. Unscoped matching let one entry absorb a
    *  different element's failure elsewhere (#184 duel), so it is explicit. */
   routes: readonly string[];
@@ -159,6 +172,7 @@ type Accepted = {
 const ACCEPTED: readonly Accepted[] = [
   {
     text: "Before you buy",
+    within: "body",
     routes: ["/onboarding"],
     ratio: 2.96,
     themes: ["light"],
@@ -166,6 +180,7 @@ const ACCEPTED: readonly Accepted[] = [
   },
   {
     text: "Cut to afford",
+    within: "article",
     routes: ["/goals"],
     ratio: 2.96,
     themes: ["light"],
@@ -173,6 +188,7 @@ const ACCEPTED: readonly Accepted[] = [
   },
   {
     text: "Afford",
+    within: "article",
     routes: ["/goals"],
     ratio: 3.65,
     themes: ["light", "dark"],
@@ -190,6 +206,7 @@ const ACCEPTED: readonly Accepted[] = [
   // invention. Reproduced, therefore shipped, therefore recorded here.
   {
     text: "Record persistent in local-cache",
+    within: "footer",
     routes: ["/goals", "/compare"],
     ratio: 3.74,
     themes: ["light"],
@@ -197,6 +214,7 @@ const ACCEPTED: readonly Accepted[] = [
   },
   {
     text: "Affordo",
+    within: "footer",
     routes: ["/goals", "/compare"],
     ratio: 3.74,
     themes: ["light"],
@@ -207,6 +225,8 @@ const ACCEPTED: readonly Accepted[] = [
 /** One AA failure as the sweep found it. */
 type Finding = {
   text: string;
+  /** Selectors this element is inside, for scope-matching against ACCEPTED. */
+  within: string[];
   ratio: number;
   route: string;
   color: string;
@@ -227,20 +247,63 @@ type Finding = {
  */
 function sweep(route: string) {
   return ({ r, forceFloor }: { r: string; forceFloor?: number }) => {
-    const toPixel = (colour: string): [number, number, number] => {
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = 1;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("no 2d context");
-      // Paint white first: a translucent colour then composites over a known
-      // backdrop instead of multiplying against an undefined one.
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 1, 1);
-      ctx.fillStyle = colour;
-      ctx.fillRect(0, 0, 1, 1);
-      const d = ctx.getImageData(0, 0, 1, 1).data;
-      return [d[0] as number, d[1] as number, d[2] as number];
+    /**
+     * Resolve any CSS colour to straight RGBA, format-agnostically.
+     *
+     * Painting it over white AND over black recovers both the alpha and the
+     * un-multiplied colour: over white gives `c·a + 255(1−a)`, over black gives
+     * `c·a`, and the difference is `255(1−a)`. That works whatever space the
+     * value was authored in — `oklch(… / 0.85)`, `color-mix`, `rgba` — which
+     * matters because Chromium hands these back in their authored space.
+     *
+     * This replaces a version that painted every colour over hard-coded WHITE
+     * and returned RGB. That silently assumed a white page: right by
+     * coincidence in the light theme and wrong by an order of magnitude in
+     * dark, where the page is `oklch(0.13 0 0)` (#184 duel, round 3).
+     */
+    const toRgba = (colour: string): [number, number, number, number] => {
+      const read = (under: string) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("no 2d context");
+        ctx.fillStyle = under;
+        ctx.fillRect(0, 0, 1, 1);
+        ctx.fillStyle = colour;
+        ctx.fillRect(0, 0, 1, 1);
+        const d = ctx.getImageData(0, 0, 1, 1).data;
+        return [d[0] as number, d[1] as number, d[2] as number];
+      };
+      const onWhite = read("#ffffff");
+      const onBlack = read("#000000");
+      // Green channel is the most reliable of the three for recovering alpha.
+      const a = Math.min(
+        1,
+        Math.max(
+          0,
+          1 - ((onWhite[1] as number) - (onBlack[1] as number)) / 255,
+        ),
+      );
+      if (a <= 0.001) return [0, 0, 0, 0];
+      const straight = [0, 1, 2].map((i) =>
+        Math.min(255, Math.max(0, Math.round((onBlack[i] as number) / a))),
+      );
+      return [
+        straight[0] as number,
+        straight[1] as number,
+        straight[2] as number,
+        a,
+      ];
     };
+
+    /** Source-over: `fg` (with alpha) painted onto opaque `bg`. */
+    const over = (
+      fg: [number, number, number, number],
+      bg: [number, number, number],
+    ): [number, number, number] =>
+      [0, 1, 2].map((i) =>
+        Math.round((fg[i] as number) * fg[3] + (bg[i] as number) * (1 - fg[3])),
+      ) as [number, number, number];
 
     const luminance = ([red, green, blue]: [number, number, number]) => {
       const lin = (v: number) => {
@@ -260,28 +323,53 @@ function sweep(route: string) {
     };
 
     /**
-     * The nearest ancestor that actually paints something behind this text,
-     * returned WITH that node so opacity can be scoped against it.
+     * What is actually painted behind this text, compositing every translucent
+     * layer on the way up rather than skipping them.
+     *
+     * The previous version rejected any background with alpha ≤ 0.9 and walked
+     * past it, on the stated grounds that tints shift the result by less than
+     * the tolerance. That is true of `bg-accent/5` and false of the app's one
+     * real translucent surface: `AppHeader` is `bg-background/85`, a sticky bar
+     * every route renders, and it was never the measured backdrop for anything
+     * inside it (#184 duel, round 3).
+     *
+     * `node` is the nearest ancestor that paints anything at all, which is the
+     * surface the text visually sits on and the right place to stop the opacity
+     * walk.
      */
     const backgroundBehind = (
       el: Element | null,
-    ): { colour: string; node: Element | null } => {
+    ): { colour: [number, number, number]; node: Element | null } => {
+      const layers: Array<[number, number, number, number]> = [];
       let node: Element | null = el;
+      let surface: Element | null = null;
+      let base: [number, number, number] | null = null;
+
       while (node) {
-        const bg = getComputedStyle(node).backgroundColor;
-        const parts = bg.match(/[\d.]+/g);
-        const alpha =
-          parts && parts.length > 3 ? parseFloat(parts[3] as string) : 1;
-        // Anything near-opaque wins. Tints like `bg-accent/5` are skipped
-        // rather than composited — they shift the result by well under the
-        // tolerance here, and compositing them properly is its own job.
-        if (parts && alpha > 0.9) return { colour: bg, node };
+        const rgba = toRgba(getComputedStyle(node).backgroundColor);
+        if (rgba[3] > 0) {
+          if (!surface) surface = node;
+          layers.push(rgba);
+          if (rgba[3] >= 0.999) {
+            base = [rgba[0], rgba[1], rgba[2]];
+            layers.pop();
+            break;
+          }
+        }
         node = node.parentElement;
       }
-      return {
-        colour: getComputedStyle(document.body).backgroundColor,
-        node: document.body,
-      };
+
+      if (!base) {
+        const body = toRgba(getComputedStyle(document.body).backgroundColor);
+        base = body[3] > 0 ? [body[0], body[1], body[2]] : [255, 255, 255];
+      }
+
+      // Composite outermost-inward so the nearest layer lands last.
+      let colour = base;
+      for (let i = layers.length - 1; i >= 0; i -= 1) {
+        colour = over(layers[i] as [number, number, number, number], colour);
+      }
+      return { colour, node: surface ?? document.body };
     };
 
     /**
@@ -378,14 +466,18 @@ function sweep(route: string) {
       const floor = forceFloor ?? (isLarge ? 3 : 4.5);
 
       const background = backdrop.colour;
-      const outer = toPixel(
+      const outer =
         backdrop.node && backdrop.node !== document.body
           ? backgroundBehind(backdrop.node.parentElement).colour
-          : getComputedStyle(document.body).backgroundColor,
-      );
-      const paintedBg = composite(toPixel(background), outer, above);
+          : background;
+
+      // The text's own colour may carry alpha too, so it is composited onto
+      // its backdrop rather than read as opaque.
+      const textOnBackdrop = over(toRgba(colour), background);
+
+      const paintedBg = composite(background, outer, above);
       const paintedText = composite(
-        composite(toPixel(colour), toPixel(background), below),
+        composite(textOnBackdrop, background, below),
         outer,
         above,
       );
@@ -394,6 +486,9 @@ function sweep(route: string) {
       if (ratio < floor) {
         found.push({
           text: text.slice(0, 40),
+          within: ["footer", "article", "nav", "header", "main", "body"].filter(
+            (sel) => el.closest(sel) !== null,
+          ),
           ratio: Math.round(ratio * 100) / 100,
           route: r,
           color: colour,
@@ -512,6 +607,7 @@ for (const theme of ["light", "dark"] as const) {
           (a) =>
             f.text === a.text &&
             a.routes.includes(f.route) &&
+            f.within.includes(a.within) &&
             // The ratio is part of the identity. "Affordo" is the footer
             // wordmark at 3.74:1 AND the header wordmark at 19:1 on the same
             // routes, so text+route alone let one absorb a real failure in the
@@ -538,7 +634,10 @@ for (const theme of ["light", "dark"] as const) {
     for (const entry of accepted) {
       for (const route of entry.routes) {
         const hit = findings.find(
-          (f) => f.text === entry.text && f.route === route,
+          (f) =>
+            f.text === entry.text &&
+            f.route === route &&
+            f.within.includes(entry.within),
         );
 
         // A stale entry is a failure in its own right. The `--card` row in ADR
@@ -607,6 +706,7 @@ test("no text sits below AA-normal at any size", async ({ page }) => {
               (a) =>
                 f.text === a.text &&
                 a.routes.includes(f.route) &&
+                f.within.includes(a.within) &&
                 Math.abs(f.ratio - a.ratio) <= 0.15,
             ),
         )
@@ -629,7 +729,11 @@ test("the sweep can see the app at all", async ({ page }) => {
   // hydration gate ever leaves these pages blank, this is what says so.
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/goals");
-  await page.waitForTimeout(250);
+  // `settle()`, not a fixed timer. This test kept the 250ms wait that
+  // `settle()` was introduced to remove, and under CPU throttling it was the
+  // only test in the file that went red (#184 duel, round 3) — a liveness
+  // check that itself fails under load is worse than none.
+  await settle(page);
 
   const measured = await page.evaluate(() => {
     let n = 0;
