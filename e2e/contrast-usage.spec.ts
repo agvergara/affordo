@@ -46,6 +46,16 @@ import { expect, test } from "@playwright/test";
  *   than author CSS, so there is little to enforce, but it is a gap rather than
  *   a decision.
  *
+ * Two shapes the model could plausibly get wrong were probed against actual
+ * painted pixels rather than reasoned about:
+ *
+ * - **Nested opacity groups.** `opacity:0.5` inside `opacity:0.5` over white:
+ *   the multiplicative walk gives alpha 0.25 → grey 191, and a screenshot of
+ *   the block reads `191,191,191`. Exact.
+ * - **A backdrop on `body`.** Exercised live by the two footer entries below,
+ *   whose backdrop IS the page; a duel reviewer independently measured them at
+ *   `rgb(130,129,129)` on `rgb(251,250,249)` = 3.74:1, matching this sweep.
+ *
  * Four other escape routes were checked and do NOT apply to this app, so they
  * are named here to save the next reader the search: there is no
  * pseudo-element text content, no SVG `<text>` (the one `<text` match is
