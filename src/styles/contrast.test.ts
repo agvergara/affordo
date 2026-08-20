@@ -518,7 +518,10 @@ describe("the above-threshold caption's transition", () => {
    * above already takes, and for the same reason: it identifies WHICH colours
    * to measure. It asserts nothing about rendered output.
    */
-  function captionTokens(): { calm: string; breached: string } {
+  function captionTokens(): {
+    calm: { text: string; surface: string };
+    breached: { text: string; surface: string };
+  } {
     const source = readFileSync(
       resolve(__dirname, "..", "ui", "GoalCard.tsx"),
       "utf8",
@@ -531,14 +534,23 @@ describe("the above-threshold caption's transition", () => {
           "if the card now picks its caption colour another way, this guard must follow it",
       );
     }
-    const tokenOf = (classes: string, which: string): string => {
-      const m = /(?:^|\s)text-([a-z-]+)/.exec(classes);
-      if (!m) throw new Error(`no text-* utility in the ${which} branch`);
-      return `--${m[1]}`;
+    // Each state is measured against ITS OWN backdrop, not against the card.
+    // #186 fills the breached caption (`bg-foreground text-background`), so its
+    // text sits on `--foreground`; measuring it against `--card` compared two
+    // colours that never touch and reported a failure that does not exist.
+    // A branch with no `bg-*` still sits on the card, which is the calm case.
+    const readBranch = (classes: string, which: string) => {
+      const text = /(?:^|\s)text-([a-z-]+)/.exec(classes);
+      if (!text) throw new Error(`no text-* utility in the ${which} branch`);
+      const bg = /(?:^|\s)bg-([a-z-]+)/.exec(classes);
+      return {
+        text: `--${text[1]}`,
+        surface: bg ? `--${bg[1]}` : "--card",
+      };
     };
     return {
-      breached: tokenOf(ternary[1] ?? "", "breached"),
-      calm: tokenOf(ternary[2] ?? "", "calm"),
+      breached: readBranch(ternary[1] ?? "", "breached"),
+      calm: readBranch(ternary[2] ?? "", "calm"),
     };
   }
 
@@ -549,9 +561,11 @@ describe("the above-threshold caption's transition", () => {
     [".dark", "dark"],
   ])("raises contrast rather than lowering it in %s (%s)", (selector) => {
     const t = resolver(selector);
-    const card = toSrgb(t("--card"));
-    const calm = contrast(toSrgb(t(CALM)), card);
-    const breached = contrast(toSrgb(t(BREACHED)), card);
+    const calm = contrast(toSrgb(t(CALM.text)), toSrgb(t(CALM.surface)));
+    const breached = contrast(
+      toSrgb(t(BREACHED.text)),
+      toSrgb(t(BREACHED.surface)),
+    );
 
     expect(
       breached,
@@ -568,9 +582,9 @@ describe("the above-threshold caption's transition", () => {
     // ratio test in this file, because a pure hue change at matched luminance
     // is invisible to a contrast ratio and nearly invisible on 10px type.
     const t = resolver(selector);
-    const card = toSrgb(t("--card"));
     const step =
-      contrast(toSrgb(t(BREACHED)), card) - contrast(toSrgb(t(CALM)), card);
+      contrast(toSrgb(t(BREACHED.text)), toSrgb(t(BREACHED.surface))) -
+      contrast(toSrgb(t(CALM.text)), toSrgb(t(CALM.surface)));
 
     expect(
       step,
