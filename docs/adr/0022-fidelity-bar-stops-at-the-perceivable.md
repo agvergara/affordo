@@ -87,7 +87,7 @@ assertion a guard against reintroduction, which overstated what it can see.
 **On the count.** This case was decided as "four places". It is five. The
 dashboard and comparison footers are wrapped in the reference's own
 `opacity-50` (#104), which drops their 10px text to 3.74:1 — while the elements
-themselves compute a perfectly legible 17:1, because opacity multiplies down the
+themselves compute a perfectly legible 19.32:1, because opacity multiplies down the
 tree and none of it appears in any element's own colour. Nothing in the original
 audit composited that, so nothing could see it; the usage sweep added by #183
 did, on its first run. Same disposition as the other rows — the dimming is

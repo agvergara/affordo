@@ -158,7 +158,7 @@ const ACCEPTED: readonly Accepted[] = [
   // "fails WCAG AA in four places". That count was taken before anything
   // measured painted opacity, and it is wrong: the dashboard footer is wrapped
   // in `opacity-50`, so its 10px text lands at 3.74:1 while its own computed
-  // colour reads a perfectly legible 17:1. Nothing could see this until the
+  // colour reads a perfectly legible 19.32:1. Nothing could see this until the
   // sweep composited ancestor opacity (#184 duel).
   //
   // Accepted on the same grounds as the rest of case 4: the `opacity-50` is the
