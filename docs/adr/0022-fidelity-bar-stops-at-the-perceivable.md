@@ -60,8 +60,24 @@ Its assertion in `contrast.test.ts` is kept anyway, but be precise about what
 that assertion does: it reads two token values and compares them, so it fires
 if the **palette** moves and never if a **usage** appears. Putting
 `text-accent` back on a `bg-card` surface reintroduces this exact pairing at
-3.09:1 and leaves all 45 tests in that file green — verified by mutation. It is
-a palette guard, not a usage guard, and no usage guard exists (#183).
+3.09:1 and leaves all 45 tests in that file green — verified by mutation.
+
+**A usage guard now exists** (`e2e/contrast-usage.spec.ts`, #183). It sweeps
+every text-bearing element on every route in both themes, measures what the
+browser paints against the effective background behind it, and fails anything
+missing AA that is not on an explicit list of the failures this case chose to
+reproduce. Reintroducing the pairing above fails it at 3.09:1. The two guards
+answer different questions and both are needed: the palette guard catches a
+token moving, this catches a token being used where it should not be.
+
+It also fails when an accepted failure **stops** failing, which is what this
+paragraph is about — the `--card` row spent a release naming a site that no
+longer existed and nothing could tell.
+
+Its limits are stated in its own header, and the largest is that **hover, focus
+and active states are not swept** — including row 1 above, "every primary
+button hover". `transition-colors` returns interpolated values mid-flight, so
+measuring them honestly needs transitions defeated first.
 
 Two earlier revisions of this paragraph got it wrong: one reattributed the row
 to the wizard kicker, which was simply false, and one called the retained

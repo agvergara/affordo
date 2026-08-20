@@ -398,8 +398,13 @@ describe("AA failures inherited from the reference", () => {
       // PALETTE moves, and never if a USAGE appears. Putting `text-accent`
       // back on a `bg-card` surface reintroduces the pairing at 3.09:1 and
       // leaves all 45 tests in this file green — verified by mutation, after a
-      // comment here claimed the opposite. A usage guard would have to read the
-      // component tree, which nothing in this file does today (#183).
+      // comment here claimed the opposite.
+      //
+      // The usage half now lives in `e2e/contrast-usage.spec.ts` (#183), which
+      // sweeps what the browser paints and fails on that mutation. It has to be
+      // a browser: jsdom applies no stylesheet, so nothing in THIS file can
+      // ever see a rendered colour, and that is a property of the layer rather
+      // than a gap to close here.
       const light = resolver(":root");
       const ratio = contrast(toSrgb(light("--accent")), toSrgb(light(surface)));
       expect(ratio).toBeLessThan(4.5);
