@@ -202,7 +202,7 @@ type Finding = {
  * `threshold-flag.spec.ts` and not repeated here.
  */
 function sweep(route: string) {
-  return (r: string) => {
+  return ({ r, forceFloor }: { r: string; forceFloor?: number }) => {
     const toPixel = (colour: string): [number, number, number] => {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 1;
@@ -235,8 +235,13 @@ function sweep(route: string) {
       return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
     };
 
-    /** The nearest ancestor that actually paints something behind this text. */
-    const backgroundBehind = (el: Element): string => {
+    /**
+     * The nearest ancestor that actually paints something behind this text,
+     * returned WITH that node so opacity can be scoped against it.
+     */
+    const backgroundBehind = (
+      el: Element | null,
+    ): { colour: string; node: Element | null } => {
       let node: Element | null = el;
       while (node) {
         const bg = getComputedStyle(node).backgroundColor;
@@ -246,10 +251,13 @@ function sweep(route: string) {
         // Anything near-opaque wins. Tints like `bg-accent/5` are skipped
         // rather than composited — they shift the result by well under the
         // tolerance here, and compositing them properly is its own job.
-        if (parts && alpha > 0.9) return bg;
+        if (parts && alpha > 0.9) return { colour: bg, node };
         node = node.parentElement;
       }
-      return getComputedStyle(document.body).backgroundColor;
+      return {
+        colour: getComputedStyle(document.body).backgroundColor,
+        node: document.body,
+      };
     };
 
     /**
@@ -261,10 +269,13 @@ function sweep(route: string) {
      * 3.73:1. Reading only the element's own opacity therefore hid a live AA
      * failure on two routes — found by the duel on #184.
      */
-    const effectiveOpacity = (el: Element): number => {
+    const effectiveOpacity = (
+      el: Element | null,
+      stopAt: Element | null,
+    ): number => {
       let alpha = 1;
       let node: Element | null = el;
-      while (node) {
+      while (node && node !== stopAt) {
         const own = Number(getComputedStyle(node).opacity);
         alpha *= Number.isFinite(own) ? own : 1;
         node = node.parentElement;
@@ -316,23 +327,45 @@ function sweep(route: string) {
       if (box.width < 1 || box.height < 1) return;
       if (isInactive(el)) return;
 
-      const alpha = effectiveOpacity(el);
-      // Fully transparent is hidden, not low-contrast.
-      if (alpha < 0.05) return;
+      const backdrop = backgroundBehind(el);
+      // Opacity splits into two stages that do OPPOSITE things:
+      //
+      //  - `below` is opacity between the text and its backdrop. It dims the
+      //    text against a backdrop that is NOT dimmed with it, so contrast
+      //    drops. The dashboard footer is this shape.
+      //  - `above` is opacity on the backdrop element and upward. The whole
+      //    group renders first and is then composited over what lies outside
+      //    it, so text and backdrop move TOGETHER. A dimmed button with its own
+      //    `bg-foreground` is this shape: at 50% its white text stays white
+      //    over a white page while its black fill goes grey, and 19:1 becomes
+      //    3.7:1.
+      //
+      // Collapsing the two was wrong in both directions — a real failure
+      // missed and a false alarm raised (#184 duel, round 2).
+      const below = effectiveOpacity(el, backdrop.node);
+      const above = effectiveOpacity(backdrop.node, null);
+      if (below * above < 0.05) return;
 
       const fontSize = parseFloat(cs.fontSize);
       const fontWeight = Number(cs.fontWeight) || 400;
       // WCAG 1.4.3: large text is 24px, or 18.66px when bold.
       const isLarge =
         fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
-      const floor = isLarge ? 3 : 4.5;
+      const floor = forceFloor ?? (isLarge ? 3 : 4.5);
 
-      const background = backgroundBehind(el);
-      const bgPixel = toPixel(background);
-      const ratio = contrast(
-        composite(toPixel(colour), bgPixel, alpha),
-        bgPixel,
+      const background = backdrop.colour;
+      const outer = toPixel(
+        backdrop.node && backdrop.node !== document.body
+          ? backgroundBehind(backdrop.node.parentElement).colour
+          : getComputedStyle(document.body).backgroundColor,
       );
+      const paintedBg = composite(toPixel(background), outer, above);
+      const paintedText = composite(
+        composite(toPixel(colour), toPixel(background), below),
+        outer,
+        above,
+      );
+      const ratio = contrast(paintedText, paintedBg);
 
       if (ratio < floor) {
         found.push({
@@ -383,29 +416,51 @@ function sweep(route: string) {
   };
 }
 
+/**
+ * Wait until the page is genuinely ready to measure.
+ *
+ * Order matters, and getting it wrong is silent. This first read
+ * `document.getAnimations()` immediately after `goto`, which is BEFORE React
+ * mounts: the list came back empty, the await resolved instantly, and the
+ * sweep measured a half-rendered page. A duel reviewer turned the whole spec
+ * red under CPU throttling that way — the wizard kicker reading 1.73:1 instead
+ * of 2.96:1 — so the verdict depended on machine load, which is the exact
+ * property that dropping the old fixed 250ms timeout was meant to remove
+ * (#184 duel, round 2).
+ *
+ * `animate-slide-up` runs opacity 0 → 1 over 0.5s, so measuring mid-flight
+ * invents failures that do not exist. Wait for the app to be there, THEN for
+ * its animations to finish, then confirm none started while we waited.
+ */
+async function settle(page: import("@playwright/test").Page): Promise<void> {
+  await page.waitForFunction(() => document.querySelectorAll("*").length > 20);
+  for (let pass = 0; pass < 3; pass += 1) {
+    const running = await page.evaluate(async () => {
+      await Promise.all(
+        document.getAnimations().map((a) => a.finished.catch(() => undefined)),
+      );
+      return document.getAnimations().filter((a) => a.playState === "running")
+        .length;
+    });
+    if (running === 0) return;
+  }
+}
+
 async function sweepTheme(
   page: import("@playwright/test").Page,
   theme: "light" | "dark",
+  /** Override the WCAG floor — the size-independent pass sets 4.5 for all. */
+  forceFloor?: number,
 ): Promise<Finding[]> {
   await page.emulateMedia({ colorScheme: theme });
   const all: Finding[] = [];
   for (const route of ROUTES) {
     await page.goto(route);
-    // Wait for animations to FINISH, not for a guessed interval.
-    // `animate-slide-up` runs opacity 0 → 1 over 0.5s, so a fixed 250ms wait
-    // measured the wizard kicker mid-flight at 2.77:1 instead of its settled
-    // 2.96:1 — a contrast guard whose numbers depend on when you look is a
-    // flake, and this one only became visible once opacity was composited at
-    // all (#184 duel).
-    await page.evaluate(() =>
-      Promise.all(
-        document.getAnimations().map((a) => a.finished.catch(() => undefined)),
-      ).then(() => undefined),
-    );
+    await settle(page);
     if (theme === "dark") {
       await expect(page.locator("html")).toHaveClass(/(^|\s)dark(\s|$)/);
     }
-    all.push(...(await page.evaluate(sweep(route), route)));
+    all.push(...(await page.evaluate(sweep(route), { r: route, forceFloor })));
   }
   return all;
 }
@@ -429,7 +484,16 @@ for (const theme of ["light", "dark"] as const) {
     const accepted = ACCEPTED.filter((a) => a.themes.includes(theme));
     const unexpected = findings.filter(
       (f) =>
-        !accepted.some((a) => f.text === a.text && a.routes.includes(f.route)),
+        !accepted.some(
+          (a) =>
+            f.text === a.text &&
+            a.routes.includes(f.route) &&
+            // The ratio is part of the identity. "Affordo" is the footer
+            // wordmark at 3.74:1 AND the header wordmark at 19:1 on the same
+            // routes, so text+route alone let one absorb a real failure in the
+            // other (#184 duel, round 2).
+            Math.abs(f.ratio - a.ratio) <= 0.15,
+        ),
     );
 
     expect(
@@ -488,73 +552,50 @@ for (const theme of ["light", "dark"] as const) {
  * indirect routes a `grep` would miss — a nested custom property, a `style`
  * attribute, a token realiased in `@theme`.
  */
-test("accent is never text, except where ADR 0022 accepted it", async ({
-  page,
-}) => {
+test("no text sits below AA-normal at any size", async ({ page }) => {
+  // The size-independent half of the guard.
+  //
+  // The sweep above honours WCAG's large-text allowance (3.0 above 24px),
+  // which is right as WCAG and wrong as a guard here: `text-accent` on the goal
+  // card's 36px heading paints 3.09:1, clears 3.0, and sailed through every
+  // assertion. Issue #183's first criterion and ADR 0022 both state these
+  // pairings with no size qualifier at all.
+  //
+  // An earlier version compared painted pixels to the resolved `--accent`
+  // token. A duel reviewer bypassed it in one line with `text-[#f5690f]` —
+  // `rgb(245,105,15)` against the token's `rgb(243,104,15)` — restoring the
+  // 3.04:1 defect with every test green. Exact equality guards a TOKEN, not a
+  // colour, and hand-written near-misses are exactly how tokens get bypassed
+  // here (`emerald-600` is one).
+  //
+  // So this drops hue entirely and asserts the property that actually matters:
+  // nothing paints text under 4.5:1, whatever its size, colour or origin.
   const offenders: string[] = [];
 
   for (const theme of ["light", "dark"] as const) {
-    await page.emulateMedia({ colorScheme: theme });
-    for (const route of ROUTES) {
-      await page.goto(route);
-      await page.evaluate(() =>
-        Promise.all(
-          document
-            .getAnimations()
-            .map((a) => a.finished.catch(() => undefined)),
-        ).then(() => undefined),
-      );
-
-      offenders.push(
-        ...(await page.evaluate(
-          ({ r, t }) => {
-            const paint = (colour: string) => {
-              const c = document.createElement("canvas");
-              c.width = c.height = 1;
-              const x = c.getContext("2d");
-              if (!x) throw new Error("no 2d context");
-              x.fillStyle = colour;
-              x.fillRect(0, 0, 1, 1);
-              const d = x.getImageData(0, 0, 1, 1).data;
-              return `${d[0]},${d[1]},${d[2]}`;
-            };
-
-            const accent = paint(
-              getComputedStyle(document.documentElement)
-                .getPropertyValue("--accent")
-                .trim(),
-            );
-
-            const hits: string[] = [];
-            document.querySelectorAll("*").forEach((el) => {
-              const own = Array.from(el.childNodes)
-                .filter((n) => n.nodeType === Node.TEXT_NODE)
-                .map((n) => n.textContent ?? "")
-                .join("")
-                .trim();
-              if (!own) return;
-              const cs = getComputedStyle(el);
-              if (cs.visibility === "hidden" || cs.display === "none") return;
-              const box = (el as HTMLElement).getBoundingClientRect();
-              if (box.width < 1 || box.height < 1) return;
-              if (paint(cs.color) === accent) {
-                hits.push(`${t} ${r} "${own.slice(0, 40)}"`);
-              }
-            });
-            return hits;
-          },
-          { r: route, t: theme },
-        )),
-      );
-    }
+    const findings = await sweepTheme(page, theme, 4.5);
+    const accepted = ACCEPTED.filter((a) => a.themes.includes(theme));
+    offenders.push(
+      ...findings
+        .filter(
+          (f) =>
+            !accepted.some(
+              (a) =>
+                f.text === a.text &&
+                a.routes.includes(f.route) &&
+                Math.abs(f.ratio - a.ratio) <= 0.15,
+            ),
+        )
+        .map(
+          (f) =>
+            `${theme} ${f.route} "${f.text}" ${f.ratio}:1 at ${f.fontSize}px/${f.fontWeight}`,
+        ),
+    );
   }
 
-  // The wizard kicker is the one accepted site (ADR 0022 case 4, row 2). It is
-  // light-only in the accepted list above because that is where it FAILS AA;
-  // it is accent in both themes, which is why both appear here.
   expect(
-    offenders.filter((o) => !o.includes('"Before you buy"')),
-    "accent used as text outside the one site ADR 0022 accepted — see ADR 0027, which moved the goal card's caption off accent precisely because the hue carried no signal",
+    offenders,
+    "text below 4.5:1. WCAG would allow this above 24px, but ADR 0022 and #183 pin these pairings regardless of size",
   ).toEqual([]);
 });
 
