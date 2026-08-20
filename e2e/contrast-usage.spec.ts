@@ -39,6 +39,20 @@ import { expect, test } from "@playwright/test";
  * - **Anything behind a viewport or interaction this fixture does not reach.**
  *   The four verdict badges are covered because the fixture deliberately
  *   produces all four kinds; a fifth kind would go unswept until added here.
+ *   The goal dialog is the concrete case: it opens on a click, so nothing in it
+ *   is measured.
+ * - **`<option>` text.** The sweep measures a `<select>`'s displayed value and
+ *   its placeholder, then stops. Options are painted by browser chrome rather
+ *   than author CSS, so there is little to enforce, but it is a gap rather than
+ *   a decision.
+ *
+ * Four other escape routes were checked and do NOT apply to this app, so they
+ * are named here to save the next reader the search: there is no
+ * pseudo-element text content, no SVG `<text>` (the one `<text` match is
+ * `<textarea>`, which IS swept as a form control), no shadow DOM, and no
+ * infinite animation for `settle()` to hang on — both keyframes are finite
+ * (0.5s and 0.7s, `both`). Any of these appearing later would need the sweep
+ * extended.
  */
 
 /** Savings 5000 against the prices below yields all four verdict kinds. */
