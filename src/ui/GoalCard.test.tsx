@@ -170,12 +170,36 @@ describe("GoalCard threshold caption", () => {
   // unit layer can see — that both classes were always present and correct is
   // exactly why nothing failed while the flag was invisible. The pixels are
   // proven in e2e/threshold-flag.spec.ts, the ratios in styles/contrast.test.ts.
-  it("weights and darkens the caption when the purchase is above threshold", () => {
+  // The chip is the fourth channel, added on top of ADR 0027's word, weight and
+  // luminance. A filled block is a much larger visual event than bold text at
+  // 10px, and unlike red it costs nothing in contrast: `bg-foreground` with
+  // `text-background` measures 19.26:1 in BOTH themes, against 20.12/18.31 for
+  // the bare bold text it replaces. `--destructive` was the other candidate and
+  // would have dropped light to 4.78:1 — louder to name, quieter to read.
+  it("fills the caption as a chip when the purchase is above threshold", () => {
+    renderCard(makeGoal({ price: 300 }), { salary: 2000, threshold: 10 });
+    const caption = screen.getByText("Above significance threshold: 10%");
+    expect(caption).toHaveClass("bg-foreground");
+    expect(caption).toHaveClass("text-background");
+  });
+
+  it("leaves the calm caption unfilled", () => {
+    renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 10 });
+    const caption = screen.getByText("Significance threshold: 10%");
+    expect(caption).not.toHaveClass("bg-foreground");
+    expect(caption).not.toHaveClass("text-background");
+  });
+
+  it("weights the caption and keeps it off the accent hue", () => {
+    // ADR 0027 put the breach on `font-bold text-foreground`. #186 fills it
+    // instead, which INVERTS the text colour — `text-background` on a
+    // `bg-foreground` block — so the assertion is on the weight and on accent
+    // still being absent, with the fill itself covered by the test above.
     renderCard(makeGoal({ price: 300 }), { salary: 2000, threshold: 10 });
     const caption = screen.getByText("Above significance threshold: 10%");
     expect(caption).toHaveClass("font-bold");
-    expect(caption).toHaveClass("text-foreground");
     expect(caption).not.toHaveClass("text-accent");
+    expect(caption).not.toHaveClass("text-muted-foreground");
   });
 
   it("leaves the threshold caption calm at exactly the threshold", () => {

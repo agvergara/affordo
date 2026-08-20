@@ -132,10 +132,32 @@ export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
             {formatNumber(verdict.pctOfMonthlyIncome, profile.currency, 1)}% of
             monthly income
           </span>
+          {/*
+            The breach is a filled chip, not a colour change (#186).
+
+            ADR 0027 gave it a word, a weight and a luminance jump. This adds a
+            fourth channel — a solid block, which reads at a glance across the
+            card in a way 10px bold text does not.
+
+            `bg-foreground text-background` rather than the red a "warning"
+            suggests. Measured on `--card`: this pairing is 19.26:1 in BOTH
+            themes, where `text-destructive` is 4.78:1 in light and a filled
+            destructive chip is 4.58:1 — 0.08 above the AA floor. Red names the
+            alarm louder and renders it quieter. It also already means Cannot
+            (the verdict badge) and Remove (the action) on this very card.
+
+            The fill composes VerdictBadge's `stretch` treatment, a primitive
+            already extracted from the reference, so no new part is invented
+            (ADR 0023).
+
+            Both branches stay inline string literals: the transition guard in
+            `styles/contrast.test.ts` parses this ternary to discover which
+            tokens to measure, and it throws rather than passing when it cannot.
+          */}
           <span
             className={
               verdict.aboveThreshold
-                ? "font-bold text-foreground"
+                ? "bg-foreground px-1.5 py-0.5 font-bold text-background"
                 : "text-muted-foreground"
             }
           >

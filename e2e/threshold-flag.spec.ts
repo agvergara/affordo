@@ -80,6 +80,54 @@ async function luminanceOf(
   });
 }
 
+/**
+ * WCAG contrast of a caption against whatever is actually painted behind it.
+ *
+ * The backdrop is resolved by walking ancestors for the first near-opaque
+ * background, because a filled chip supplies its own and a bare caption
+ * inherits the card's (#186).
+ */
+async function contrastOf(
+  locator: import("@playwright/test").Locator,
+): Promise<number> {
+  return locator.evaluate((el) => {
+    const paint = (colour: string) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("no 2d context");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 1, 1);
+      ctx.fillStyle = colour;
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return [d[0] as number, d[1] as number, d[2] as number] as const;
+    };
+    const lum = (p: readonly [number, number, number]) => {
+      const f = (v: number) => {
+        const x = v / 255;
+        return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(p[0]) + 0.7152 * f(p[1]) + 0.0722 * f(p[2]);
+    };
+    let node: Element | null = el;
+    let backdrop = "rgb(255,255,255)";
+    while (node) {
+      const bg = getComputedStyle(node).backgroundColor;
+      const parts = bg.match(/[\d.]+/g);
+      const alpha = parts && parts.length > 3 ? parseFloat(parts[3]!) : 1;
+      if (parts && alpha > 0.9) {
+        backdrop = bg;
+        break;
+      }
+      node = node.parentElement;
+    }
+    const a = lum(paint(getComputedStyle(el).color));
+    const b = lum(paint(backdrop));
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     (d) => {
@@ -90,7 +138,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("the breached caption is painted heavier and darker than the calm one", async ({
+test("the breached caption is painted heavier and higher-contrast than the calm one", async ({
   page,
 }) => {
   await page.goto("/goals");
@@ -106,10 +154,19 @@ test("the breached caption is painted heavier and darker than the calm one", asy
   // Weight: the channel that survives greyscale and colour blindness.
   expect(await weight(breached)).toBeGreaterThan(await weight(calm));
 
-  // Luminance: the channel #180 found running backwards. Against a light card
-  // the breached caption must be the DARKER of the two, which is the direct
-  // inverse of what the reference painted.
-  expect(await luminanceOf(breached)).toBeLessThan(await luminanceOf(calm));
+  // Contrast, measured against each caption's OWN painted backdrop.
+  //
+  // This asserted "the breached caption is darker" until #186 filled it. On a
+  // `bg-foreground` chip the text inverts to near-white, so absolute luminance
+  // flips — 0.957 against the calm 0.091 — while what the reader actually
+  // receives goes UP. Comparing raw luminance only works while both captions
+  // sit on the same surface, which was an assumption the test never stated.
+  //
+  // The claim that survives the change is the one #180 was really about: the
+  // breach must not be fainter than the calm state.
+  expect(await contrastOf(breached)).toBeGreaterThanOrEqual(
+    await contrastOf(calm),
+  );
 });
 
 test("the two states are painted differently in dark mode too", async ({
