@@ -1,6 +1,6 @@
 # The above-threshold signal is measured as a transition, not as a colour
 
-**Status:** Accepted. Supersedes [ADR 0022](0022-fidelity-bar-stops-at-the-perceivable.md)
+**Status:** Accepted, amended by #186 (see below). Supersedes [ADR 0022](0022-fidelity-bar-stops-at-the-perceivable.md)
 case 4 **for the goal card's threshold caption only**. Decided on
 [#180](https://github.com/agvergara/affordo/issues/180), built on
 [#181](https://github.com/agvergara/affordo/issues/181).
@@ -123,6 +123,42 @@ the guard follows the code it guards.
 That is this ADR's own thesis landing on it: a guard that cannot fail is worth
 nothing, whatever it asserts, and the only way to know which kind you have is to
 break the thing on purpose and watch.
+
+## Amended by #186: the breach is a filled chip
+
+The signal above was judged still too quiet in use, with a request for "more
+contrast, perhaps a red warning". Those two are in tension, and the numbers
+decide it. Measured against `--card`:
+
+| treatment                                | light       | dark        |
+| ---------------------------------------- | ----------- | ----------- |
+| calm (`text-muted-foreground`)           | 7.44:1      | 7.16:1      |
+| this ADR's `font-bold text-foreground`   | 20.12:1     | 18.31:1     |
+| **`bg-foreground text-background` chip** | **19.26:1** | **19.26:1** |
+| `text-destructive`                       | 4.78:1      | 6.56:1      |
+| filled `bg-destructive` chip             | 4.58:1      | 6.90:1      |
+
+**Red is the quietest option on the list, not the loudest.** It would drop the
+light theme from 20.12:1 to 4.78:1 — a 15-point loss — to land 0.28 above the AA
+floor at 10px, and a filled red chip lands 0.08 above it. It also already means
+two other things on this card: `--destructive` is the `Cannot` verdict badge and
+the Remove action.
+
+So the extra prominence comes from **form, not hue**. The caption becomes a
+filled block, which is a far larger visual event than bold text at 10px while
+costing 0.86 of contrast rather than 15. The word, the weight and the rising
+contrast from this ADR all remain; the fill is a fourth channel on top.
+
+The fill composes `VerdictBadge`'s `stretch` treatment, a primitive already
+extracted from the reference, so ADR 0023 is satisfied without inventing a part.
+The reflow table below is unchanged — measured again after the chip's padding,
+the figures are identical.
+
+**Both guards had to learn what a filled state is, and both refused to pass
+silently first** — the transition guard threw rather than parse a changed
+ternary, and the browser spec failed on a "breached is darker" assertion that a
+chip inverts. Neither was a false alarm: each had an unstated assumption that
+the caption sits on the card, and the chip is the first thing to break it.
 
 ## The longer string reflows, and that is accepted
 
