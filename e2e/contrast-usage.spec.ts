@@ -477,6 +477,19 @@ function sweep(route: string) {
       text: string,
       colourIn: string,
       cs: CSSStyleDeclaration,
+      /**
+       * True when `cs` is a PSEUDO-element declaration (`::placeholder`) rather
+       * than the element's own.
+       *
+       * A form control has two style objects and only one element. Everything
+       * that walks the DOM — the opacity chain, the repaint probe — sees the
+       * element's, so the pseudo's own `opacity`, `filter`, `mix-blend-mode`
+       * and stroke were invisible: `placeholder:opacity-50` painted 2.33:1 and
+       * `placeholder:brightness-200` painted 2.23:1, both reported as 7.15:1
+       * with every test green (#184 duel). Placeholders are on screen here —
+       * two share inputs on `/compare`, the contribution field on `/settings`.
+       */
+      pseudo = false,
     ) => {
       let colour = colourIn;
       const box = (el as HTMLElement).getBoundingClientRect();
@@ -489,6 +502,11 @@ function sweep(route: string) {
       // largest text in the app at 1.03:1 with every test green. It computes to
       // `currentcolor` everywhere here today, so preferring it changes no
       // number and closes the class (#184 duel).
+      // Chromium never returns the literal `currentcolor` here — it resolves to
+      // a used colour — so this guard is belt-and-braces. What makes taking the
+      // fill safe is that the property resolves to `color` when unset, not the
+      // string check (confirmed by a duel reviewer, correcting my earlier
+      // reasoning for the same line).
       const fill = cs.webkitTextFillColor;
       if (fill && fill !== "currentcolor" && fill !== "currentColor") {
         colour = fill;
@@ -498,9 +516,16 @@ function sweep(route: string) {
       // ratio below fiction. Detected here, on the same pass that decides what
       // counts as text, so the two can never disagree.
       let repaint: string | undefined;
+      // Seed with the declaration actually being measured, so a pseudo's own
+      // repaint is caught before the element walk starts.
+      const seed = pseudo ? [cs] : [];
       let probe: Element | null = el;
-      while (probe && !repaint) {
-        const pcs = getComputedStyle(probe);
+      let seedIndex = 0;
+      while ((seedIndex < seed.length || probe) && !repaint) {
+        const pcs =
+          seedIndex < seed.length
+            ? (seed[seedIndex] as CSSStyleDeclaration)
+            : getComputedStyle(probe as Element);
         if (pcs.mixBlendMode && pcs.mixBlendMode !== "normal") {
           repaint = `mix-blend-mode:${pcs.mixBlendMode}`;
         } else if (pcs.filter && pcs.filter !== "none") {
@@ -511,7 +536,8 @@ function sweep(route: string) {
         ) {
           repaint = `-webkit-text-stroke:${pcs.webkitTextStrokeWidth}`;
         }
-        probe = probe.parentElement;
+        if (seedIndex < seed.length) seedIndex += 1;
+        else probe = (probe as Element).parentElement;
       }
 
       const backdrop = backgroundBehind(el);
@@ -529,7 +555,10 @@ function sweep(route: string) {
       //
       // Collapsing the two was wrong in both directions — a real failure
       // missed and a false alarm raised (#184 duel, round 2).
-      const below = effectiveOpacity(el, backdrop.node);
+      const below =
+        effectiveOpacity(el, backdrop.node) *
+        // The pseudo's own opacity is not on any element, so the walk misses it.
+        (pseudo ? Number(cs.opacity) || 1 : 1);
       const above = effectiveOpacity(backdrop.node, null);
       if (below * above < 0.05) return;
 
@@ -590,7 +619,13 @@ function sweep(route: string) {
         const placeholder = (el as HTMLInputElement).placeholder;
         if (placeholder) {
           const ph = getComputedStyle(el, "::placeholder");
-          measure(el, `${tag} placeholder "${placeholder}"`, ph.color, ph);
+          measure(
+            el,
+            `${tag} placeholder "${placeholder}"`,
+            ph.color,
+            ph,
+            true,
+          );
         }
         return;
       }
