@@ -172,7 +172,11 @@ type Accepted = {
 const ACCEPTED: readonly Accepted[] = [
   {
     text: "Before you buy",
-    within: "body",
+    // `main`, not `body`. Every element matches `body`, so using it as a scope
+    // is the same as having no scope — measured: this element's ancestors are
+    // exactly [main, body], and the header wordmark's are [nav, body], which is
+    // what makes footer/nav a real discriminator and body a useless one.
+    within: "main",
     routes: ["/onboarding"],
     ratio: 2.96,
     themes: ["light"],
