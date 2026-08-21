@@ -29,7 +29,7 @@ It says nothing about accessibility, and the parity rebuild hit that gap five ti
 | 1   | `/settings` labels: reference has no `htmlFor`/`id` pairing | **diverge** — keep ours associated |
 | 2   | `/goals` list: reference is `<div>`, ours `<ul>`/`<li>`     | **diverge** — keep ours            |
 | 3   | `__root`: reference is `<div>`, ours `<main>`               | **diverge** — keep ours            |
-| 4   | palette fails WCAG AA in four places                        | **reproduce** — the failures ship  |
+| 4   | palette fails WCAG AA in four places (**five**, see below)  | **reproduce** — the failures ship  |
 | 5   | no agreed hit-target floor                                  | **24×24 adopted**                  |
 
 Cases 1–3 cost nothing visually. This was checked, not assumed: Tailwind's preflight zeroes `margin`/`padding` on every element and sets `list-style: none`, so `<ul>` and `<div>` render byte-identically here, and `<main>` and `<div>` always did. Reproducing the reference in those three places would trade real assistive-technology behaviour — a "list, 3 items" announcement, a landmark, nine labelled fields — for no visible difference at all.
@@ -45,7 +45,8 @@ Colour is not incidental to this reference; it is most of what the rebuild is _f
 | `--accent-foreground` on `--accent`  | 2.96:1 | 4.5 | every primary button hover, `cutToAfford` badge             |
 | `--accent` as text on `--background` | 2.96:1 | 4.5 | wizard kicker — 10px mono (goal-card caption: see ADR 0027) |
 | `--accent` as text on `--card`       | 3.1:1  | 4.5 | **no live site since ADR 0027** — see note below            |
-| white on `emerald-600`               | 3.77:1 | 4.5 | afford badge, **both** themes                               |
+| white on `emerald-600`               | 3.65:1 | 4.5 | afford badge, **both** themes                               |
+| foreground under `opacity-50`        | 3.74:1 | 4.5 | dashboard + comparison footer, 10px — added by #183         |
 
 The accent failures are **light-only** — the same pairings clear AA under `.dark` — and light is the default theme.
 
@@ -60,12 +61,44 @@ Its assertion in `contrast.test.ts` is kept anyway, but be precise about what
 that assertion does: it reads two token values and compares them, so it fires
 if the **palette** moves and never if a **usage** appears. Putting
 `text-accent` back on a `bg-card` surface reintroduces this exact pairing at
-3.09:1 and leaves all 45 tests in that file green — verified by mutation. It is
-a palette guard, not a usage guard, and no usage guard exists (#183).
+3.09:1 and leaves all 45 tests in that file green — verified by mutation.
+
+**A usage guard now exists** (`e2e/contrast-usage.spec.ts`, #183). It sweeps
+every text-bearing element on every route in both themes, measures what the
+browser paints against the effective background behind it, and fails anything
+missing AA that is not on an explicit list of the failures this case chose to
+reproduce. Reintroducing the pairing above fails it at 3.09:1. The two guards
+answer different questions and both are needed: the palette guard catches a
+token moving, this catches a token being used where it should not be.
+
+It also fails when an accepted failure **stops** failing, which is what this
+paragraph is about — the `--card` row spent a release naming a site that no
+longer existed and nothing could tell.
+
+Its limits are stated in its own header, and the largest is that **hover, focus
+and active states are not swept** — including row 1 above, "every primary
+button hover". `transition-colors` returns interpolated values mid-flight, so
+measuring them honestly needs transitions defeated first.
 
 Two earlier revisions of this paragraph got it wrong: one reattributed the row
 to the wizard kicker, which was simply false, and one called the retained
 assertion a guard against reintroduction, which overstated what it can see.
+
+**On the count.** This case was decided as "four places". It is five. The
+dashboard and comparison footers are wrapped in the reference's own
+`opacity-50` (#104), which drops their 10px text to 3.74:1 — while the elements
+themselves compute a perfectly legible 19.32:1, because opacity multiplies down the
+tree and none of it appears in any element's own colour. Nothing in the original
+audit composited that, so nothing could see it; the usage sweep added by #183
+did, on its first run. Same disposition as the other rows — the dimming is
+reproduced from the reference, so the failure ships and is recorded.
+
+**On the `emerald-600` row.** It read 3.77:1 until #183 measured the badge in a
+browser and got 3.65:1. 3.77 is Tailwind **v3**'s `#059669`; this repo is on v4,
+which redefined the palette in oklch and paints `#009966`. The failure is
+unchanged in kind and severity — both miss AA's 4.5 and both clear the 3.0
+large-text floor the badge cannot use at `text-[10px]` — but the number was
+wrong, and it was wrong in a table whose whole purpose is to be the record.
 
 This is the uncomfortable half of the decision and is recorded as such rather than justified away. `src/styles/contrast.test.ts` pins each ratio as an **expected failure**, so the suite asserts the app is inaccessible here rather than quietly passing. If this project ever takes on an accessibility commitment, accent-as-text at 2.96:1 on 10px type is the first thing that has to give.
 
