@@ -36,6 +36,12 @@ import { expect, test } from "@playwright/test";
  * - **Text over images or gradients.** There are none in this app; the
  *   background walk below assumes a solid colour and would need compositing
  *   otherwise.
+ * - **Anything painted behind an element without being its ANCESTOR.** The
+ *   backdrop is resolved by walking up the DOM, so content scrolled under the
+ *   sticky translucent header is invisible to it: visually behind the bar,
+ *   nowhere in its ancestor chain. Measured — scrolling to y=600 leaves the
+ *   resolved backdrop unchanged. Harmless today because the bar's colour equals
+ *   the page's, so nothing shows through; a real gap if either ever changes.
  * - **Anything behind a viewport or interaction this fixture does not reach.**
  *   The four verdict badges are covered because the fixture deliberately
  *   produces all four kinds; a fifth kind would go unswept until added here.
@@ -261,9 +267,17 @@ function sweep(route: string) {
      * matters because Chromium hands these back in their authored space.
      *
      * This replaces a version that painted every colour over hard-coded WHITE
-     * and returned RGB. That silently assumed a white page: right by
-     * coincidence in the light theme and wrong by an order of magnitude in
-     * dark, where the page is `oklch(0.13 0 0)` (#184 duel, round 3).
+     * and returned RGB. That silently assumed a white page — wrong by an order
+     * of magnitude in dark, where the page is `oklch(0.13 0 0)` (#184 duel,
+     * round 3).
+     *
+     * **It too changed no number, and the reason is the interesting part: the
+     * two defects cancelled.** The `> 0.9` skip above meant a translucent
+     * colour never reached this function, and every text colour in the app is
+     * fully opaque (verified by sweeping all five routes in both themes). So
+     * the wrong backdrop was only ever applied to values that carried no alpha
+     * to composite. Each defect was real; together they produced correct
+     * output. Fixing one alone would have been enough; fixing both is right.
      */
     const toRgba = (colour: string): [number, number, number, number] => {
       const read = (under: string) => {
@@ -332,10 +346,18 @@ function sweep(route: string) {
      *
      * The previous version rejected any background with alpha ≤ 0.9 and walked
      * past it, on the stated grounds that tints shift the result by less than
-     * the tolerance. That is true of `bg-accent/5` and false of the app's one
-     * real translucent surface: `AppHeader` is `bg-background/85`, a sticky bar
-     * every route renders, and it was never the measured backdrop for anything
-     * inside it (#184 duel, round 3).
+     * the tolerance. That reasoning is wrong for `AppHeader`, which is
+     * `bg-background/85` — a real surface, not a tint (#184 duel, round 3).
+     *
+     * **Measured honestly, fixing it changed no number.** `bg-background/85`
+     * sits over `background`, the same colour, so skipping the layer and
+     * compositing it give byte-identical backdrops — [251,250,249] light and
+     * [7,7,7] dark, scrolled and unscrolled alike. The fix is right in
+     * principle and inert in practice, and saying otherwise in a commit message
+     * was an overclaim worth correcting here rather than leaving on the record.
+     *
+     * It is kept because it stops being inert the moment a translucent surface
+     * differs from what is behind it.
      *
      * `node` is the nearest ancestor that paints anything at all, which is the
      * surface the text visually sits on and the right place to stop the opacity
