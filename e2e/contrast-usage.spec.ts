@@ -235,6 +235,13 @@ const ACCEPTED: readonly Accepted[] = [
 /** One AA failure as the sweep found it. */
 type Finding = {
   text: string;
+  /**
+   * Set when something repaints this text in a way the sweep cannot follow, so
+   * its `ratio` is fiction. Carried on the SAME finding type, and produced by
+   * the same enumeration, so the refusal check cannot drift out of step with
+   * what actually gets measured (#184 duel).
+   */
+  repaint?: string;
   /** Selectors this element is inside, for scope-matching against ACCEPTED. */
   within: string[];
   ratio: number;
@@ -468,12 +475,44 @@ function sweep(route: string) {
     const measure = (
       el: Element,
       text: string,
-      colour: string,
+      colourIn: string,
       cs: CSSStyleDeclaration,
     ) => {
+      let colour = colourIn;
       const box = (el as HTMLElement).getBoundingClientRect();
       if (box.width < 1 || box.height < 1) return;
       if (isInactive(el)) return;
+
+      // `color` is not necessarily the glyph colour. `-webkit-text-fill-color`
+      // overrides it when set, is neither a filter nor a blend, and so slipped
+      // past both the sweep and the refusal check — a duel reviewer painted the
+      // largest text in the app at 1.03:1 with every test green. It computes to
+      // `currentcolor` everywhere here today, so preferring it changes no
+      // number and closes the class (#184 duel).
+      const fill = cs.webkitTextFillColor;
+      if (fill && fill !== "currentcolor" && fill !== "currentColor") {
+        colour = fill;
+      }
+
+      // Anything that repaints the glyph after `color` is resolved makes every
+      // ratio below fiction. Detected here, on the same pass that decides what
+      // counts as text, so the two can never disagree.
+      let repaint: string | undefined;
+      let probe: Element | null = el;
+      while (probe && !repaint) {
+        const pcs = getComputedStyle(probe);
+        if (pcs.mixBlendMode && pcs.mixBlendMode !== "normal") {
+          repaint = `mix-blend-mode:${pcs.mixBlendMode}`;
+        } else if (pcs.filter && pcs.filter !== "none") {
+          repaint = `filter:${pcs.filter}`;
+        } else if (
+          pcs.webkitTextStrokeWidth &&
+          parseFloat(pcs.webkitTextStrokeWidth) > 0
+        ) {
+          repaint = `-webkit-text-stroke:${pcs.webkitTextStrokeWidth}`;
+        }
+        probe = probe.parentElement;
+      }
 
       const backdrop = backgroundBehind(el);
       // Opacity splits into two stages that do OPPOSITE things:
@@ -519,9 +558,10 @@ function sweep(route: string) {
       );
       const ratio = contrast(paintedText, paintedBg);
 
-      if (ratio < floor) {
+      if (ratio < floor || repaint) {
         found.push({
           text: text.slice(0, 40),
+          repaint,
           within: ["footer", "article", "nav", "header", "main", "body"].filter(
             (sel) => el.closest(sel) !== null,
           ),
@@ -639,6 +679,8 @@ for (const theme of ["light", "dark"] as const) {
     const accepted = ACCEPTED.filter((a) => a.themes.includes(theme));
     const unexpected = findings.filter(
       (f) =>
+        // A repainted finding's ratio is fiction; the test above owns those.
+        !f.repaint &&
         !accepted.some(
           (a) =>
             f.text === a.text &&
@@ -738,6 +780,7 @@ test("no text sits below AA-normal at any size", async ({ page }) => {
       ...findings
         .filter(
           (f) =>
+            !f.repaint &&
             !accepted.some(
               (a) =>
                 f.text === a.text &&
@@ -778,58 +821,36 @@ test("no text sits below AA-normal at any size", async ({ page }) => {
  * if one appears, rather than silently reporting a contrast that is not what a
  * reader receives.
  */
-test("no text is repainted by filter or mix-blend-mode", async ({ page }) => {
-  const offenders: string[] = [];
-
+test("no text is repainted in a way the sweep cannot follow", async ({
+  page,
+}) => {
+  // `filter`, `mix-blend-mode` and `-webkit-text-stroke` never reach the
+  // resolved `color`, so any ratio reported for text under them is fiction. A
+  // reviewer demonstrated the extreme: `mix-blend-overlay` on one span makes
+  // the text vanish — every pixel in its box identical, 1.00:1 — while the
+  // guard computed 4.88:1 and passed.
+  //
+  // Modelling blend compositing is real work. Refusing to measure through it is
+  // not, and neither property is used anywhere in this app today.
+  //
+  // **This consumes the sweep rather than re-deriving what counts as text.**
+  // The first version of this test wrote its own "owns a text node" loop, which
+  // silently reproduced the pre-fix filter that skips every form control — the
+  // exact defect round 1 had already found and `measure()` had already been
+  // fixed for, a few hundred lines above. Two enumerations meant two answers;
+  // there is now one.
+  const repainted: string[] = [];
   for (const theme of ["light", "dark"] as const) {
-    await page.emulateMedia({ colorScheme: theme });
-    for (const route of ROUTES) {
-      await page.goto(route);
-      await settle(page);
-      offenders.push(
-        ...(await page.evaluate(
-          ({ r, t }) => {
-            const hits: string[] = [];
-            document.querySelectorAll("*").forEach((el) => {
-              const own = Array.from(el.childNodes)
-                .filter((n) => n.nodeType === Node.TEXT_NODE)
-                .map((n) => n.textContent ?? "")
-                .join("")
-                .trim();
-              if (!own) return;
-              const box = (el as HTMLElement).getBoundingClientRect();
-              if (box.width < 1 || box.height < 1) return;
-
-              // Either property anywhere up the chain repaints this text.
-              let node: Element | null = el;
-              while (node) {
-                const cs = getComputedStyle(node);
-                const blend = cs.mixBlendMode;
-                const filter = cs.filter;
-                if (blend && blend !== "normal") {
-                  hits.push(
-                    `${t} ${r} "${own.slice(0, 30)}" mix-blend-mode:${blend}`,
-                  );
-                  return;
-                }
-                if (filter && filter !== "none") {
-                  hits.push(`${t} ${r} "${own.slice(0, 30)}" filter:${filter}`);
-                  return;
-                }
-                node = node.parentElement;
-              }
-            });
-            return hits;
-          },
-          { r: route, t: theme },
-        )),
-      );
-    }
+    repainted.push(
+      ...(await sweepTheme(page, theme))
+        .filter((f) => f.repaint)
+        .map((f) => `${theme} ${f.route} "${f.text}" — ${f.repaint}`),
+    );
   }
 
   expect(
-    offenders,
-    "text under `filter` or `mix-blend-mode`. Neither reaches `getComputedStyle().color`, so every ratio this file reports for such text is fiction — `mix-blend-overlay` measured 4.88:1 while painting 1.00:1. Model the blend before allowing this, or the guard is lying.",
+    repainted,
+    "text repainted after `color` resolves. Every ratio this file reports for it is fiction — `mix-blend-overlay` measured 4.88:1 while painting 1.00:1. Model the repaint before allowing this, or the guard is lying.",
   ).toEqual([]);
 });
 
