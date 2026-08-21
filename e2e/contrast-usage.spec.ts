@@ -271,13 +271,11 @@ function sweep(route: string) {
      * of magnitude in dark, where the page is `oklch(0.13 0 0)` (#184 duel,
      * round 3).
      *
-     * **It too changed no number, and the reason is the interesting part: the
-     * two defects cancelled.** The `> 0.9` skip above meant a translucent
-     * colour never reached this function, and every text colour in the app is
-     * fully opaque (verified by sweeping all five routes in both themes). So
-     * the wrong backdrop was only ever applied to values that carried no alpha
-     * to composite. Each defect was real; together they produced correct
-     * output. Fixing one alone would have been enough; fixing both is right.
+     * This half genuinely is inert today: every text colour in the app is fully
+     * opaque, verified by sweeping all five routes in both themes, so nothing
+     * with alpha was ever composited over the wrong base. It is kept because
+     * "no translucent text exists yet" is a fact about today, not a property of
+     * the code.
      */
     const toRgba = (colour: string): [number, number, number, number] => {
       const read = (under: string) => {
@@ -349,15 +347,27 @@ function sweep(route: string) {
      * the tolerance. That reasoning is wrong for `AppHeader`, which is
      * `bg-background/85` — a real surface, not a tint (#184 duel, round 3).
      *
-     * **Measured honestly, fixing it changed no number.** `bg-background/85`
-     * sits over `background`, the same colour, so skipping the layer and
-     * compositing it give byte-identical backdrops — [251,250,249] light and
-     * [7,7,7] dark, scrolled and unscrolled alike. The fix is right in
-     * principle and inert in practice, and saying otherwise in a commit message
-     * was an overclaim worth correcting here rather than leaving on the record.
+     * **It changes real numbers, on three surfaces that ship today.** A comment
+     * here previously claimed the fix was inert. That was measured on the
+     * header alone — where `bg-background/85` sits over `background`, the same
+     * colour, so compositing and skipping agree — and then generalised to every
+     * surface without checking one that differs. A duel reviewer checked, and
+     * the goal card's three verdict explainers are `bg-accent/5`,
+     * `bg-destructive/5` and `bg-emerald-600/5`: translucent surfaces with text
+     * ON them. The old skip returned a flat page colour for all three.
      *
-     * It is kept because it stops being inert the moment a translucent surface
-     * differs from what is behind it.
+     * | surface | old backdrop | new backdrop | ratio |
+     * | --- | --- | --- | --- |
+     * | `bg-accent/5` light | `255,255,255` | `254,247,243` | 20.14 → 19.01 |
+     * | `bg-destructive/5` light | `255,255,255` | `253,244,244` | 20.14 → 18.63 |
+     * | `bg-emerald-600/5` light | `255,255,255` | `242,250,247` | 20.14 → 18.99 |
+     * | `bg-accent/5` dark | `15,15,15` | `27,20,16` | 18.39 → 17.45 |
+     * | `bg-destructive/5` dark | `15,15,15` | `27,19,19` | 18.39 → 17.53 |
+     * | `bg-emerald-600/5` dark | `15,15,15` | `14,22,19` | 18.39 → 17.63 |
+     *
+     * The new values match a screenshot byte-for-byte; the old ones did not. No
+     * verdict changes — every one of these clears AA either way — but the guard
+     * was measuring against a surface that is not there.
      *
      * `node` is the nearest ancestor that paints anything at all, which is the
      * surface the text visually sits on and the right place to stop the opacity
@@ -746,6 +756,80 @@ test("no text sits below AA-normal at any size", async ({ page }) => {
   expect(
     offenders,
     "text below 4.5:1. WCAG would allow this above 24px, but ADR 0022 and #183 pin these pairings regardless of size",
+  ).toEqual([]);
+});
+
+/**
+ * Nothing repaints text in a way this sweep cannot follow (#184 duel).
+ *
+ * `filter` and `mix-blend-mode` never touch `getComputedStyle().color`, so they
+ * are completely invisible to every measurement above. A reviewer demonstrated
+ * the extreme case: `mix-blend-overlay` on one span makes the text vanish —
+ * every pixel in its box identical, 1.00:1 — while the guard computes 4.88:1
+ * and all six tests pass. `brightness-150` does it more quietly.
+ *
+ * That is the precise failure mode this whole file exists to prevent, arriving
+ * through a property one utility away from `opacity`, which gets a two-stage
+ * walk and a long docblock.
+ *
+ * Modelling them properly means compositing blend modes, which is a real piece
+ * of work. Refusing to measure through them is not: neither property is used
+ * anywhere in this app today, so this asserts that stays true and fails loudly
+ * if one appears, rather than silently reporting a contrast that is not what a
+ * reader receives.
+ */
+test("no text is repainted by filter or mix-blend-mode", async ({ page }) => {
+  const offenders: string[] = [];
+
+  for (const theme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: theme });
+    for (const route of ROUTES) {
+      await page.goto(route);
+      await settle(page);
+      offenders.push(
+        ...(await page.evaluate(
+          ({ r, t }) => {
+            const hits: string[] = [];
+            document.querySelectorAll("*").forEach((el) => {
+              const own = Array.from(el.childNodes)
+                .filter((n) => n.nodeType === Node.TEXT_NODE)
+                .map((n) => n.textContent ?? "")
+                .join("")
+                .trim();
+              if (!own) return;
+              const box = (el as HTMLElement).getBoundingClientRect();
+              if (box.width < 1 || box.height < 1) return;
+
+              // Either property anywhere up the chain repaints this text.
+              let node: Element | null = el;
+              while (node) {
+                const cs = getComputedStyle(node);
+                const blend = cs.mixBlendMode;
+                const filter = cs.filter;
+                if (blend && blend !== "normal") {
+                  hits.push(
+                    `${t} ${r} "${own.slice(0, 30)}" mix-blend-mode:${blend}`,
+                  );
+                  return;
+                }
+                if (filter && filter !== "none") {
+                  hits.push(`${t} ${r} "${own.slice(0, 30)}" filter:${filter}`);
+                  return;
+                }
+                node = node.parentElement;
+              }
+            });
+            return hits;
+          },
+          { r: route, t: theme },
+        )),
+      );
+    }
+  }
+
+  expect(
+    offenders,
+    "text under `filter` or `mix-blend-mode`. Neither reaches `getComputedStyle().color`, so every ratio this file reports for such text is fiction — `mix-blend-overlay` measured 4.88:1 while painting 1.00:1. Model the blend before allowing this, or the guard is lying.",
   ).toEqual([]);
 });
 
