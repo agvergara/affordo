@@ -64,6 +64,9 @@ const REMOVE_ACTION = `${ACTION} text-destructive hover:text-destructive`;
 export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
   const { profile } = useAffordo();
   const [explaining, setExplaining] = useState(false);
+  // Scoped to the goal, because the dashboard renders one card per goal and a
+  // shared id would make every disclosure announce the same panel.
+  const explainerId = `threshold-explainer-${goal.id}`;
   const verdict = useMemo(
     () => evaluateReference(profile, goal),
     [profile, goal],
@@ -210,6 +213,8 @@ export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
         <button
           type="button"
           onClick={() => setExplaining((open) => !open)}
+          aria-expanded={explaining}
+          aria-controls={explainerId}
           className={`${ACTION} mt-3 text-muted-foreground hover:text-accent-foreground`}
         >
           What this means
@@ -228,7 +233,10 @@ export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
             needs no entry on the accepted-failures list in
             `e2e/contrast-usage.spec.ts`, which sweeps it.
           */
-          <p className="mt-3 border-l-2 border-border p-3 text-sm text-muted-foreground">
+          <p
+            id={explainerId}
+            className="mt-3 border-l-2 border-border p-3 text-sm text-muted-foreground"
+          >
             {THRESHOLD_HINT}
           </p>
         )}

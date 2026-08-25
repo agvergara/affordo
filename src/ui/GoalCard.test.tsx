@@ -243,6 +243,24 @@ describe("GoalCard threshold explanation", () => {
     expect(screen.getByText(THRESHOLD_HINT)).toBeInTheDocument();
   });
 
+  // jsdom can see wiring even though it cannot see pixels, and this is the part
+  // that decides whether the control works for anyone not using a mouse.
+  it("tells assistive technology whether it is open, and what it controls", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const trigger = screen.getByRole("button", { name: /what this means/i });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    const panelId = trigger.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    expect(document.getElementById(panelId as string)).toHaveTextContent(
+      THRESHOLD_HINT,
+    );
+  });
+
   it("puts it away again", async () => {
     const user = userEvent.setup();
     renderCard();
@@ -308,7 +326,9 @@ describe("GoalCard threshold meter midpoint marker", () => {
     // A 40% threshold puts this 10% purchase at 12.5% of the track, yet the
     // marker does not follow the threshold — it is fixed, by design.
     renderCard(makeGoal({ price: 200 }), { salary: 2000, threshold: 40 });
-    expect(screen.getByTestId("threshold-fill")).toHaveStyle({ width: "12.5%" });
+    expect(screen.getByTestId("threshold-fill")).toHaveStyle({
+      width: "12.5%",
+    });
     expect(screen.getByTestId("threshold-marker")).toHaveStyle({ left: "50%" });
   });
 
@@ -525,7 +545,10 @@ describe("GoalCard verdict explainer", () => {
   it("writes the cut percentage in another profile's locale", () => {
     // The same 37.5% under USD reads with a decimal point — the guard that makes
     // the decimal comma above evidence of the profile, not of a hardcoded de-DE.
-    renderCard(makeGoal({ price: 30000 }), { ...CUT_TO_AFFORD, currency: "USD" });
+    renderCard(makeGoal({ price: 30000 }), {
+      ...CUT_TO_AFFORD,
+      currency: "USD",
+    });
     expect(screen.getByRole("article")).toHaveTextContent(
       "Cut expenses by 37.5% to reach it in 12 months.",
     );
