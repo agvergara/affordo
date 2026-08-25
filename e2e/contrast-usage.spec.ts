@@ -689,6 +689,18 @@ async function settle(page: import("@playwright/test").Page): Promise<void> {
  * fix is for the sweep to reach the surface, not for the surface to bring its
  * own ruler (#187 duel).
  *
+ * Triggers are found **structurally**, by `aria-expanded="false"`, not by their
+ * label. The first version matched `/what this means/i`, which coupled this
+ * file to a copy string it does not own: rename the button and this selector
+ * matches nothing, `count()` is 0, the loop no-ops, and the panel goes
+ * unmeasured — silently, because nothing asserted a disclosure ever opened. A
+ * duel reviewer proved it end to end, renaming the trigger and breaking the
+ * panel's contrast at once for a fully green suite. That is the round-1 defect
+ * one level up: a private ruler became a private trigger name (#187 duel).
+ *
+ * `revealDisclosures` returns how many it opened so a caller can insist it did
+ * something; see "the sweep opens the explanations it depends on" below.
+ *
  * The click is dispatched rather than performed with the pointer, and that
  * matters. `trigger.click()` leaves the mouse resting on the button, so its
  * `hover:bg-accent` applies and the sweep measures a hover state — mid
@@ -700,14 +712,19 @@ async function settle(page: import("@playwright/test").Page): Promise<void> {
  */
 async function revealDisclosures(
   page: import("@playwright/test").Page,
-): Promise<void> {
-  const triggers = page.getByRole("button", { name: /what this means/i });
-  for (let i = 0; i < (await triggers.count()); i += 1) {
-    const trigger = triggers.nth(i);
-    if ((await trigger.getAttribute("aria-expanded")) === "false") {
-      await trigger.dispatchEvent("click");
-    }
+): Promise<number> {
+  // Handles are snapshotted BEFORE any click, because the locator is live and
+  // the click mutates the very attribute the selector filters on: open the
+  // first and it leaves the set, every later index shifts, and `nth(i)` ends up
+  // waiting on an element that no longer matches until the test times out.
+  // Written the obvious way first, and it hung exactly like that.
+  const handles = await page
+    .locator('button[aria-expanded="false"]')
+    .elementHandles();
+  for (const handle of handles) {
+    await handle.dispatchEvent("click");
   }
+  return handles.length;
 }
 
 async function sweepTheme(
@@ -922,6 +939,31 @@ test("no text is repainted in a way the sweep cannot follow", async ({
     repainted,
     "text repainted after `color` resolves. Every ratio this file reports for it is fiction — `mix-blend-overlay` measured 4.88:1 while painting 1.00:1. Model the repaint before allowing this, or the guard is lying.",
   ).toEqual([]);
+});
+
+test("the sweep opens the explanations it depends on", async ({ page }) => {
+  // Without this, `revealDisclosures` failing to match anything is invisible:
+  // the sweep measures a page it believes is expanded, finds no panel, and
+  // reports no failures — which reads exactly like success. A reviewer produced
+  // precisely that by renaming the trigger, and every suite stayed green while
+  // the panel painted 2.32:1 (#187 duel).
+  //
+  // The sibling control below asserts the sweep can see the app; this one
+  // asserts it can see the part that only exists after a click.
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/goals");
+  await settle(page);
+
+  const opened = await revealDisclosures(page);
+  expect(opened, "no collapsed disclosure found on /goals").toBeGreaterThan(0);
+
+  // And the panel it opened is really there, so a control that toggles
+  // `aria-expanded` without revealing anything cannot satisfy this either.
+  await expect(
+    page
+      .getByText("Purchases above this % of your monthly income are flagged.")
+      .first(),
+  ).toBeVisible();
 });
 
 test("the sweep can see the app at all", async ({ page }) => {
