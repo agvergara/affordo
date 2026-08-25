@@ -214,6 +214,24 @@ export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
         >
           What this means
         </button>
+
+        {explaining && (
+          /*
+            The three verdict explainers below wear
+            `mt-4 border-l-2 border-<token> bg-<token>/5 p-3 text-sm`. This is
+            that shape with neutral tokens: the tinted variants carry verdict
+            meaning (accent = cut to afford, destructive = cannot, emerald =
+            afford) and this panel is not a verdict.
+
+            No background tint at all, so it sits on `bg-card` with
+            `text-muted-foreground` at 7.44:1 — comfortably past AA, and it
+            needs no entry on the accepted-failures list in
+            `e2e/contrast-usage.spec.ts`, which sweeps it.
+          */
+          <p className="mt-3 border-l-2 border-border p-3 text-sm text-muted-foreground">
+            {THRESHOLD_HINT}
+          </p>
+        )}
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2">

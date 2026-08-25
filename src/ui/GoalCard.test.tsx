@@ -235,6 +235,22 @@ describe("GoalCard threshold explanation", () => {
     renderCard();
     expect(screen.queryByText(THRESHOLD_HINT)).not.toBeInTheDocument();
   });
+
+  it("reveals the wizard's sentence, verbatim", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: /what this means/i }));
+    expect(screen.getByText(THRESHOLD_HINT)).toBeInTheDocument();
+  });
+
+  it("puts it away again", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const trigger = screen.getByRole("button", { name: /what this means/i });
+    await user.click(trigger);
+    await user.click(trigger);
+    expect(screen.queryByText(THRESHOLD_HINT)).not.toBeInTheDocument();
+  });
 });
 
 describe("GoalCard threshold meter fill", () => {
