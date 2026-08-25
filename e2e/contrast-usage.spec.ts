@@ -701,6 +701,16 @@ async function settle(page: import("@playwright/test").Page): Promise<void> {
  * `revealDisclosures` returns how many it opened so a caller can insist it did
  * something; see "the sweep opens the explanations it depends on" below.
  *
+ * **Known tradeoff, recorded rather than discovered later.** The structural
+ * selector is broader than the label match it replaced, and `dispatchEvent`
+ * skips Playwright's actionability checks — so between them this would click a
+ * future collapsed control without knowing it is safe to click. `GoalCard` is
+ * the only element in `src/` carrying `aria-expanded` today, so this is a shape
+ * rather than a defect, and a duel reviewer declined to file it for exactly
+ * that reason. If a second component takes the attribute, narrow the selector
+ * to that component rather than going back to matching copy, which was strictly
+ * worse (#187 duel).
+ *
  * The click is dispatched rather than performed with the pointer, and that
  * matters. `trigger.click()` leaves the mouse resting on the button, so its
  * `hover:bg-accent` applies and the sweep measures a hover state — mid
