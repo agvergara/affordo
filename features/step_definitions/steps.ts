@@ -312,6 +312,23 @@ Then(
   },
 );
 
+When(
+  "I ask what the significance threshold means",
+  async function (this: AffordoWorld) {
+    await this.page
+      .getByRole("button", { name: /what this means/i })
+      .first()
+      .click();
+  },
+);
+
+Then(
+  "I do not see {string}",
+  async function (this: AffordoWorld, text: string) {
+    await expect(this.page.getByText(text, { exact: true })).toHaveCount(0);
+  },
+);
+
 Then(
   "the goal still shows its 2020 creation date",
   async function (this: AffordoWorld) {

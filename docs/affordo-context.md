@@ -800,6 +800,7 @@ reference deliberately, with an ADR saying why.
 | element | reference | ours | decided by |
 | --- | --- | --- | --- |
 | goal card threshold caption, **above** threshold | `Significance threshold: {n}%` in `text-accent` | `Above significance threshold: {n}%` in `font-bold text-foreground` | [ADR 0027](adr/0027-the-breach-signal-is-measured-as-a-transition.md) |
+| goal card, threshold explanation | *nothing* — the reference never explains the threshold outside onboarding | a `What this means` disclosure revealing the reference's own `thresholdHint`, verbatim | #185, under [ADR 0023](adr/0023-net-new-surface-governed-by-reference-idiom.md) |
 
 The caption **at or below** the threshold is unchanged, and so is everything else
 on the card — the meter fill stays `bg-foreground`, the marker stays `bg-accent`
@@ -814,6 +815,30 @@ light, so the flag rendered *fainter* than the calm state it replaced, and
 exact element and reproduced it, because every number available to that decision
 measured one state's legibility and none measured the change between two. A hue
 that carries no signal is not a hue the reproduction owes the reference.
+
+**On the threshold explanation (#185).** This is net-new surface, so
+[ADR 0023](adr/0023-net-new-surface-governed-by-reference-idiom.md) governs it
+rather than the fidelity bar, and the call was made explicitly: **compose, do
+not add a part.**
+
+The request was for a tooltip. This port has no tooltip, popover or hover-card
+component — the reference has all three as shadcn primitives, but every
+primitive here is hand-reimplemented and none was ever needed. A real tooltip
+brings positioning, dismissal and touch behaviour with it, all new parts. A
+disclosure needs none of that: the trigger is the goal card's own ghost `ACTION`
+button and the panel is the same shape as its three verdict explainers, in
+neutral tokens because the tinted variants carry verdict meaning. Both parts
+were already extracted from the reference.
+
+It is also the accessible shape rather than a compromise — a hover tooltip has
+no keyboard or touch equivalent, where a `<button>` has both, and `ACTION`'s
+`h-8` clears the 24×24 floor ADR 0022 sets. The panel sits on `bg-card` with
+`text-muted-foreground` at 7.44:1, so it needs no entry on the accepted-failures
+list in `e2e/contrast-usage.spec.ts`.
+
+The string is the reference's own `thresholdHint` (`i18n.ts:30`), now held once
+in `src/ui/copy.ts` and rendered by both the wizard and the card. It stays off
+`/settings`, which shows labels and controls only (#137).
 
 **Copying a reference `className` is not fidelity when the reference element is a
 component with a base layer.** The add button needs `h-9` and `border-0` beyond
