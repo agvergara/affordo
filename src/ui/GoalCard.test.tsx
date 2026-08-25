@@ -6,6 +6,7 @@ import { GoalCard } from "./GoalCard";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
 import type { Goal } from "../state/goals-store";
+import { THRESHOLD_HINT } from "./copy";
 
 beforeEach(() => window.localStorage.clear());
 
@@ -211,6 +212,28 @@ describe("GoalCard threshold caption", () => {
     const caption = screen.getByText("Significance threshold: 10%");
     expect(caption).toHaveClass("text-muted-foreground");
     expect(caption).not.toHaveClass("font-bold");
+  });
+});
+
+describe("GoalCard threshold explanation", () => {
+  // The card flags a breach but never said what the threshold IS (#185). The
+  // sentence is the wizard's, verbatim — a customer who onboarded months ago,
+  // or never did, has nowhere else to read it.
+  //
+  // A disclosure rather than a tooltip, and that is the ADR 0023 call: a real
+  // tooltip is a new part (positioning, dismissal, touch), while a button and a
+  // paragraph are both already on this card. It is also the accessible shape by
+  // construction — hover has no keyboard or touch equivalent.
+  it("offers to explain the threshold", () => {
+    renderCard();
+    expect(
+      screen.getByRole("button", { name: /what this means/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the explanation out of the document until it is asked for", () => {
+    renderCard();
+    expect(screen.queryByText(THRESHOLD_HINT)).not.toBeInTheDocument();
   });
 });
 

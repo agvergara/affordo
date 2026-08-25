@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { evaluateReference } from "../engine";
 import { useAffordo } from "../state/AffordoProvider";
 import type { Goal } from "../state/goals-store";
+import { THRESHOLD_HINT } from "./copy";
 import { formatMoney, formatNumber } from "./localeFormat";
 import { VerdictBadge } from "./VerdictBadge";
 
@@ -62,6 +63,7 @@ const REMOVE_ACTION = `${ACTION} text-destructive hover:text-destructive`;
 
 export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
   const { profile } = useAffordo();
+  const [explaining, setExplaining] = useState(false);
   const verdict = useMemo(
     () => evaluateReference(profile, goal),
     [profile, goal],
@@ -184,6 +186,34 @@ export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
             aria-hidden
           />
         </div>
+
+        {/*
+          What the threshold IS, in the wizard's own words (#185).
+
+          The card flags a breach and never explained it; the sentence lived
+          only in onboarding, which a long-standing customer last saw months
+          ago. `/settings` deliberately shows no hints at all (#137), so the
+          card is the only place left to put it.
+
+          **The ADR 0023 call: composed, not a new part.** The request asked for
+          a tooltip. This port has no tooltip, popover or hover-card primitive,
+          and a real one brings positioning, dismissal and touch behaviour with
+          it — new parts, which ADR 0023 does not permit without its own ADR. A
+          disclosure needs neither: the trigger is this card's own ghost
+          `ACTION` button and the panel is the same shape as the three verdict
+          explainers below. Both are already extracted from the reference.
+
+          It is also the accessible shape rather than a compromise. A hover
+          tooltip has no keyboard or touch equivalent; a button has both for
+          free, and `ACTION`'s `h-8` clears the 24x24 floor ADR 0022 sets.
+        */}
+        <button
+          type="button"
+          onClick={() => setExplaining((open) => !open)}
+          className={`${ACTION} mt-3 text-muted-foreground hover:text-accent-foreground`}
+        >
+          What this means
+        </button>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2">
