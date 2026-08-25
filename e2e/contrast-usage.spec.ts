@@ -689,8 +689,14 @@ async function settle(page: import("@playwright/test").Page): Promise<void> {
  * fix is for the sweep to reach the surface, not for the surface to bring its
  * own ruler (#187 duel).
  *
- * Clicking rather than forcing state open is deliberate: it measures what a
- * user actually gets, and it fails loudly if the control stops working.
+ * The click is dispatched rather than performed with the pointer, and that
+ * matters. `trigger.click()` leaves the mouse resting on the button, so its
+ * `hover:bg-accent` applies and the sweep measures a hover state — mid
+ * `transition-colors`, at that, which reported 4.07:1 against a
+ * half-transitioned background. This file's header excludes hover for exactly
+ * that reason: the values depend on when you look. `dispatchEvent` runs the
+ * real handler without moving the pointer, so what gets measured is the resting
+ * state the header promises.
  */
 async function revealDisclosures(
   page: import("@playwright/test").Page,
@@ -699,7 +705,7 @@ async function revealDisclosures(
   for (let i = 0; i < (await triggers.count()); i += 1) {
     const trigger = triggers.nth(i);
     if ((await trigger.getAttribute("aria-expanded")) === "false") {
-      await trigger.click();
+      await trigger.dispatchEvent("click");
     }
   }
 }

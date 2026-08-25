@@ -322,10 +322,23 @@ When(
   },
 );
 
+/**
+ * The exact negation of `I see {string}` above — same matcher, opposite verdict.
+ *
+ * It was written with `{ exact: true }` while its positive twin is a substring
+ * match, which made the negation strictly weaker than the assertion it negates.
+ * A duel reviewer demonstrated the consequence on one screen: `I do not see
+ * "Nothing is assigned yet."` passed on `/compare` while `compare.feature`
+ * asserts `I see` the same string on the same screen — one page, one string,
+ * two opposite verdicts, both green (#187).
+ *
+ * Keep the two matchers identical. A negation that cannot see what the
+ * assertion sees is a scenario that proves nothing.
+ */
 Then(
   "I do not see {string}",
   async function (this: AffordoWorld, text: string) {
-    await expect(this.page.getByText(text, { exact: true })).toHaveCount(0);
+    await expect(this.page.getByText(text)).toHaveCount(0);
   },
 );
 

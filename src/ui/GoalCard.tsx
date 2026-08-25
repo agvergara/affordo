@@ -229,9 +229,12 @@ export function GoalCard({ goal, onEdit, onRemove, sharing }: GoalCardProps) {
             afford) and this panel is not a verdict.
 
             No background tint at all, so it sits on `bg-card` with
-            `text-muted-foreground` at 7.44:1 — comfortably past AA, and it
+            `text-muted-foreground` at ~7.45:1 — comfortably past AA, and it
             needs no entry on the accepted-failures list in
-            `e2e/contrast-usage.spec.ts`, which sweeps it.
+            `e2e/contrast-usage.spec.ts`. That sweep only reaches this panel
+            because it opens disclosures before measuring; an earlier version of
+            this comment claimed it swept the panel when it could not yet see
+            it (#187 duel).
           */
           <p
             id={explainerId}
