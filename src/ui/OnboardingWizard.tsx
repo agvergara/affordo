@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
+import { THRESHOLD_HINT } from "./copy";
 import { useAffordo } from "../state/AffordoProvider";
 import { defaultProfile, type Profile } from "../state/profile-store";
 import type { Currency } from "../engine/reference-types";
@@ -360,7 +361,7 @@ function RulesStep({
       <Field
         id="onboarding-threshold"
         label={`Significance threshold — ${draft.threshold}%`}
-        hint="Purchases above this % of your monthly income are flagged."
+        hint={THRESHOLD_HINT}
       >
         <input
           id="onboarding-threshold"

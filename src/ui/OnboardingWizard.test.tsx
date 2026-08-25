@@ -3,6 +3,7 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OnboardingWizard } from "./OnboardingWizard";
+import { THRESHOLD_HINT } from "./copy";
 import { AffordoProvider } from "../state/AffordoProvider";
 import { ThemeProvider } from "../state/ThemeProvider";
 import {
@@ -583,6 +584,16 @@ describe("OnboardingWizard — step 3 Rules", () => {
         "Purchases above this % of your monthly income are flagged.",
       ),
     ).toBeInTheDocument();
+  });
+
+  // The wizard renders the SHARED constant, not a literal of its own (#185).
+  // The goal card now shows the same sentence, and the reference keeps it in
+  // one place (`i18n.ts` `thresholdHint`) precisely so the two cannot drift.
+  // Asserting on the constant means editing the wizard's copy without editing
+  // the constant fails here rather than silently splitting the two surfaces.
+  it("renders the shared threshold hint, not a copy of it", async () => {
+    await reachRules();
+    expect(screen.getByText(THRESHOLD_HINT)).toBeInTheDocument();
   });
 
   it("asks for savings and optional extra savings, with the reference hint", async () => {
