@@ -9,13 +9,20 @@ import { expect, test } from "@playwright/test";
  * "the panel is legible on screen" are the same assertion there, and they are
  * not the same thing (`CLAUDE.md`).
  *
- * **Contrast is measured here, not by `contrast-usage.spec.ts`.** An earlier
- * draft of this comment said the sweep covered the panel "for free once it is
- * on screen". It does not: that sweep never clicks anything, so the panel is
- * never rendered while it runs, and it falls squarely into the gap that file
- * already documents — "anything behind a viewport or interaction this fixture
- * does not reach". A surface that only exists after a click has to be measured
- * by whoever does the clicking.
+ * **Contrast is NOT measured here.** Two earlier drafts got this wrong in
+ * opposite directions. The first said `contrast-usage.spec.ts` covered the
+ * panel "for free once it is on screen" — it did not, because that sweep never
+ * clicked. The second added a private contrast helper to this file, and a duel
+ * reviewer showed it lacked the ancestor-opacity walk and translucent-layer
+ * compositing the sweep had spent four rounds acquiring: `opacity-50` on the
+ * panel painted 2.32:1 and this file reported 7.46 and passed.
+ *
+ * Duplicated colour maths diverges from the hardened original. So the sweep now
+ * opens disclosures itself (`revealDisclosures`) and measures the panel with
+ * the same code that measures everything else, and this file measures no
+ * colour at all. What it adds is that the panel appears with a real box, sits
+ * below the caption it explains, works from the keyboard, and stays closed on
+ * the sibling card.
  */
 const PROFILE = {
   schemaVersion: 1,
@@ -102,56 +109,4 @@ test("opening one card's explanation leaves the other closed", async ({
 
   await expect(first.getByText(HINT)).toBeVisible();
   await expect(second.getByText(HINT)).toHaveCount(0);
-});
-
-test("the panel is legible in both themes", async ({ page }) => {
-  // The contrast sweep cannot reach this surface (see the header), so it is
-  // measured here against whatever is actually painted behind it. Neutral
-  // tokens were chosen for exactly this reason: no background of its own, so it
-  // inherits the card and lands on `--muted-foreground` over `--card`.
-  for (const theme of ["light", "dark"] as const) {
-    await page.emulateMedia({ colorScheme: theme });
-    await page.goto("/goals");
-    const card = page.locator("article", { hasText: "Laptop" });
-    await card.getByRole("button", { name: /what this means/i }).click();
-
-    const ratio = await card.getByText(HINT).evaluate((el) => {
-      const paint = (colour: string) => {
-        const c = document.createElement("canvas");
-        c.width = c.height = 1;
-        const x = c.getContext("2d")!;
-        x.fillStyle = "#ffffff";
-        x.fillRect(0, 0, 1, 1);
-        x.fillStyle = colour;
-        x.fillRect(0, 0, 1, 1);
-        const d = x.getImageData(0, 0, 1, 1).data;
-        return [d[0] as number, d[1] as number, d[2] as number] as const;
-      };
-      const lum = (p: readonly [number, number, number]) => {
-        const f = (v: number) => {
-          const s = v / 255;
-          return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-        };
-        return 0.2126 * f(p[0]) + 0.7152 * f(p[1]) + 0.0722 * f(p[2]);
-      };
-      let node: Element | null = el;
-      let backdrop = "rgb(255,255,255)";
-      while (node) {
-        const bg = getComputedStyle(node).backgroundColor;
-        const parts = bg.match(/[\d.]+/g);
-        const alpha = parts && parts.length > 3 ? parseFloat(parts[3]!) : 1;
-        if (parts && alpha > 0.9) {
-          backdrop = bg;
-          break;
-        }
-        node = node.parentElement;
-      }
-      const a = lum(paint(getComputedStyle(el).color));
-      const b = lum(paint(backdrop));
-      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-    });
-
-    // AA for normal-size text. The panel is `text-sm`, which is not large.
-    expect(ratio, `${theme} theme panel contrast`).toBeGreaterThanOrEqual(4.5);
-  }
 });

@@ -676,6 +676,34 @@ async function settle(page: import("@playwright/test").Page): Promise<void> {
   }
 }
 
+/**
+ * Open every disclosure on the page so its panel is on screen to be measured.
+ *
+ * The header lists "anything behind an interaction" as a gap, and the goal
+ * card's threshold explanation (#185) landed straight in it: a surface that
+ * only exists after a click. The first attempt to cover it wrote a PRIVATE copy
+ * of the contrast maths inside `threshold-explainer.spec.ts`, and that copy
+ * lacked the ancestor-opacity walk and the translucent-layer compositing this
+ * file spent four duel rounds acquiring — so `opacity-50` on the panel painted
+ * 2.32:1 and passed. Duplicated maths diverges from the hardened original; the
+ * fix is for the sweep to reach the surface, not for the surface to bring its
+ * own ruler (#187 duel).
+ *
+ * Clicking rather than forcing state open is deliberate: it measures what a
+ * user actually gets, and it fails loudly if the control stops working.
+ */
+async function revealDisclosures(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  const triggers = page.getByRole("button", { name: /what this means/i });
+  for (let i = 0; i < (await triggers.count()); i += 1) {
+    const trigger = triggers.nth(i);
+    if ((await trigger.getAttribute("aria-expanded")) === "false") {
+      await trigger.click();
+    }
+  }
+}
+
 async function sweepTheme(
   page: import("@playwright/test").Page,
   theme: "light" | "dark",
@@ -687,6 +715,7 @@ async function sweepTheme(
   for (const route of ROUTES) {
     await page.goto(route);
     await settle(page);
+    await revealDisclosures(page);
     if (theme === "dark") {
       await expect(page.locator("html")).toHaveClass(/(^|\s)dark(\s|$)/);
     }
