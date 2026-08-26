@@ -6,6 +6,8 @@ import { AffordoProvider } from "../state/AffordoProvider";
 import { ThemeProvider } from "../state/ThemeProvider";
 import { defaultProfile, saveProfile } from "../state/profile-store";
 import { saveGoals, type Goal } from "../state/goals-store";
+import userEvent from "@testing-library/user-event";
+import { THRESHOLD_HINT } from "./copy";
 
 beforeEach(() => window.localStorage.clear());
 
@@ -487,5 +489,45 @@ describe("GoalsDashboard sharing line", () => {
     // "when, given the others?"
     expect(within(card).getByText("Stretch")).toBeInTheDocument();
     expect(card).toHaveTextContent("3 months");
+  });
+});
+
+describe("GoalsDashboard threshold explanations", () => {
+  // One disclosure per card, and they must not be wired to each other. The
+  // panel id is derived from the goal id for exactly this reason: a constant id
+  // would make every trigger on the page claim to control the same panel, and
+  // assistive technology would follow the first one (#185).
+  it("opens only the card whose explanation was asked for", async () => {
+    const user = userEvent.setup();
+    renderDashboard({ salary: 2000 }, [
+      makeGoal({ id: "a", name: "MacBook" }),
+      makeGoal({ id: "b", name: "Holiday" }),
+    ]);
+
+    const cards = screen.getAllByRole("article");
+    const first = within(cards[0] as HTMLElement);
+    const second = within(cards[1] as HTMLElement);
+
+    await user.click(first.getByRole("button", { name: /what this means/i }));
+
+    expect(first.getByText(THRESHOLD_HINT)).toBeInTheDocument();
+    expect(second.queryByText(THRESHOLD_HINT)).not.toBeInTheDocument();
+  });
+
+  it("gives each card's panel its own id", async () => {
+    const user = userEvent.setup();
+    renderDashboard({ salary: 2000 }, [
+      makeGoal({ id: "a", name: "MacBook" }),
+      makeGoal({ id: "b", name: "Holiday" }),
+    ]);
+
+    const triggers = screen.getAllByRole("button", {
+      name: /what this means/i,
+    });
+    await user.click(triggers[0] as HTMLElement);
+    await user.click(triggers[1] as HTMLElement);
+
+    const ids = triggers.map((t) => t.getAttribute("aria-controls"));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

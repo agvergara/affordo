@@ -36,6 +36,15 @@ Feature: Weighing purchases against my working life
     When I add a goal "Headphones" priced 200
     Then the goal "Headphones" is not flagged above my significance threshold
 
+  Scenario: I can find out what the significance threshold means
+    When I add a goal "Laptop" priced 300
+    And I ask what the significance threshold means
+    Then I see "Purchases above this % of your monthly income are flagged."
+
+  Scenario: The explanation stays out of the way until I ask
+    When I add a goal "Laptop" priced 300
+    Then I do not see "Purchases above this % of your monthly income are flagged."
+
   Scenario: Editing a goal updates it in place
     Given I have a goal "Down payment" priced 20000
     When I rename it to "House deposit" and reprice it to 25000
